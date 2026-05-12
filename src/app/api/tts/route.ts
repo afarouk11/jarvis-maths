@@ -2,6 +2,7 @@ export const maxDuration = 30
 
 function stripLatex(text: string): string {
   return text
+    .replace(/\bSPOK\b/g, 'Spock')
     .replace(/\$\$[\s\S]*?\$\$/g, ' mathematical expression ')
     .replace(/\$[^$]*?\$/g, ' expression ')
     .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '$1 over $2')
@@ -35,13 +36,15 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         text: cleanText,
         model_id: 'eleven_turbo_v2_5',
-        voice_settings: { stability: 0.5, similarity_boost: 0.8, style: 0.3 },
+        voice_settings: { stability: 0.45, similarity_boost: 0.82, style: 0.35, use_speaker_boost: true },
       }),
     }
   )
 
   if (!response.ok) {
-    return new Response('TTS error', { status: response.status })
+    const body = await response.text()
+    console.error('[TTS]', response.status, body)
+    return new Response(`TTS error: ${response.status} ${body}`, { status: response.status })
   }
 
   return new Response(response.body, {

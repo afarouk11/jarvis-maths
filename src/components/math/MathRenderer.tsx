@@ -12,18 +12,28 @@ export function MathRenderer({ content, block = false }: Props) {
   return <InlineMath math={content} />
 }
 
-// Renders a string that may contain mixed text and LaTeX ($...$ and $$...$$)
+// Renders a string that may contain mixed text and LaTeX.
+// Handles: $$...$$, $...$, \[...\], \(...\)
 export function MixedMath({ content }: { content: string }) {
-  const parts = content.split(/(\$\$[\s\S]*?\$\$|\$[^$\n]*?\$)/g)
+  if (!content) return null
+
+  const MATH_RE = /(\$\$[\s\S]*?\$\$|\$[^$\n]*?\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\))/g
+  const parts = content.split(MATH_RE)
 
   return (
     <>
       {parts.map((part, i) => {
         if (part.startsWith('$$') && part.endsWith('$$')) {
-          return <BlockMath key={i} math={part.slice(2, -2)} />
+          return <BlockMath key={i} math={part.slice(2, -2).trim()} />
+        }
+        if (part.startsWith('\\[') && part.endsWith('\\]')) {
+          return <BlockMath key={i} math={part.slice(2, -2).trim()} />
         }
         if (part.startsWith('$') && part.endsWith('$')) {
-          return <InlineMath key={i} math={part.slice(1, -1)} />
+          return <InlineMath key={i} math={part.slice(1, -1).trim()} />
+        }
+        if (part.startsWith('\\(') && part.endsWith('\\)')) {
+          return <InlineMath key={i} math={part.slice(2, -2).trim()} />
         }
         return <span key={i}>{part}</span>
       })}

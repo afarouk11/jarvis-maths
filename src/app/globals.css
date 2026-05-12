@@ -8,9 +8,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-display: var(--font-space-grotesk);
+  --font-heading: var(--font-space-grotesk);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -40,16 +41,18 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
 
-  /* Jarvis custom colours */
+  /* Spok custom colours */
   --color-arc: var(--arc);
   --color-arc-dim: var(--arc-dim);
   --color-navy: var(--navy);
   --color-navy-light: var(--navy-light);
   --color-grid: var(--grid);
+  --color-gold: var(--gold);
+  --color-indigo: var(--indigo);
 }
 
 :root {
-  /* Jarvis dark theme — always dark */
+  /* Spok dark theme — always dark */
   --background: #0a0f1e;
   --foreground: #e8f0fe;
   --card: #0d1526;
@@ -78,12 +81,14 @@
   --sidebar-border: rgba(59, 130, 246, 0.12);
   --sidebar-ring: #3b82f6;
 
-  /* Custom Jarvis tokens */
+  /* Custom Spok tokens */
   --arc: #3b82f6;
   --arc-dim: rgba(59, 130, 246, 0.4);
   --navy: #0a0f1e;
   --navy-light: #1a2744;
   --grid: rgba(59, 130, 246, 0.06);
+  --gold: #f59e0b;
+  --indigo: #6366f1;
 }
 
 @layer base {
@@ -100,13 +105,14 @@
   }
 }
 
-/* Notebook grid background */
+/* Notebook grid background — enhanced with dot overlay */
 .notebook-bg {
   background-color: #0a0f1e;
   background-image:
-    linear-gradient(rgba(59, 130, 246, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(59, 130, 246, 0.06) 1px, transparent 1px);
-  background-size: 28px 28px;
+    radial-gradient(circle, rgba(59, 130, 246, 0.09) 1px, transparent 1px),
+    linear-gradient(rgba(59, 130, 246, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.04) 1px, transparent 1px);
+  background-size: 20px 20px, 80px 80px, 80px 80px;
 }
 
 /* Arc reactor glow */
@@ -118,12 +124,132 @@
   box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
 }
 
-/* Jarvis HUD border */
+/* Premium card — glassmorphism + gradient border via mask */
+.premium-card {
+  position: relative;
+  background: rgba(13, 21, 38, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 16px;
+  isolation: isolate;
+}
+.premium-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.55) 0%, rgba(99, 102, 241, 0.3) 50%, rgba(59, 130, 246, 0.08) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Glass panel for auth cards */
+.glass-panel {
+  position: relative;
+  background: rgba(10, 16, 30, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-radius: 20px;
+  isolation: isolate;
+}
+.glass-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(160deg, rgba(99, 102, 241, 0.5) 0%, rgba(59, 130, 246, 0.3) 40%, rgba(59, 130, 246, 0.06) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Spok HUD border (legacy — keep for compatibility) */
 .hud-border {
   border: 1px solid rgba(59, 130, 246, 0.2);
   background: rgba(13, 21, 38, 0.8);
   backdrop-filter: blur(12px);
 }
+
+/* Display heading — Space Grotesk */
+.display {
+  font-family: var(--font-space-grotesk), sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+/* Gradient text */
+.gradient-text-blue {
+  background: linear-gradient(135deg, #60a5fa 0%, #818cf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Radial hero glow */
+.hero-glow {
+  position: absolute;
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.12) 0%, rgba(99, 102, 241, 0.06) 40%, transparent 70%);
+  pointer-events: none;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+}
+
+/* SPOK orbital ring animation */
+@keyframes orbital-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes orbital-spin-reverse {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1; }
+}
+
+/* Stat card glow */
+@keyframes stat-glow {
+  0%, 100% { opacity: 0.6; transform: scale(0.95); }
+  50%       { opacity: 1;   transform: scale(1.05); }
+}
+
+/* Gold badge shimmer */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.shimmer-gold {
+  background: linear-gradient(90deg, #f59e0b 0%, #fcd34d 40%, #f59e0b 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 3s linear infinite;
+}
+
+/* Spok avatar — CSS animations replace 58 per-element Framer Motion loops */
+@keyframes jarvis-edge-pulse {
+  0%, 100% { opacity: 0.35; }
+  50%       { opacity: 0.75; }
+}
+@keyframes jarvis-node-pulse {
+  0%, 100% { opacity: 0.65; }
+  50%       { opacity: 1; }
+}
+.jarvis-edges { animation: jarvis-edge-pulse 2s ease-in-out infinite; }
+.jarvis-nodes { animation: jarvis-node-pulse 1.8s ease-in-out infinite; }
 
 /* KaTeX overrides */
 .katex {
@@ -133,6 +259,59 @@
 
 .katex-display {
   margin: 1rem 0;
+}
+
+/* Exam paper — override KaTeX to gold so it's visible on white */
+.exam-paper .katex,
+.exam-paper .katex * {
+  color: #b45309 !important;
+}
+
+.exam-paper .katex-display {
+  margin: 0.5rem 0;
+}
+
+/* OpenDyslexic font */
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url('https://cdn.jsdelivr.net/npm/opendyslexic@0.91.12/OpenDyslexic-Regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url('https://cdn.jsdelivr.net/npm/opendyslexic@0.91.12/OpenDyslexic-Bold.otf') format('opentype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Dyslexia mode — applied to <html> via JS */
+html.dyslexia-mode,
+html.dyslexia-mode body,
+html.dyslexia-mode p,
+html.dyslexia-mode span,
+html.dyslexia-mode div,
+html.dyslexia-mode h1,
+html.dyslexia-mode h2,
+html.dyslexia-mode h3,
+html.dyslexia-mode h4,
+html.dyslexia-mode button,
+html.dyslexia-mode input,
+html.dyslexia-mode textarea,
+html.dyslexia-mode select,
+html.dyslexia-mode label {
+  font-family: 'OpenDyslexic', sans-serif !important;
+  line-height: 1.9 !important;
+  letter-spacing: 0.05em !important;
+  word-spacing: 0.18em !important;
+}
+
+html.dyslexia-mode p,
+html.dyslexia-mode .prose,
+html.dyslexia-mode .leading-relaxed {
+  max-width: 65ch;
 }
 
 /* Scrollbar */

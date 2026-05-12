@@ -16,17 +16,85 @@ export interface Topic {
   slug: string
   parent_id: string | null
   exam_board: string | null
-  year_group: 'AS' | 'A2' | null
+  year_group: 'AS' | 'A2' | 'Y10' | 'Y11' | null
   order_index: number
   icon: string | null
   children?: Topic[]
 }
 
-export interface LessonBlock {
+// ── Interactive lesson block types ──────────────────────────────────────────
+
+export interface HookBlock {
+  type: 'hook'
+  question: string       // engaging opening question
+  options: string[]      // 4 options; last is always "I'm not sure yet"
+}
+
+export interface ConceptBlock {
+  type: 'concept'
+  label: string
+  content: string        // prose + LaTeX
+}
+
+export interface WorkedExampleBlock {
+  type: 'worked-example'
+  label?: string
+  intro: string          // problem statement
+  steps: Array<{ label: string; content: string }>
+}
+
+export interface CheckpointBlock {
+  type: 'checkpoint'
+  question: string       // with LaTeX
+  options: string[]      // 4 MCQ options with LaTeX
+  correct: number        // 0-indexed
+  explanation: string    // shown after answering
+}
+
+export interface TryItBlock {
+  type: 'try-it'
+  problem: string        // problem statement with LaTeX
+  hint?: string
+  answer: string         // model answer for Spok to mark against
+}
+
+export interface SummaryBlock {
+  type: 'summary'
+  content: string
+}
+
+export interface GraphBlock {
+  type: 'graph'
+  title?: string
+  xDomain?: [number, number]
+  yDomain?: [number, number]
+  data: Array<{
+    fn?: string
+    color?: string
+    label?: string
+    closed?: boolean
+    graphType?: 'polyline' | 'scatter' | 'interval'
+    range?: [number, number]
+  }>
+  annotations?: Array<{ x?: number; y?: number; text?: string }>
+}
+
+// Legacy plain blocks (kept for backward compat with old lessons)
+export interface LegacyBlock {
   type: 'text' | 'math' | 'math-block' | 'step' | 'example' | 'note'
   content: string
   label?: string
 }
+
+export type LessonBlock =
+  | HookBlock
+  | ConceptBlock
+  | WorkedExampleBlock
+  | CheckpointBlock
+  | TryItBlock
+  | SummaryBlock
+  | GraphBlock
+  | LegacyBlock
 
 export interface Lesson {
   id: string

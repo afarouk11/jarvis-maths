@@ -24,7 +24,7 @@ export function ThinkingBlock({ thinking, isStreaming = false }: Props) {
           <Brain size={14} className="text-blue-400" />
         </motion.div>
         <span className="text-xs text-blue-400 font-medium flex-1">
-          {isStreaming ? 'Jarvis is reasoning...' : 'View reasoning'}
+          {isStreaming ? 'Spok is reasoning...' : 'View reasoning'}
         </span>
         {!isStreaming && (
           <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>

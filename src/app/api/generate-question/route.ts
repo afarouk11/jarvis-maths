@@ -2,6 +2,7 @@ import { anthropic } from '@ai-sdk/anthropic'
 import { generateText } from 'ai'
 import { buildQuestionPrompt } from '@/lib/ai/prompts'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 
 export async function POST(req: Request) {
   const { topicId, topicName, difficulty = 3 } = await req.json()
@@ -9,20 +10,30 @@ export async function POST(req: Request) {
   const { text } = await generateText({
     model: anthropic('claude-haiku-4-5-20251001'),
     prompt: buildQuestionPrompt(topicName, difficulty),
-    maxTokens: 2000,
   })
 
   let question
   try {
-    question = JSON.parse(text)
+    const cleaned = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim()
+    question = JSON.parse(cleaned)
   } catch {
-    return Response.json({ error: 'Failed to parse question' }, { status: 500 })
+    return Response.json({ error: 'Failed to parse question', raw: text }, { status: 500 })
   }
 
   const supabase = await createClient()
-  const { data, error } = await supabase
+
+  // Look up topic UUID from slug
+  const { data: topic } = await supabase
+    .from('topics').select('id').eq('slug', topicId).single()
+  if (!topic) return Response.json({ error: 'Topic not found — run /api/seed-topics first' }, { status: 404 })
+
+  const adminSupabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+  const { data, error } = await adminSupabase
     .from('questions')
-    .insert({ topic_id: topicId, ...question })
+    .insert({ topic_id: topic.id, ...question })
     .select()
     .single()
 

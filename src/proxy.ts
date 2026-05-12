@@ -1,12 +1,12 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
         getAll() { return request.cookies.getAll() },
@@ -21,18 +21,22 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  let user = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch {}
 
-  const isDashboard = request.nextUrl.pathname.startsWith('/dashboard') ||
-    request.nextUrl.pathname.startsWith('/topics') ||
-    request.nextUrl.pathname.startsWith('/practice') ||
-    request.nextUrl.pathname.startsWith('/profile')
+  const { pathname } = request.nextUrl
+  const protectedPrefixes = ['/dashboard', '/topics', '/practice', '/profile', '/brain', '/jarvis', '/papers', '/admin']
+  const isProtected = protectedPrefixes.some(p => pathname.startsWith(p))
+  const isAuthPage = pathname.startsWith('/sign-in') || pathname.startsWith('/sign-up')
 
-  if (isDashboard && !user) {
+  if (isProtected && !user) {
     return NextResponse.redirect(new URL('/sign-in', request.url))
   }
 
-  if ((request.nextUrl.pathname === '/sign-in' || request.nextUrl.pathname === '/sign-up') && user) {
+  if (isAuthPage && user) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
