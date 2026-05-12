@@ -25,6 +25,10 @@ export function JarvisChat({ topicContext }: Props) {
   const [limitReached, setLimitReached] = useState(false)
   const [greeting, setGreeting] = useState<string | null>(null)
   const [greetingLoading, setGreetingLoading] = useState(false)
+  // revealedLength: how many chars of the current assistant message to display.
+  // Infinity = show all (default / after speaking ends).
+  const [revealedLength, setRevealedLength] = useState(Infinity)
+  const pendingRevealRef = useRef(0)   // cumulative raw chars queued for reveal
   const greetingFetchedRef = useRef(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const sentenceBufferRef = useRef(createSentenceBuffer())
@@ -44,7 +48,11 @@ export function JarvisChat({ topicContext }: Props) {
     },
     onFinish: ({ message }) => {
       const remaining = sentenceBufferRef.current.flush()
-      remaining.forEach(s => queueSpeak(s))
+      remaining.forEach(s => {
+        pendingRevealRef.current += s.length
+        const target = pendingRevealRef.current
+        queueSpeak(s, () => setRevealedLength(target))
+      })
 
       // Fallback: if streaming TTS never triggered, speak the whole message at once
       if (spokenLengthRef.current === 0) {
@@ -61,7 +69,7 @@ export function JarvisChat({ topicContext }: Props) {
 
   const isLoading = status === 'streaming' || status === 'submitted'
 
-  // Feed streaming text into sentence buffer
+  // Feed streaming text into sentence buffer; reveal text per-sentence as TTS plays
   useEffect(() => {
     if (status !== 'streaming') return
     const lastMsg = messages[messages.length - 1]
@@ -74,13 +82,21 @@ export function JarvisChat({ topicContext }: Props) {
     if (!newChunk) return
     spokenLengthRef.current = fullText.length
     const sentences = sentenceBufferRef.current.feedText(newChunk)
-    sentences.forEach(s => queueSpeak(s))
+    sentences.forEach(s => {
+      pendingRevealRef.current += s.length
+      const target = pendingRevealRef.current
+      queueSpeak(s, () => setRevealedLength(target))
+    })
   }, [messages, status, queueSpeak])
 
   const handleTranscript = useCallback((text: string) => {
     if (!text.trim() || isLoading) return
+    sentenceBufferRef.current = createSentenceBuffer()
+    spokenLengthRef.current = 0
+    pendingRevealRef.current = 0
+    setRevealedLength(voiceEnabled ? 0 : Infinity)
     sendMessage({ text: text.trim() })
-  }, [sendMessage, isLoading])
+  }, [sendMessage, isLoading, voiceEnabled])
 
   const { startListening, stopListening, listening } = useSpeechToText(handleTranscript)
 
@@ -124,6 +140,13 @@ export function JarvisChat({ topicContext }: Props) {
     else startListening()
   }
 
+  // Reveal all text once SPOK finishes speaking (safety net for any missed reveals)
+  useEffect(() => {
+    if (!speaking && !isLoading) {
+      setRevealedLength(Infinity)
+    }
+  }, [speaking, isLoading])
+
   function handleSend(e: React.FormEvent) {
     e.preventDefault()
     if (!inputValue.trim() || isLoading) return
@@ -132,6 +155,8 @@ export function JarvisChat({ topicContext }: Props) {
     stopSpeaking()
     sentenceBufferRef.current = createSentenceBuffer()
     spokenLengthRef.current = 0
+    pendingRevealRef.current = 0
+    setRevealedLength(voiceEnabled ? 0 : Infinity)
     sendMessage({ text: inputValue.trim() })
     setInputValue('')
   }
@@ -234,6 +259,12 @@ export function JarvisChat({ topicContext }: Props) {
                 const textContent = parts.filter(isTextUIPart).map(p => p.text).join('')
                   || (parts as any[]).filter((p: any) => p.type === 'text').map((p: any) => p.text ?? '').join('')
                 const isLastMsg = msg === messages[messages.length - 1]
+                const isSpeaking = isLastMsg && msg.role === 'assistant' && (isLoading || speaking)
+
+                // Reveal text progressively as SPOK speaks; show all for past messages
+                const displayText = isSpeaking && revealedLength < textContent.length
+                  ? textContent.slice(0, Math.max(0, textContent.lastIndexOf(' ', revealedLength) || revealedLength))
+                  : textContent
 
                 if (!textContent && msg.role === 'user') return null
 
@@ -252,8 +283,8 @@ export function JarvisChat({ topicContext }: Props) {
                             ? { background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.3)', color: '#e8f0fe' }
                             : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: '#d1deff' }
                           }>
-                          {textContent
-                            ? <SpokMessage content={textContent} color="#d1deff" />
+                          {displayText
+                            ? <SpokMessage content={displayText} color="#d1deff" />
                             : <span style={{ color: '#374151' }}>...</span>
                           }
                         </div>
