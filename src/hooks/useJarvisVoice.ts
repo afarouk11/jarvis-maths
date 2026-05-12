@@ -50,7 +50,7 @@ export function useJarvisVoice() {
   const audioUnlockedRef = useRef(false)
 
   // TTS queue: pre-fetched blobs ready to play
-  const queueRef      = useRef<Array<{ blob: Blob; text: string; onReveal?: () => void }>>([])
+  const queueRef      = useRef<Array<{ blob: Blob; text: string }>>([])
   const playingRef    = useRef(false)
   // Serialise TTS fetches — chain promises so only one ElevenLabs request runs at a time
   const fetchChainRef = useRef<Promise<void>>(Promise.resolve())
@@ -80,7 +80,7 @@ export function useJarvisVoice() {
       return
     }
 
-    const { blob, text, onReveal } = queueRef.current.shift()!
+    const { blob, text } = queueRef.current.shift()!
     const words = text.trim().split(/\s+/)
     const url   = URL.createObjectURL(blob)
     const audio = new Audio(url)
@@ -107,7 +107,6 @@ export function useJarvisVoice() {
       playNext()
     }
     audio.onerror = () => {
-      onReveal?.()
       URL.revokeObjectURL(url)
       stopAmplitudeTracking()
       playingRef.current = false
@@ -115,21 +114,16 @@ export function useJarvisVoice() {
       playNext()
     }
 
-    audio.play()
-      .then(() => { onReveal?.() })
-      .catch(() => {
-        // Autoplay was blocked — try one more time after a short yield
-        setTimeout(() => {
-          audio.play()
-            .then(() => { onReveal?.() })
-            .catch(() => {
-              onReveal?.()
-              playingRef.current = false
-              audioRef.current = null
-              playNext()
-            })
-        }, 100)
-      })
+    audio.play().catch((err) => {
+      // Autoplay was blocked — try one more time after a short yield
+      setTimeout(() => {
+        audio.play().catch(() => {
+          playingRef.current = false
+          audioRef.current = null
+          playNext()
+        })
+      }, 100)
+    })
   }
 
   // Call this immediately on any user gesture (Send button, Enter key, mic tap)
@@ -144,34 +138,22 @@ export function useJarvisVoice() {
   }, [])
 
   // Queue a sentence: serialise all ElevenLabs fetches through a promise chain
-  // so we never fire more than one concurrent request (prevents 429s).
-  // onReveal fires when the audio for this sentence actually starts playing.
-  const queueSpeak = useCallback((text: string, onReveal?: () => void) => {
-    if (!enabled) {
-      onReveal?.()
-      return
-    }
+  // so we never fire more than one concurrent request (prevents 429s)
+  const queueSpeak = useCallback((text: string) => {
+    if (!enabled) return
     const clean = cleanForTTS(text)
-    if (!clean) {
-      onReveal?.()
-      return
-    }
+    if (!clean) return
 
     fetchChainRef.current = fetchChainRef.current.then(async () => {
       const blob = await fetchTTSBlob(clean)
-      if (!blob) {
-        onReveal?.()
-        return
-      }
-      queueRef.current.push({ blob, text: clean, onReveal })
+      if (!blob) return
+      queueRef.current.push({ blob, text: clean })
       playNext()
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled])
 
   const stopSpeaking = useCallback(() => {
-    // Flush any pending reveals so text isn't left hidden
-    queueRef.current.forEach(item => item.onReveal?.())
     queueRef.current = []
     playingRef.current = false
     fetchChainRef.current = Promise.resolve() // discard queued fetches
