@@ -5,11 +5,16 @@ import { buildStudentProfile } from '@/lib/ai/student-profile'
 import { embedText } from '@/lib/ai/embeddings'
 import { createClient } from '@/lib/supabase/server'
 import { isPro, PLANS } from '@/lib/stripe'
+import { CHAT_SKILL_MODES } from '@/lib/spok-skills'
+import type { SkillModeId } from '@/lib/spok-skills'
 
 export const maxDuration = 60
 
 export async function POST(req: Request) {
-  const { messages, topicContext, accessibilityPrefs } = await req.json()
+  const { messages, topicContext, accessibilityPrefs, skillMode } = await req.json()
+  const modeAppend = skillMode
+    ? (CHAT_SKILL_MODES.find(m => m.id === (skillMode as SkillModeId))?.systemAppend ?? '')
+    : ''
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -100,6 +105,7 @@ export async function POST(req: Request) {
     accessibilityInstructions,
     profile ? `\n\n---\n${profile}\n---\n\nUse this profile to personalise your responses.` : '',
     topicContext ? `\nCurrent topic: The student is studying "${topicContext}".` : '',
+    modeAppend ? `\n\n---\nINSTRUCTION: ${modeAppend}\n---` : '',
     ragContext,
   ].join('')
 

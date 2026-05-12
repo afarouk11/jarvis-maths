@@ -7,6 +7,8 @@ import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, isReasoningUIPart, isTextUIPart } from 'ai'
 import { Send, Mic, MicOff, Volume2, VolumeX } from 'lucide-react'
 import { ThinkingBlock } from '@/components/jarvis/ThinkingBlock'
+import { CHAT_SKILL_MODES } from '@/lib/spok-skills'
+import type { SkillModeId } from '@/lib/spok-skills'
 
 const JarvisScene = dynamic(
   () => import('@/components/jarvis/JarvisScene').then(m => m.JarvisScene),
@@ -22,6 +24,7 @@ export default function SpokPage() {
   const [clock, setClock] = useState('')
   const [greeting, setGreeting] = useState<string | null>(null)
   const [greetingLoading, setGreetingLoading] = useState(false)
+  const [activeMode, setActiveMode] = useState<SkillModeId | null>(null)
   const greetingFetchedRef = useRef(false)
 
   useEffect(() => {
@@ -44,7 +47,7 @@ export default function SpokPage() {
   const spokenLengthRef   = useRef(0)
 
   const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({ api: '/api/chat' }),
+    transport: new DefaultChatTransport({ api: '/api/chat', body: { skillMode: activeMode } }),
     onFinish: ({ message }) => {
       const remaining = sentenceBufferRef.current.flush()
       remaining.forEach(s => queueSpeak(s))
@@ -255,6 +258,35 @@ export default function SpokPage() {
             )
           })}
           <div ref={bottomRef} />
+        </div>
+
+        {/* Skill mode chips */}
+        <div className="px-6 pt-3 pb-0 shrink-0 flex items-center gap-2 flex-wrap"
+          style={{ borderTop: '1px solid rgba(59,130,246,0.08)' }}>
+          {CHAT_SKILL_MODES.map(mode => {
+            const isActive = activeMode === mode.id
+            return (
+              <button
+                key={mode.id}
+                type="button"
+                onClick={() => setActiveMode(isActive ? null : mode.id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                style={{
+                  background: isActive ? `${mode.color}22` : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${isActive ? mode.color + '55' : 'rgba(255,255,255,0.07)'}`,
+                  color: isActive ? mode.color : '#4a6070',
+                  boxShadow: isActive ? `0 0 12px ${mode.glowColor}` : 'none',
+                }}>
+                <span>{mode.emoji}</span>
+                {mode.shortLabel}
+              </button>
+            )
+          })}
+          {activeMode && (
+            <span className="text-xs ml-1" style={{ color: '#4a6070' }}>
+              {CHAT_SKILL_MODES.find(m => m.id === activeMode)?.description}
+            </span>
+          )}
         </div>
 
         {/* Input */}
