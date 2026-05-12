@@ -115,7 +115,7 @@ export async function POST(req: Request) {
     messages: await convertToModelMessages(messages),
     maxOutputTokens: 16000,
     providerOptions: {
-      anthropic: { thinking: { type: 'enabled', budgetTokens: 8000 } },
+      anthropic: { thinking: { type: 'enabled', budgetTokens: 2000 } },
     },
   })
 
