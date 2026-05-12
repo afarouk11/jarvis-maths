@@ -47,7 +47,7 @@ export async function GET() {
     if (streakPart) contextPart += `Currently on a ${streakPart}. `
 
     const { text } = await generateText({
-      model: anthropic('claude-haiku-4-5'),
+      model: anthropic('claude-haiku-4-5-20251001'),
       system: `You are SPOK, an A-level maths tutor who genuinely cares about your students.
 Speak in natural, conversational sentences — no markdown, no bullet points, no lists, no dashes.
 Be warm, human, and direct. Sound like a brilliant friend checking in, not a system announcing a status update.
