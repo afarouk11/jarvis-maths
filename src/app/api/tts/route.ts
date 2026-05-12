@@ -1,6 +1,42 @@
 export const maxDuration = 30
 
+function convertListsToSpeech(text: string): string {
+  const lines = text.split('\n')
+  const result: string[] = []
+  let bullets: string[] = []
+  let numbered: string[] = []
+
+  const flushBullets = () => {
+    if (!bullets.length) return
+    if (bullets.length === 1) {
+      result.push(bullets[0] + '.')
+    } else {
+      const last = bullets[bullets.length - 1]
+      result.push(bullets.slice(0, -1).join(', ') + ', and ' + last + '.')
+    }
+    bullets = []
+  }
+
+  const flushNumbered = () => {
+    if (!numbered.length) return
+    result.push(numbered.join('. ') + '.')
+    numbered = []
+  }
+
+  for (const line of lines) {
+    const bm = line.match(/^\s*[-*+]\s+(.+)/)
+    const nm = line.match(/^\s*\d+\.\s+(.+)/)
+    if (bm) { flushNumbered(); bullets.push(bm[1].trim()) }
+    else if (nm) { flushBullets(); numbered.push(nm[1].trim()) }
+    else { flushBullets(); flushNumbered(); result.push(line) }
+  }
+  flushBullets()
+  flushNumbered()
+  return result.filter(l => l !== '').join('\n')
+}
+
 function stripLatex(text: string): string {
+  text = convertListsToSpeech(text)
   return text
     // Brand name
     .replace(/\bSPOK\b/g, 'Spock')
