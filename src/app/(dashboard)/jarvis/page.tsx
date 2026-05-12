@@ -7,8 +7,7 @@ import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, isReasoningUIPart, isTextUIPart } from 'ai'
 import { Send, Mic, MicOff, Volume2, VolumeX } from 'lucide-react'
 import { ThinkingBlock } from '@/components/jarvis/ThinkingBlock'
-import { CHAT_SKILL_MODES } from '@/lib/spok-skills'
-import type { SkillModeId } from '@/lib/spok-skills'
+import { CHAT_SKILL_MODES, type SkillModeId } from '@/lib/spok-skills'
 
 const JarvisScene = dynamic(
   () => import('@/components/jarvis/JarvisScene').then(m => m.JarvisScene),
@@ -21,10 +20,10 @@ import type { JarvisState } from '@/types'
 export default function SpokPage() {
   const [jarvisState, setJarvisState]   = useState<JarvisState>('idle')
   const [inputValue,  setInputValue]    = useState('')
+  const [activeMode,  setActiveMode]    = useState<SkillModeId | null>(null)
   const [clock, setClock] = useState('')
   const [greeting, setGreeting] = useState<string | null>(null)
   const [greetingLoading, setGreetingLoading] = useState(false)
-  const [activeMode, setActiveMode] = useState<SkillModeId | null>(null)
   const greetingFetchedRef = useRef(false)
 
   useEffect(() => {
@@ -47,7 +46,7 @@ export default function SpokPage() {
   const spokenLengthRef   = useRef(0)
 
   const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({ api: '/api/chat', body: { skillMode: activeMode } }),
+    transport: new DefaultChatTransport({ api: '/api/chat' }),
     onFinish: ({ message }) => {
       const remaining = sentenceBufferRef.current.flush()
       remaining.forEach(s => queueSpeak(s))

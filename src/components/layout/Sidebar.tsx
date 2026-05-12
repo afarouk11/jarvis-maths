@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, BookOpen, Zap, FileText,
-  User, LogOut, Brain, Bot, Database, Sparkles, Star,
+  User, LogOut, Brain, Bot, Database, Sparkles,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -15,8 +15,7 @@ const NAV = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard',      glow: '#3b82f6' },
   { href: '/topics',    icon: BookOpen,        label: 'Topics',          glow: '#8b5cf6' },
   { href: '/practice',  icon: Zap,             label: 'Practice',        glow: '#f59e0b' },
-  { href: '/jarvis',    icon: Bot,             label: 'SPOK Chat',       glow: '#f59e0b' },
-  { href: '/spok',      icon: Star,            label: 'SPOK Skills',     glow: '#6366f1' },
+  { href: '/jarvis',    icon: Bot,             label: 'SPOK',            glow: '#f59e0b' },
   { href: '/brain',     icon: Brain,           label: 'Knowledge Brain', glow: '#c47a20' },
   { href: '/papers',    icon: FileText,        label: 'Past Papers',     glow: '#60a5fa' },
   { href: '/profile',   icon: User,            label: 'Profile',         glow: '#a78bfa' },
