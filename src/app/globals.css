@@ -312,6 +312,18 @@ html.dyslexia-mode p,
 html.dyslexia-mode .prose,
 html.dyslexia-mode .leading-relaxed {
   max-width: 65ch;
+  text-align: left !important;
+  margin-bottom: 1em !important;
+}
+
+html.dyslexia-mode li {
+  margin-bottom: 0.6em !important;
+  text-align: left !important;
+}
+
+html.dyslexia-mode em,
+html.dyslexia-mode i {
+  font-style: normal !important;
 }
 
 /* Scrollbar */

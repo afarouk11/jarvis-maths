@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, BookOpen, Zap, FileText,
-  User, LogOut, Brain, Bot, Database, Sparkles,
+  User, LogOut, Brain, Bot, Database, Sparkles, TrendingUp,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -18,6 +18,7 @@ const NAV = [
   { href: '/jarvis',    icon: Bot,             label: 'SPOK',            glow: '#f59e0b' },
   { href: '/brain',     icon: Brain,           label: 'Knowledge Brain', glow: '#c47a20' },
   { href: '/papers',    icon: FileText,        label: 'Past Papers',     glow: '#60a5fa' },
+  { href: '/progress',  icon: TrendingUp,      label: 'Progress',        glow: '#22c55e' },
   { href: '/profile',   icon: User,            label: 'Profile',         glow: '#a78bfa' },
   { href: '/admin',     icon: Database,        label: 'Knowledge Base',  glow: '#34d399' },
 ]

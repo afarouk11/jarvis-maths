@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, isReasoningUIPart, isTextUIPart } from 'ai'
-import { Send, X, Maximize2, Minimize2 } from 'lucide-react'
+import { Send, X, Maximize2, Minimize2, RefreshCw } from 'lucide-react'
 import { JarvisAvatar } from './JarvisAvatar'
 import { JarvisVoice } from './JarvisVoice'
 import { ThinkingBlock } from './ThinkingBlock'
@@ -25,7 +25,10 @@ export function JarvisChat({ topicContext }: Props) {
   const [limitReached, setLimitReached] = useState(false)
   const [greeting, setGreeting] = useState<string | null>(null)
   const [greetingLoading, setGreetingLoading] = useState(false)
+  const [conversationHistory, setConversationHistory] = useState('')
   const greetingFetchedRef = useRef(false)
+  const historyLoadedRef   = useRef(false)
+  const pendingUserMsgRef  = useRef('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const sentenceBufferRef = useRef(createSentenceBuffer())
   const spokenLengthRef   = useRef(0)
@@ -35,7 +38,7 @@ export function JarvisChat({ topicContext }: Props) {
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/chat',
-      body: { topicContext, accessibilityPrefs },
+      body: { topicContext, accessibilityPrefs, conversationHistory },
     }),
     onError: (err) => {
       if (err.message?.includes('429') || err.message?.includes('daily_limit_reached')) {
@@ -47,15 +50,27 @@ export function JarvisChat({ topicContext }: Props) {
       remaining.forEach(s => queueSpeak(s))
 
       // Fallback: if streaming TTS never triggered, speak the whole message at once
-      if (spokenLengthRef.current === 0) {
-        const text = message.parts
-          ? (message.parts.filter(isTextUIPart).map((p: any) => p.text).join('')
-            || (message.parts as any[]).filter((p: any) => p.type === 'text').map((p: any) => p.text ?? '').join(''))
-          : (message as any).content ?? ''
-        if (text) speak(text)
-      }
+      const assistantText = message.parts
+        ? (message.parts.filter(isTextUIPart).map((p: any) => p.text).join('')
+          || (message.parts as any[]).filter((p: any) => p.type === 'text').map((p: any) => p.text ?? '').join(''))
+        : (message as any).content ?? ''
 
+      if (spokenLengthRef.current === 0 && assistantText) speak(assistantText)
       spokenLengthRef.current = 0
+
+      // Persist this exchange to the database
+      const userText = pendingUserMsgRef.current
+      pendingUserMsgRef.current = ''
+      const toSave: Array<{ role: string; content: string }> = []
+      if (userText) toSave.push({ role: 'user', content: userText })
+      if (assistantText) toSave.push({ role: 'assistant', content: assistantText })
+      if (toSave.length) {
+        fetch('/api/chat-history', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: toSave }),
+        }).catch(() => {})
+      }
     },
   })
 
@@ -79,6 +94,7 @@ export function JarvisChat({ topicContext }: Props) {
 
   const handleTranscript = useCallback((text: string) => {
     if (!text.trim() || isLoading) return
+    pendingUserMsgRef.current = text.trim()
     sendMessage({ text: text.trim() })
   }, [sendMessage, isLoading])
 
@@ -102,26 +118,54 @@ export function JarvisChat({ topicContext }: Props) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, greeting])
 
-  // Proactive greeting when chat opens for the first time
+  // On open: load history from DB; if none, show proactive greeting
   useEffect(() => {
-    if (!open || greetingFetchedRef.current || messages.length > 0) return
-    greetingFetchedRef.current = true
-    setGreetingLoading(true)
-    fetch('/api/greeting')
+    if (!open || historyLoadedRef.current) return
+    historyLoadedRef.current = true
+
+    function fetchGreeting() {
+      if (greetingFetchedRef.current) return
+      greetingFetchedRef.current = true
+      setGreetingLoading(true)
+      fetch('/api/greeting')
+        .then(r => r.json())
+        .then(d => { if (d.greeting) { setGreeting(d.greeting); speak(d.greeting) } })
+        .catch(() => {})
+        .finally(() => setGreetingLoading(false))
+    }
+
+    fetch('/api/chat-history')
       .then(r => r.json())
       .then(d => {
-        if (d.greeting) {
-          setGreeting(d.greeting)
-          speak(d.greeting)
+        const rows: Array<{ role: string; content: string }> = d.messages ?? []
+        if (rows.length === 0) {
+          fetchGreeting()
+        } else {
+          const formatted = rows
+            .map(m => `${m.role === 'user' ? 'Student' : 'SPOK'}: ${m.content}`)
+            .join('\n')
+          setConversationHistory(formatted)
+          fetchGreeting()
         }
       })
-      .catch(() => {})
-      .finally(() => setGreetingLoading(false))
+      .catch(() => fetchGreeting())
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   function handleMicClick() {
     if (listening) stopListening()
     else startListening()
+  }
+
+  function handleExplainDifferently() {
+    if (isLoading) return
+    unlockAudio()
+    stopSpeaking()
+    sentenceBufferRef.current = createSentenceBuffer()
+    spokenLengthRef.current = 0
+    const msg = "Could you explain that differently? Try a different approach, use a simpler analogy, or break it down in a new way."
+    pendingUserMsgRef.current = msg
+    sendMessage({ text: msg })
   }
 
   function handleSend(e: React.FormEvent) {
@@ -132,6 +176,7 @@ export function JarvisChat({ topicContext }: Props) {
     stopSpeaking()
     sentenceBufferRef.current = createSentenceBuffer()
     spokenLengthRef.current = 0
+    pendingUserMsgRef.current = inputValue.trim()
     sendMessage({ text: inputValue.trim() })
     setInputValue('')
   }
@@ -188,7 +233,7 @@ export function JarvisChat({ topicContext }: Props) {
                 className="p-1.5 rounded-lg hover:bg-blue-500/10 transition-colors">
                 {expanded ? <Minimize2 size={14} className="text-blue-400" /> : <Maximize2 size={14} className="text-blue-400" />}
               </button>
-              <button onClick={() => { setOpen(false); setJarvisState('idle'); setGreeting(null); greetingFetchedRef.current = false }}
+              <button onClick={() => { setOpen(false); setJarvisState('idle'); setGreeting(null); setConversationHistory(''); greetingFetchedRef.current = false; historyLoadedRef.current = false }}
                 className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors">
                 <X size={14} style={{ color: '#5a7aaa' }} />
               </button>
@@ -246,16 +291,34 @@ export function JarvisChat({ topicContext }: Props) {
                           isStreaming={isLoading && isLastMsg} />
                       )}
                       {(textContent || msg.role === 'assistant') && (
-                        <div
-                          className="rounded-xl px-3 py-2.5 text-sm leading-relaxed"
-                          style={msg.role === 'user'
-                            ? { background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.3)', color: '#e8f0fe' }
-                            : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: '#d1deff' }
-                          }>
-                          {textContent
-                            ? <SpokMessage content={textContent} color="#d1deff" />
-                            : <span style={{ color: '#374151' }}>...</span>
-                          }
+                        <div>
+                          <div
+                            className="rounded-xl px-3 py-2.5 text-sm leading-relaxed"
+                            style={msg.role === 'user'
+                              ? { background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.3)', color: '#e8f0fe' }
+                              : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: '#d1deff' }
+                            }>
+                            {textContent
+                              ? <SpokMessage content={textContent} color="#d1deff" />
+                              : <span style={{ color: '#374151' }}>...</span>
+                            }
+                          </div>
+                          {msg.role === 'assistant' && textContent && !isLoading && (
+                            <motion.button
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: 0.4 }}
+                              onClick={handleExplainDifferently}
+                              className="mt-1.5 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-all hover:opacity-80"
+                              style={{
+                                background: 'rgba(99,102,241,0.08)',
+                                border: '1px solid rgba(99,102,241,0.18)',
+                                color: '#818cf8',
+                              }}>
+                              <RefreshCw size={10} />
+                              Explain differently
+                            </motion.button>
+                          )}
                         </div>
                       )}
                     </div>

@@ -11,7 +11,7 @@ import type { SkillModeId } from '@/lib/spok-skills'
 export const maxDuration = 60
 
 export async function POST(req: Request) {
-  const { messages, topicContext, accessibilityPrefs, skillMode } = await req.json()
+  const { messages, topicContext, accessibilityPrefs, skillMode, conversationHistory } = await req.json()
   const modeAppend = skillMode
     ? (CHAT_SKILL_MODES.find(m => m.id === (skillMode as SkillModeId))?.systemAppend ?? '')
     : ''
@@ -100,6 +100,10 @@ export async function POST(req: Request) {
 
   const accessibilityInstructions = buildAccessibilityPrompt(accessibilityPrefs)
 
+  const historyBlock = conversationHistory
+    ? `\n\n---\nPrevious session context (do not repeat or summarise — use only to continue naturally):\n${conversationHistory}\n---`
+    : ''
+
   const system = [
     SPOK_SYSTEM_PROMPT,
     accessibilityInstructions,
@@ -107,6 +111,7 @@ export async function POST(req: Request) {
     topicContext ? `\nCurrent topic: The student is studying "${topicContext}".` : '',
     modeAppend ? `\n\n---\nINSTRUCTION: ${modeAppend}\n---` : '',
     ragContext,
+    historyBlock,
   ].join('')
 
   const result = streamText({

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useChat } from '@ai-sdk/react'
@@ -8,6 +8,7 @@ import { DefaultChatTransport, isReasoningUIPart, isTextUIPart } from 'ai'
 import { Send, Mic, MicOff, Volume2, VolumeX } from 'lucide-react'
 import { ThinkingBlock } from '@/components/jarvis/ThinkingBlock'
 import { CHAT_SKILL_MODES, type SkillModeId } from '@/lib/spok-skills'
+import { useAccessibility } from '@/hooks/useAccessibility'
 
 const JarvisScene = dynamic(
   () => import('@/components/jarvis/JarvisScene').then(m => m.JarvisScene),
@@ -21,6 +22,11 @@ export default function SpokPage() {
   const [jarvisState, setJarvisState]   = useState<JarvisState>('idle')
   const [inputValue,  setInputValue]    = useState('')
   const [activeMode,  setActiveMode]    = useState<SkillModeId | null>(null)
+  const { prefs: accessibilityPrefs }  = useAccessibility()
+  const activeModeRef                  = useRef(activeMode)
+  const accessibilityPrefsRef          = useRef(accessibilityPrefs)
+  useEffect(() => { activeModeRef.current = activeMode }, [activeMode])
+  useEffect(() => { accessibilityPrefsRef.current = accessibilityPrefs }, [accessibilityPrefs])
   const [clock, setClock] = useState('')
   const [greeting, setGreeting] = useState<string | null>(null)
   const [greetingLoading, setGreetingLoading] = useState(false)
@@ -46,7 +52,11 @@ export default function SpokPage() {
   const spokenLengthRef   = useRef(0)
 
   const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({ api: '/api/chat' }),
+    transport: useMemo(() => new DefaultChatTransport({
+      api: '/api/chat',
+      body: () => ({ skillMode: activeModeRef.current, accessibilityPrefs: accessibilityPrefsRef.current }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }), []),
     onFinish: ({ message }) => {
       const remaining = sentenceBufferRef.current.flush()
       remaining.forEach(s => queueSpeak(s))

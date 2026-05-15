@@ -1,11 +1,19 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { JarvisAvatar } from '@/components/jarvis/JarvisAvatar'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { JarvisState } from '@/types'
-import { Check, X, Star } from 'lucide-react'
+import { Check, X, Star, ChevronDown } from 'lucide-react'
+
+const ABOUT_LINKS = [
+  { href: '/about',              label: 'Our Mission' },
+  { href: '/accessibility',      label: 'Accessibility & SEND' },
+  { href: '/for-schools',        label: 'For Schools' },
+  { href: '/policy-engagement',  label: 'Policy Engagement' },
+  { href: '/student-success',    label: 'Student Success' },
+]
 
 const FEATURES = [
   { icon: '🧠', title: 'Knows Your Gaps', desc: 'Bayesian Knowledge Tracing models exactly what you know — down to the subtopic. No wasted time on things you already get.', color: '#3b82f6' },
@@ -13,7 +21,7 @@ const FEATURES = [
   { icon: '⚡', title: 'Spaced Repetition', desc: 'SM-2 algorithm schedules reviews at the perfect moment — right before you forget. Proven to double retention.', color: '#f59e0b' },
   { icon: '🎯', title: 'Past Paper Prediction', desc: "AI analyses 5 years of AQA papers and predicts what's likely this year. Know the questions before they're asked.", color: '#22c55e' },
   { icon: '✍️', title: 'Auto-marked Practice', desc: 'Type your answer, SPOK marks it and explains exactly where you went wrong. Instant feedback, infinite questions.', color: '#60a5fa' },
-  { icon: '🔬', title: 'Knowledge Brain', desc: 'Visual map of your entire mind — which topics are firing, which are dark. See your progress like never before.', color: '#a78bfa' },
+  { icon: '♿', title: 'SEND Accessibility', desc: 'Dyslexia-friendly font, ADHD mode, and adaptive pacing — built in, not bolted on. SPOK adjusts how it explains things to match how you think.', color: '#a78bfa' },
 ]
 
 const STEPS = [
@@ -51,11 +59,23 @@ function GradientCard({ children, className = '', style = {} }: { children: Reac
 export function LandingPage() {
   const [jarvisState, setJarvisState] = useState<JarvisState>('idle')
   const [examDays, setExamDays]       = useState<number>(0)
+  const [aboutOpen, setAboutOpen]     = useState(false)
+  const aboutRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const examDate = new Date('2026-05-12')
+    const examDate = new Date('2027-06-10')
     const diff = examDate.getTime() - Date.now()
     setExamDays(Math.max(0, Math.ceil(diff / 86400000)))
+  }, [])
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (aboutRef.current && !aboutRef.current.contains(e.target as Node)) {
+        setAboutOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
   useEffect(() => {
@@ -104,7 +124,50 @@ export function LandingPage() {
           <span className="font-semibold text-white" style={{ fontFamily: 'var(--font-space-grotesk)' }}>StudiQ</span>
         </div>
         <div className="flex items-center gap-2">
+          <Link href="/how-it-works" className="px-4 py-2 rounded-lg text-sm transition-colors hover:text-white" style={{ color: '#6b8cba' }}>How it works</Link>
           <Link href="/pricing" className="px-4 py-2 rounded-lg text-sm transition-colors hover:text-white" style={{ color: '#6b8cba' }}>Pricing</Link>
+
+          {/* About dropdown */}
+          <div ref={aboutRef} className="relative">
+            <button
+              onClick={() => setAboutOpen(o => !o)}
+              className="flex items-center gap-1 px-4 py-2 rounded-lg text-sm transition-colors hover:text-white"
+              style={{ color: aboutOpen ? '#e8f0fe' : '#6b8cba' }}>
+              About
+              <ChevronDown size={13} style={{ transform: aboutOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+            </button>
+            <AnimatePresence>
+              {aboutOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 top-full mt-2 rounded-xl overflow-hidden"
+                  style={{
+                    background: 'rgba(10,14,26,0.98)',
+                    border: '1px solid rgba(59,130,246,0.18)',
+                    boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
+                    minWidth: 200,
+                  }}>
+                  {ABOUT_LINKS.map((link, i) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setAboutOpen(false)}
+                      className="block px-4 py-3 text-sm transition-colors hover:text-white"
+                      style={{
+                        color: '#94a3b8',
+                        borderTop: i > 0 ? '1px solid rgba(255,255,255,0.04)' : undefined,
+                      }}>
+                      {link.label}
+                    </Link>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           <Link href="/sign-in"  className="px-4 py-2 rounded-lg text-sm transition-colors hover:text-white" style={{ color: '#6b8cba' }}>Sign in</Link>
           <Link href="/sign-up">
             <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
@@ -372,24 +435,53 @@ export function LandingPage() {
       </section>
 
       {/* ── Footer ── */}
-      <footer className="border-t px-8 py-10" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+      <footer className="border-t px-8 py-12" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
         <div className="max-w-5xl mx-auto">
-          <div className="flex items-center justify-between gap-6 mb-8">
-            <div className="flex items-center gap-2.5">
-              <div style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.35) 0%, rgba(99,102,241,0.2) 100%)', padding: 1, borderRadius: 8 }}>
-                <div className="w-6 h-6 rounded-[7px] flex items-center justify-center text-xs font-bold text-white"
-                  style={{ background: 'linear-gradient(135deg, #0d1a3a, #1d4ed8)' }}>S</div>
+          <div className="grid grid-cols-4 gap-8 mb-10">
+            {/* Brand */}
+            <div className="col-span-1">
+              <div className="flex items-center gap-2 mb-3">
+                <div style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.35) 0%, rgba(99,102,241,0.2) 100%)', padding: 1, borderRadius: 8 }}>
+                  <div className="w-6 h-6 rounded-[7px] flex items-center justify-center text-xs font-bold text-white"
+                    style={{ background: 'linear-gradient(135deg, #0d1a3a, #1d4ed8)' }}>S</div>
+                </div>
+                <span className="font-semibold text-sm text-white" style={{ fontFamily: 'var(--font-space-grotesk)' }}>StudiQ</span>
               </div>
-              <span className="font-semibold text-sm text-white" style={{ fontFamily: 'var(--font-space-grotesk)' }}>StudiQ</span>
-              <span className="text-xs ml-1" style={{ color: '#374151' }}>by Cerebral Options</span>
+              <p className="text-xs leading-relaxed" style={{ color: '#374151' }}>
+                Personalised AI learning built for how students actually learn.
+              </p>
+              <p className="text-xs mt-2" style={{ color: '#2d3a4a' }}>by Cerebral Options</p>
             </div>
-            <div className="flex flex-wrap gap-6 text-xs" style={{ color: '#4a6070' }}>
-              <Link href="/pricing"  className="hover:text-white transition-colors">Pricing</Link>
-              <Link href="/sign-up"  className="hover:text-white transition-colors">Sign up free</Link>
-              <Link href="/sign-in"  className="hover:text-white transition-colors">Sign in</Link>
+            {/* Platform */}
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#4a6070' }}>Platform</p>
+              <div className="space-y-2">
+                <Link href="/how-it-works" className="block text-xs transition-colors hover:text-white" style={{ color: '#374151' }}>How it works</Link>
+                <Link href="/pricing"      className="block text-xs transition-colors hover:text-white" style={{ color: '#374151' }}>Pricing</Link>
+                <Link href="/sign-up"      className="block text-xs transition-colors hover:text-white" style={{ color: '#374151' }}>Sign up free</Link>
+                <Link href="/sign-in"      className="block text-xs transition-colors hover:text-white" style={{ color: '#374151' }}>Sign in</Link>
+              </div>
+            </div>
+            {/* About */}
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#4a6070' }}>About</p>
+              <div className="space-y-2">
+                <Link href="/about"             className="block text-xs transition-colors hover:text-white" style={{ color: '#374151' }}>Our Mission</Link>
+                <Link href="/accessibility"     className="block text-xs transition-colors hover:text-white" style={{ color: '#374151' }}>Accessibility & SEND</Link>
+                <Link href="/for-schools"       className="block text-xs transition-colors hover:text-white" style={{ color: '#374151' }}>For Schools</Link>
+                <Link href="/policy-engagement" className="block text-xs transition-colors hover:text-white" style={{ color: '#374151' }}>Policy Engagement</Link>
+                <Link href="/student-success"   className="block text-xs transition-colors hover:text-white" style={{ color: '#374151' }}>Student Success</Link>
+              </div>
+            </div>
+            {/* Contact */}
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#4a6070' }}>Contact</p>
+              <div className="space-y-2">
+                <a href="mailto:admin@studiq.org" className="block text-xs transition-colors hover:text-white" style={{ color: '#374151' }}>admin@studiq.org</a>
+              </div>
             </div>
           </div>
-          <div className="flex items-center justify-between text-xs" style={{ color: '#2d3a4a' }}>
+          <div className="flex items-center justify-between text-xs border-t pt-6" style={{ color: '#2d3a4a', borderColor: 'rgba(255,255,255,0.04)' }}>
             <p>© 2026 Cerebral Options Ltd · Built for A-Level students</p>
             <p>AQA · Edexcel · OCR · studiq.org</p>
           </div>
