@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" width="480" height="300">
+
+  <!-- Deep navy background matching the app -->
+  <rect width="480" height="300" fill="#0F1724" rx="20"/>
+
+  <!--
+    CONCEPT: A bold geometric "S" mark built from two stacked
+    offset rectangles — like building blocks / progress bars —
+    which subtly reads as a upward chart (growth, progress, study)
+    and echoes the card UI of the app itself.
+
+    Clean. Geometric. No fuss.
+
+    Block 1 (top, shorter) — accent blue
+    Block 2 (bottom, full width) — white
+    Together they form an abstract S / upward step
+
+    Mark sits left, wordmark sits right — classic horizontal lockup
+  -->
+
+  <!-- ═══════════════════════════════ -->
+  <!--   MARK — stacked step blocks   -->
+  <!-- ═══════════════════════════════ -->
+
+  <!-- Top block — blue, offset right -->
+  <rect x="96" y="96" width="52" height="16" rx="4" fill="#3B6FE8"/>
+
+  <!-- Middle block — white, full width -->
+  <rect x="80" y="120" width="68" height="16" rx="4" fill="#ffffff"/>
+
+  <!-- Bottom block — blue, offset left, shorter -->
+  <rect x="80" y="144" width="40" height="16" rx="4" fill="#3B6FE8"/>
+
+  <!-- Vertical connector line — white, left edge, ties the blocks together -->
+  <rect x="80" y="96" width="4" height="64" rx="2" fill="#ffffff" opacity="0.25"/>
+
+  <!-- ═══════════════════════════════ -->
+  <!--   WORDMARK                     -->
+  <!-- ═══════════════════════════════ -->
+
+  <!-- STUD white, IQ blue — one seamless word -->
+  <text
+    x="170" y="142"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="42" font-weight="800"
+    letter-spacing="-1">
+    <tspan fill="#ffffff">STUD</tspan><tspan fill="#3B6FE8">IQ</tspan>
+  </text>
+
+  <!-- ═══════════════════════════════ -->
+  <!--   TAGLINE                      -->
+  <!-- ═══════════════════════════════ -->
+
+  <!-- Thin rule under wordmark -->
+  <line x1="170" y1="157" x2="370" y2="157"
+    stroke="#ffffff" stroke-width="0.7" opacity="0.12"/>
+
+  <text
+    x="170" y="175"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="9" font-weight="700"
+    letter-spacing="3.5"
+    fill="#ffffff">STUDY SMARTER NOT HARDER</text>
+
+</svg>
