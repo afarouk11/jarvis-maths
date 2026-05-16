@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import CookieConsent from "@/components/CookieConsent";
+import { InstallPromptCapture } from "@/components/InstallPromptCapture";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,6 +19,10 @@ const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
+
+export const viewport: Viewport = {
+  themeColor: '#0F1724',
+}
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://studiq.org"),
@@ -39,6 +44,11 @@ export const metadata: Metadata = {
     title: "StudiQ — AI Maths Tutor for A-Level",
     description: "SPOK pinpoints exactly what you don't know and fixes it.",
   },
+  appleWebApp: {
+    capable: true,
+    title: 'StudiQ',
+    statusBarStyle: 'black-translucent',
+  },
 };
 
 export default function RootLayout({
@@ -54,6 +64,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         {children}
         <CookieConsent />
+        <InstallPromptCapture />
       </body>
     </html>
   );

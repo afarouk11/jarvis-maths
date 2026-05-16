@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronRight, ChevronLeft, Check } from 'lucide-react'
 import dynamic from 'next/dynamic'
+import { InstallPrompt } from '@/components/InstallPrompt'
+import { isIOS, isInstalled, hasInstallPrompt } from '@/lib/pwa'
 
 const JarvisScene = dynamic(
   () => import('@/components/jarvis/JarvisScene').then(m => m.JarvisScene),
@@ -52,6 +54,8 @@ export default function OnboardingPage() {
   const [adhd,        setAdhd]        = useState(false)
   const [saving,      setSaving]      = useState(false)
   const [error,       setError]       = useState('')
+  const [showInstall, setShowInstall] = useState(false)
+  const [installMode, setInstallMode] = useState<'ios' | 'android' | null>(null)
 
   const isLast = step === STEPS.length - 1
   const targetGrades = level === 'GCSE' ? GCSE_GRADES : ALEVEL_GRADES
@@ -72,11 +76,31 @@ export default function OnboardingPage() {
         setSaving(false)
         return
       }
+      // Show install prompt if not already installed
+      if (!isInstalled()) {
+        if (isIOS()) {
+          setInstallMode('ios')
+          setShowInstall(true)
+          setSaving(false)
+          return
+        }
+        if (hasInstallPrompt()) {
+          setInstallMode('android')
+          setShowInstall(true)
+          setSaving(false)
+          return
+        }
+      }
       router.push('/dashboard')
     } catch {
       setError('Network error. Please try again.')
       setSaving(false)
     }
+  }
+
+  function onInstallDone() {
+    setShowInstall(false)
+    router.push('/dashboard')
   }
 
   function next() {
@@ -387,6 +411,8 @@ export default function OnboardingPage() {
           </div>
         </div>
       </div>
+
+      <InstallPrompt open={showInstall} mode={installMode} onDone={onInstallDone} />
 
       {/* Right — SPOK panel */}
       <div className="hidden lg:flex w-[420px] shrink-0 flex-col items-center justify-center gap-8 relative"
