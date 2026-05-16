@@ -19,13 +19,18 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "StudiQ — AI Maths Tutor for A-Level | Get Your A*",
+  metadataBase: new URL("https://studiq.org"),
+  title: {
+    default: "StudiQ — AI Maths Tutor for A-Level | Get Your A*",
+    template: "%s | StudiQ",
+  },
   description: "SPOK knows exactly what you don't know — and fixes it. AI-powered A-level Maths tutoring with Bayesian Knowledge Tracing, voice chat, and past paper prediction. Free to start.",
   keywords: "A-level maths tutor, AI tutor, A-level revision, AQA maths, Edexcel maths, OCR maths, SPOK, StudiQ, Bayesian knowledge tracing, spaced repetition",
   openGraph: {
     title: "StudiQ — AI Maths Tutor for A-Level",
     description: "SPOK pinpoints exactly what you don't know and fixes it. Free to start.",
     type: "website",
+    url: "https://studiq.org",
     locale: "en_GB",
   },
   twitter: {

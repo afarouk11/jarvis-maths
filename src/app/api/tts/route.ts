@@ -1,3 +1,5 @@
+import { createClient } from '@/lib/supabase/server'
+
 export const maxDuration = 30
 
 function convertListsToSpeech(text: string): string {
@@ -149,6 +151,10 @@ function stripLatex(text: string): string {
 }
 
 export async function POST(req: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { text } = await req.json()
 
   const cleanText = stripLatex(text)

@@ -1,0 +1,16 @@
+User-agent: *
+Disallow: /dashboard
+Disallow: /jarvis
+Disallow: /brain
+Disallow: /topics
+Disallow: /papers
+Disallow: /practice
+Disallow: /progress
+Disallow: /profile
+Disallow: /admin
+Disallow: /onboarding
+Disallow: /sign-in
+Disallow: /sign-up
+Disallow: /api/
+
+Sitemap: https://studiq.org/sitemap.xml

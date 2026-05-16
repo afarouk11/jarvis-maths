@@ -1,7 +1,12 @@
 import { anthropic } from '@ai-sdk/anthropic'
 import { generateText } from 'ai'
+import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { stem, correctAnswer, studentAnswer, workedSolution } = await req.json()
 
   const prompt = `You are an AQA A-level Mathematics examiner marking a student's response.

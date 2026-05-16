@@ -1,8 +1,17 @@
+import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
 
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL
+
 export async function POST() {
-  const supabase = createServiceClient(
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || !ADMIN_EMAIL || user.email !== ADMIN_EMAIL) {
+    return Response.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const admin = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
@@ -16,7 +25,7 @@ export async function POST() {
     icon: t.icon ?? null,
   }))
 
-  const { error } = await supabase
+  const { error } = await admin
     .from('topics')
     .upsert(rows, { onConflict: 'slug' })
 
