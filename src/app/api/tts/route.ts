@@ -46,6 +46,9 @@ function stripLatex(text: string): string {
   // Step 2: Convert LaTeX math to speakable text — BEFORE stripping delimiters
   // so patterns inside $...$ and $$...$$ are caught too
 
+  // \text{...} → plain content (before fractions so \frac{\text{rise}}{\text{run}} → "rise over run")
+  text = text.replace(/\\text\{([^}]*)\}/g, '$1')
+
   // Fractions (specific before general)
   text = text
     .replace(/\\frac\{1\}\{2\}/g, 'a half')
@@ -75,6 +78,12 @@ function stripLatex(text: string): string {
   text = text
     .replace(/_\{([^}]+)\}/g, ' sub $1')
     .replace(/_(\w)/g, ' sub $1')
+
+  // Space out implicit multiplication: 2x → "2 x", 2xh → "2 x h"
+  // Run twice to catch chains like 2xh → "2 xh" → "2 x h"
+  text = text
+    .replace(/([0-9])([a-zA-Z])/g, '$1 $2')
+    .replace(/([0-9])([a-zA-Z])/g, '$1 $2')
 
   // Arithmetic & relations
   text = text
@@ -146,7 +155,63 @@ function stripLatex(text: string): string {
     .replace(/^\s*[-*+]\s+/gm, '')
     .replace(/^\s*\d+\.\s+/gm, '')
 
-  // Step 6: Clean spacing
+  // Step 6: Strip special blocks entirely
+  text = text.replace(/\[GRAPH\][\s\S]*?\[\/GRAPH\]/g, '')
+  text = text.replace(/\[ANIMATE\][\s\S]*?\[\/ANIMATE\]/g, '')
+  text = text.replace(/\[KEYPOINTS\][\s\S]*?\[\/KEYPOINTS\]/g, '')
+  // [TOPIC:slug|Name] → just the display name for speech
+  text = text.replace(/\[TOPIC:[^\]|]+\|([^\]]+)\]/g, '$1')
+
+  // Step 7: Naturalise for speech — make it sound human, not AI-generated
+  text = text
+    // Abbreviations → full spoken words
+    .replace(/\be\.g\.\s*/g, 'for example ')
+    .replace(/\bi\.e\.\s*/g, 'that is ')
+    .replace(/\betc\.\s*/g, 'and so on ')
+    .replace(/\bvs\.\s*/g, 'versus ')
+    .replace(/\bNB\b/g, 'note that')
+    // Step labels: "Step 1:" → "Step 1." so it reads as a sentence
+    .replace(/\bStep\s+(\d+)\s*:/gi, 'Step $1.')
+    // Structural label words that sound robotic when read aloud
+    .replace(/\bNote\s*:/g, 'Note that')
+    .replace(/\bKey point\s*:/gi, 'The key point is')
+    .replace(/\bImportant\s*:/gi, 'Importantly,')
+    .replace(/\bRemember\s*:/gi, 'Remember,')
+    .replace(/\bSummary\s*:/gi, 'To summarise,')
+    .replace(/\bExample\s*:/gi, 'Here is an example.')
+    .replace(/\bSolution\s*:/gi, 'Here is the solution.')
+    .replace(/\bAnswer\s*:/gi, 'The answer is')
+    .replace(/\bResult\s*:/gi, 'The result is')
+    // Em dash and en dash → natural spoken pause (comma or period)
+    .replace(/\s*—\s*/g, ', ')
+    .replace(/(\d)\s*–\s*(\d)/g, '$1 to $2')   // numeric ranges: 3–5 → "3 to 5"
+    .replace(/\s*–\s*/g, ', ')
+    // Semicolons → comma (spoken breath, not full stop)
+    .replace(/;\s*/g, ', ')
+    // Colons not already converted → natural pause
+    .replace(/\s*:\s*/g, '. ')
+    // Percentages
+    .replace(/(\d+(\.\d+)?)\s*%/g, '$1 percent')
+    // Equals in plain text (after LaTeX strip) — "x = 3" → "x equals 3"
+    .replace(/\s*=\s*/g, ' equals ')
+    // Math operators — convert so TTS speaks them unambiguously
+    .replace(/([a-zA-Z0-9]) \+ ([a-zA-Z0-9])/g, '$1 plus $2')
+    .replace(/([a-zA-Z0-9]) - ([a-zA-Z0-9])/g, '$1 minus $2')
+    // Slash in common word pairs → "or" / "and"
+    .replace(/\band\/or\b/gi, 'and or')
+    .replace(/(\w)\/(\w)/g, '$1 or $2')
+    // Parenthetical remarks → spoken naturally with commas
+    .replace(/\s*\(([^)]{1,80})\)\s*/g, ', $1, ')
+    // Remove any remaining brackets/braces
+    .replace(/[()[\]{}]/g, '')
+    // Repeated punctuation cleanup
+    .replace(/[,\.]{2,}/g, '.')
+    .replace(/,\s*\./g, '.')
+    .replace(/\.\s*,/g, '.')
+    // Multiple spaces
+    .replace(/  +/g, ' ')
+
+  // Step 8: Clean spacing
   return text.replace(/\s+/g, ' ').trim()
 }
 

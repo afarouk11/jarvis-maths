@@ -19,11 +19,12 @@ export default async function ProgressPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/sign-in')
 
-  const [{ data: profile }, { data: progress }, { data: snapshots }] = await Promise.all([
+  const [{ data: profile }, { data: progress }, { data: snapshots }, { data: topicsRows }] = await Promise.all([
     supabase.from('profiles').select().eq('id', user.id).single(),
     supabase.from('student_progress').select().eq('student_id', user.id),
     supabase.from('grade_snapshots').select('grade,avg_p_known,created_at')
       .eq('student_id', user.id).order('created_at', { ascending: true }).limit(90),
+    supabase.from('topics').select('id, slug'),
   ])
 
   const progressData = (progress ?? []) as any[]
@@ -37,16 +38,21 @@ export default async function ProgressPage() {
   const totalCorrect = progressData.reduce((s: number, p: any) => s + (p.questions_correct ?? 0), 0)
   const accuracy = totalAttempted > 0 ? Math.round((totalCorrect / totalAttempted) * 100) : 0
 
+  const slugById    = new Map((topicsRows ?? []).map((t: any) => [t.id, t.slug]))
   const topicNameMap = new Map(AQA_TOPICS.map(t => [t.slug, t.name]))
   const topicIconMap = new Map(AQA_TOPICS.map(t => [t.slug, t.icon]))
 
   const enriched = progressData
     .filter((p: any) => p.p_known > 0)
-    .map((p: any) => ({
-      ...p,
-      name: topicNameMap.get(p.topic_id) ?? p.topic_id,
-      icon: topicIconMap.get(p.topic_id) ?? '📚',
-    }))
+    .map((p: any) => {
+      const slug = slugById.get(p.topic_id) ?? p.topic_id
+      return {
+        ...p,
+        slug,
+        name: topicNameMap.get(slug) ?? slug,
+        icon: topicIconMap.get(slug) ?? '📚',
+      }
+    })
     .sort((a: any, b: any) => b.p_known - a.p_known)
 
   const strengths = enriched.slice(0, 5)
@@ -227,7 +233,7 @@ export default async function ProgressPage() {
                   const color = masteryColor(topic.p_known)
                   const pct = Math.round(topic.p_known * 100)
                   return (
-                    <Link key={topic.topic_id} href={`/topics/${topic.topic_id}`}
+                    <Link key={topic.topic_id} href={`/topics/${topic.slug}`}
                       className="p-3 rounded-xl flex items-center gap-3 group transition-colors block"
                       style={{ background: `${color}0d`, border: `1px solid ${color}25` }}>
                       <span className="text-lg w-7 text-center">{topic.icon}</span>

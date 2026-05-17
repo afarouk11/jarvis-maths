@@ -48,24 +48,20 @@ function convertListsToSpeech(text: string): string {
 
 function cleanForTTS(text: string): string {
   return convertListsToSpeech(text)
+    // Strip [GRAPH], [ANIMATE], [KEYPOINTS] blocks entirely — never speak JSON
+    .replace(/\[GRAPH\][\s\S]*?\[\/GRAPH\]/g, '')
+    .replace(/\[ANIMATE\][\s\S]*?\[\/ANIMATE\]/g, '')
+    .replace(/\[KEYPOINTS\][\s\S]*?\[\/KEYPOINTS\]/g, '')
+    // [TOPIC:slug|Name] → just say the topic name
+    .replace(/\[TOPIC:[^\]|]+\|([^\]]+)\]/g, '$1')
+    // Markdown cleanup — leave LaTeX intact for the API route's stripLatex
     .replace(/#{1,6}\s+/g, '')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/\*([^*]+)\*/g, '$1')
     .replace(/`{1,3}[^`]*`{1,3}/g, '')
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/^\s*[-*+]\s+/gm, '')
-    .replace(/^\s*\d+\.\s+/gm, '')
-    .replace(/^>\s+/gm, '')
     .replace(/_{1,2}([^_]+)_{1,2}/g, '$1')
-    .replace(/\$\$[\s\S]*?\$\$/g, ' math expression ')
-    .replace(/\$[^$\n]*?\$/g, ' math expression ')
-    .replace(/\\\([\s\S]*?\\\)/g, ' math expression ')
-    .replace(/\\\[[\s\S]*?\\\]/g, ' math expression ')
-    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1 over $2')
-    .replace(/\\sqrt\{([^}]+)\}/g, 'square root of $1')
-    .replace(/\\[a-zA-Z]+\{([^}]*)\}/g, '$1')
-    .replace(/\\[a-zA-Z]+/g, '')
-    .replace(/[{}^_]/g, '')
+    .replace(/^>\s+/gm, '')
     .replace(/\n{3,}/g, '\n\n')
     .replace(/\s+/g, ' ')
     .trim()
@@ -99,12 +95,13 @@ export function useJarvisVoice() {
   // Serialise TTS fetches — chain promises so only one ElevenLabs request runs at a time
   const fetchChainRef = useRef<Promise<void>>(Promise.resolve())
 
-  const [speaking,       setSpeaking]       = useState(false)
-  const [enabled,        setEnabled]        = useState(true)
-  const [amplitude,      setAmplitude]      = useState(0)
+  const [speaking,        setSpeaking]        = useState(false)
+  const [enabled,         setEnabled]         = useState(true)
+  const [amplitude,       setAmplitude]       = useState(0)
   const [currentSentence, setCurrentSentence] = useState('')
   const [spokenWordCount, setSpokenWordCount] = useState(0)
   const [totalWordCount,  setTotalWordCount]  = useState(0)
+  const [completedText,   setCompletedText]   = useState('')
 
   function stopAmplitudeTracking() {
     cancelAnimationFrame(animFrameRef.current)
@@ -144,6 +141,7 @@ export function useJarvisVoice() {
     }
     audio.onended = () => {
       setSpokenWordCount(words.length)
+      setCompletedText(prev => (prev ? prev + ' ' : '') + text)
       URL.revokeObjectURL(url)
       stopAmplitudeTracking()
       playingRef.current = false
@@ -197,10 +195,16 @@ export function useJarvisVoice() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled])
 
+  const resetReveal = useCallback(() => {
+    setCompletedText('')
+    setCurrentSentence('')
+    setSpokenWordCount(0)
+  }, [])
+
   const stopSpeaking = useCallback(() => {
     queueRef.current = []
     playingRef.current = false
-    fetchChainRef.current = Promise.resolve() // discard queued fetches
+    fetchChainRef.current = Promise.resolve()
     if (audioRef.current) {
       audioRef.current.pause()
       audioRef.current = null
@@ -222,7 +226,12 @@ export function useJarvisVoice() {
     playNext()
   }, [enabled, stopSpeaking])
 
-  return { speak, queueSpeak, stopSpeaking, unlockAudio, speaking, amplitude, enabled, setEnabled, currentSentence, spokenWordCount, totalWordCount }
+  const partialWords = spokenWordCount > 0 && currentSentence
+    ? currentSentence.trim().split(/\s+/).slice(0, spokenWordCount).join(' ')
+    : ''
+  const revealedText = completedText + (partialWords ? (completedText ? ' ' : '') + partialWords : '')
+
+  return { speak, queueSpeak, stopSpeaking, unlockAudio, resetReveal, speaking, amplitude, enabled, setEnabled, currentSentence, spokenWordCount, totalWordCount, revealedText }
 }
 
 // ── Sentence buffer for streaming TTS ─────────────────────────────────────────

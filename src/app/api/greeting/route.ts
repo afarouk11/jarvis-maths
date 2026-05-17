@@ -5,8 +5,11 @@ import { generateText } from 'ai'
 
 export const maxDuration = 30
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const { searchParams } = new URL(req.url)
+    const encouragement = searchParams.get('encouragement') === '1'
+
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -46,13 +49,17 @@ export async function GET() {
     if (daysToExam !== null && daysToExam > 0 && daysToExam < 120) contextPart += `Exam in ${daysToExam} days. `
     if (streakPart) contextPart += `Currently on a ${streakPart}. `
 
+    const encouragementExtra = encouragement
+      ? ' This student has encouragement mode on — be noticeably warm, open with a genuine personal welcome, and end with something that acknowledges their effort or progress specifically.'
+      : ''
+
     const { text } = await generateText({
       model: anthropic('claude-haiku-4-5-20251001'),
       system: `You are SPOK, an A-level maths tutor who genuinely cares about your students.
 Speak in natural, conversational sentences — no markdown, no bullet points, no lists, no dashes.
 Be warm, human, and direct. Sound like a brilliant friend checking in, not a system announcing a status update.
 Keep it to 2 sentences maximum. End with exactly one specific, encouraging thing the student should do right now.
-Never start with "Hello" or "Hi" — open with something more personal and immediate.`,
+Never start with "Hello" or "Hi" — open with something more personal and immediate.${encouragementExtra}`,
       prompt: contextPart
         ? `Greet ${namePart} and tell them what to focus on based on this context: ${contextPart}`
         : `Give ${namePart} a warm welcome and invite them to ask a maths question or pick a topic to practise.`,

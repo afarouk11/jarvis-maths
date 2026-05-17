@@ -12,8 +12,11 @@ import { DueNotification } from '@/components/dashboard/DueNotification'
 import { SpokRecommendation } from '@/components/dashboard/SpokRecommendation'
 import { ExamReadinessCard } from '@/components/dashboard/ExamReadinessCard'
 import { MasteryHeatMap } from '@/components/dashboard/MasteryHeatMap'
+import { UpgradedBanner } from '@/components/dashboard/UpgradedBanner'
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ upgraded?: string }> }) {
+  const params = await searchParams
+  const justUpgraded = params.upgraded === '1'
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/sign-in')
@@ -68,6 +71,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-7">
+      <UpgradedBanner show={justUpgraded} />
       <DueNotification dueCount={dueTopics.length} />
 
       {/* SPOK recommendation bar */}

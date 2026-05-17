@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, isReasoningUIPart, isTextUIPart } from 'ai'
-import { Send, Mic, MicOff, Volume2, VolumeX } from 'lucide-react'
+import { Send, Mic, MicOff, Volume2, VolumeX, RefreshCw, Zap, Check, X } from 'lucide-react'
 import { ThinkingBlock } from '@/components/jarvis/ThinkingBlock'
 import { CHAT_SKILL_MODES, type SkillModeId } from '@/lib/spok-skills'
 import { useAccessibility } from '@/hooks/useAccessibility'
@@ -15,6 +15,7 @@ const JarvisScene = dynamic(
   { ssr: false, loading: () => <div className="w-full h-full" /> }
 )
 import { SpokMessage } from '@/components/math/SpokMessage'
+import { AnimatedGraphRenderer, parseAnimateSpec, type AnimateSpec } from '@/components/math/GraphRenderer'
 import { useJarvisVoice, useSpeechToText, createSentenceBuffer } from '@/hooks/useJarvisVoice'
 import type { JarvisState } from '@/types'
 
@@ -22,7 +23,7 @@ export default function SpokPage() {
   const [jarvisState, setJarvisState]   = useState<JarvisState>('idle')
   const [inputValue,  setInputValue]    = useState('')
   const [activeMode,  setActiveMode]    = useState<SkillModeId | null>(null)
-  const { prefs: accessibilityPrefs }  = useAccessibility()
+  const { prefs: accessibilityPrefs, loaded: accessibilityLoaded }  = useAccessibility()
   const activeModeRef                  = useRef(activeMode)
   const accessibilityPrefsRef          = useRef(accessibilityPrefs)
   useEffect(() => { activeModeRef.current = activeMode }, [activeMode])
@@ -31,6 +32,11 @@ export default function SpokPage() {
   const [greeting, setGreeting] = useState<string | null>(null)
   const [greetingLoading, setGreetingLoading] = useState(false)
   const greetingFetchedRef = useRef(false)
+  const [animateSpec, setAnimateSpec] = useState<AnimateSpec | null>(null)
+  const [animateStep, setAnimateStep] = useState(0)
+  const prevSentenceRef = useRef('')
+  const [limitReached, setLimitReached] = useState(false)
+  const [upgradeLoading, setUpgradeLoading] = useState(false)
 
   useEffect(() => {
     function tick() {
@@ -44,12 +50,33 @@ export default function SpokPage() {
   const inputRef   = useRef<HTMLInputElement>(null)
 
   const {
-    speak, queueSpeak, stopSpeaking, unlockAudio, speaking, amplitude, enabled: voiceEnabled, setEnabled: setVoiceEnabled,
-    currentSentence, spokenWordCount, totalWordCount,
+    speak, queueSpeak, stopSpeaking, unlockAudio, resetReveal, speaking, amplitude, enabled: voiceEnabled, setEnabled: setVoiceEnabled,
+    currentSentence, spokenWordCount, totalWordCount, revealedText,
   } = useJarvisVoice()
 
   const sentenceBufferRef = useRef(createSentenceBuffer())
   const spokenLengthRef   = useRef(0)
+
+  async function handleUpgrade() {
+    setUpgradeLoading(true)
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: 'monthly' }),
+      })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        window.location.href = '/pricing'
+      }
+    } catch {
+      window.location.href = '/pricing'
+    } finally {
+      setUpgradeLoading(false)
+    }
+  }
 
   const { messages, sendMessage, status } = useChat({
     transport: useMemo(() => new DefaultChatTransport({
@@ -57,6 +84,11 @@ export default function SpokPage() {
       body: () => ({ skillMode: activeModeRef.current, accessibilityPrefs: accessibilityPrefsRef.current }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }), []),
+    onError: (err) => {
+      if (err.message?.includes('daily_limit_reached') || err.message?.includes('429')) {
+        setLimitReached(true)
+      }
+    },
     onFinish: ({ message }) => {
       const remaining = sentenceBufferRef.current.flush()
       remaining.forEach(s => queueSpeak(s))
@@ -75,6 +107,34 @@ export default function SpokPage() {
       setTimeout(() => setJarvisState('idle'), 500)
     },
   })
+
+  // Parse [ANIMATE] blocks from the last assistant message
+  useEffect(() => {
+    const lastMsg = messages[messages.length - 1]
+    if (!lastMsg || lastMsg.role !== 'assistant') return
+    const fullText = lastMsg.parts
+      ? (lastMsg.parts.filter(isTextUIPart).map((p: any) => p.text).join('')
+        || (lastMsg.parts as any[]).filter((p: any) => p.type === 'text').map((p: any) => p.text ?? '').join(''))
+      : (lastMsg as any).content ?? ''
+
+    const match = fullText.match(/\[ANIMATE\]([\s\S]*?)\[\/ANIMATE\]/)
+    if (match) {
+      const parsed = parseAnimateSpec(match[1].trim())
+      if (parsed) {
+        setAnimateSpec(parsed)
+        setAnimateStep(0)
+        prevSentenceRef.current = ''
+      }
+    }
+  }, [messages])
+
+  // Advance animate step each time a new sentence starts playing
+  useEffect(() => {
+    if (!animateSpec || !currentSentence) return
+    if (currentSentence === prevSentenceRef.current) return
+    prevSentenceRef.current = currentSentence
+    setAnimateStep(prev => Math.min(prev + 1, animateSpec.steps.length - 1))
+  }, [currentSentence, animateSpec])
 
   // Feed streaming text into sentence buffer as it arrives
   useEffect(() => {
@@ -104,10 +164,11 @@ export default function SpokPage() {
     if (!text.trim() || isLoading) return
     unlockAudio()
     stopSpeaking()
+    resetReveal()
     sentenceBufferRef.current = createSentenceBuffer()
     spokenLengthRef.current = 0
     sendMessage({ text: text.trim() })
-  }, [sendMessage, stopSpeaking, unlockAudio, isLoading])
+  }, [sendMessage, stopSpeaking, unlockAudio, resetReveal, isLoading])
 
   const { startListening, stopListening, listening } = useSpeechToText(handleTranscript)
 
@@ -129,12 +190,14 @@ export default function SpokPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, greeting])
 
-  // Proactive greeting on page load
+  // Proactive greeting — wait for accessibility prefs to load so encouragement mode is respected
   useEffect(() => {
+    if (!accessibilityLoaded) return
     if (greetingFetchedRef.current) return
     greetingFetchedRef.current = true
     setGreetingLoading(true)
-    fetch('/api/greeting')
+    const greetingUrl = accessibilityPrefsRef.current.encouragement ? '/api/greeting?encouragement=1' : '/api/greeting'
+    fetch(greetingUrl)
       .then(r => r.json())
       .then(d => {
         if (d.greeting) {
@@ -145,7 +208,7 @@ export default function SpokPage() {
       .catch(() => {})
       .finally(() => setGreetingLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [accessibilityLoaded])
 
   function handleSend(e: React.FormEvent) {
     e.preventDefault()
@@ -153,10 +216,25 @@ export default function SpokPage() {
     unlockAudio()
     stopListening()
     stopSpeaking()
+    resetReveal()
     sentenceBufferRef.current = createSentenceBuffer()
     spokenLengthRef.current = 0
+    setAnimateSpec(null)
+    setAnimateStep(0)
     sendMessage({ text: inputValue.trim() })
     setInputValue('')
+  }
+
+  function sendQuick(text: string) {
+    if (isLoading) return
+    unlockAudio()
+    stopSpeaking()
+    resetReveal()
+    sentenceBufferRef.current = createSentenceBuffer()
+    spokenLengthRef.current = 0
+    setAnimateSpec(null)
+    setAnimateStep(0)
+    sendMessage({ text })
   }
 
   const statusLabel = {
@@ -167,7 +245,86 @@ export default function SpokPage() {
   }[jarvisState]
 
   return (
-    <div className="flex h-[calc(100vh-0px)] overflow-hidden" style={{ background: '#080d19' }}>
+    <div className="flex h-[calc(100vh-0px)] overflow-hidden relative" style={{ background: '#080d19' }}>
+
+      {/* ── Daily limit upgrade modal ─────────────────────────────────── */}
+      <AnimatePresence>
+        {limitReached && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 flex items-center justify-center px-6"
+            style={{ background: 'rgba(8,13,28,0.88)', backdropFilter: 'blur(10px)' }}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 24 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 24 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 260 }}
+              className="relative w-full max-w-sm rounded-3xl p-8"
+              style={{ background: 'rgba(12,17,30,0.98)', border: '1px solid rgba(245,158,11,0.25)', boxShadow: '0 0 60px rgba(245,158,11,0.08)' }}>
+              <button
+                onClick={() => setLimitReached(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-lg transition-colors"
+                style={{ color: '#4a6070' }}>
+                <X size={14} />
+              </button>
+
+              {/* Icon */}
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5 mx-auto"
+                style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                <Zap size={22} style={{ color: '#f59e0b' }} />
+              </div>
+
+              <h2 className="text-lg font-bold text-white text-center mb-1"
+                style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                Daily limit reached
+              </h2>
+              <p className="text-sm text-center mb-5" style={{ color: '#5a7aaa' }}>
+                You&apos;ve used your 10 free SPOK messages today. Upgrade for unlimited access, voice tutor, and more.
+              </p>
+
+              {/* Price */}
+              <div className="rounded-2xl p-4 mb-5 text-center"
+                style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.15)' }}>
+                <p className="font-bold text-white" style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 32 }}>
+                  £40<span className="text-sm font-normal" style={{ color: '#5a7aaa' }}>/month</span>
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>or £400/year · cancel anytime</p>
+              </div>
+
+              {/* Features */}
+              <ul className="space-y-2 mb-6">
+                {[
+                  'Unlimited SPOK conversations',
+                  'Voice tutor — speak your questions',
+                  'Extended AI thinking mode',
+                  'Past paper AI with citations',
+                ].map(f => (
+                  <li key={f} className="flex items-center gap-2.5 text-sm" style={{ color: '#fde9b8' }}>
+                    <Check size={13} className="shrink-0" style={{ color: '#f59e0b' }} />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+
+              <button
+                onClick={handleUpgrade}
+                disabled={upgradeLoading}
+                className="w-full py-3 rounded-2xl text-sm font-semibold text-white transition-all hover:scale-[1.02] disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', boxShadow: '0 4px 24px rgba(245,158,11,0.25)' }}>
+                {upgradeLoading ? 'Redirecting...' : 'Upgrade to Pro'}
+              </button>
+              <button
+                onClick={() => setLimitReached(false)}
+                className="w-full text-center text-xs mt-3 transition-colors hover:text-white"
+                style={{ color: '#4a6070' }}>
+                Maybe tomorrow
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── LEFT — Chat ─────────────────────────────────────────────────── */}
       <div className="flex flex-col w-[52%] border-r" style={{ borderColor: 'rgba(59,130,246,0.1)' }}>
@@ -261,6 +418,22 @@ export default function SpokPage() {
                         : <span className="animate-pulse" style={{ color: '#374151' }}>...</span>
                       }
                     </div>
+                  )}
+                  {msg.role === 'assistant' && isLastMsg && !isLoading && textContent && (
+                    <motion.button
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 }}
+                      onClick={() => sendQuick('Can you explain that differently? Try a different angle or approach.')}
+                      className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all hover:scale-[1.02]"
+                      style={{
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        color: '#5a7aaa',
+                      }}>
+                      <RefreshCw size={11} />
+                      Explain differently
+                    </motion.button>
                   )}
                 </div>
               </motion.div>
@@ -388,81 +561,125 @@ export default function SpokPage() {
           transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
         />
 
-        {/* Outer orbit ring */}
-        <motion.div
-          className="absolute rounded-full border"
-          style={{
-            width: 420, height: 420,
-            borderColor: 'rgba(245,158,11,0.08)',
-          }}
-          animate={{ rotate: 360 }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-        >
-          {/* Orbit dot */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full"
-            style={{ background: '#f59e0b' }} />
-        </motion.div>
-
-        {/* Inner orbit ring */}
-        <motion.div
-          className="absolute rounded-full border"
-          style={{
-            width: 340, height: 340,
-            borderColor: 'rgba(245,158,11,0.06)',
-          }}
-          animate={{ rotate: -360 }}
-          transition={{ duration: 14, repeat: Infinity, ease: 'linear' }}
-        >
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-1 h-1 rounded-full"
-            style={{ background: 'rgba(245,158,11,0.6)' }} />
-        </motion.div>
-
-        {/* Three.js neural sphere — click to talk */}
-        <div className="relative z-10 w-80 h-80">
-          <JarvisScene
-            state={jarvisState}
-            amplitude={amplitude}
-            className="w-full h-full"
-            onClick={() => listening ? stopListening() : startListening()}
-          />
-        </div>
-
-        {/* Click hint */}
-        <AnimatePresence>
-          {jarvisState === 'idle' && (
-            <motion.p
+        <AnimatePresence mode="wait">
+          {animateSpec ? (
+            /* ── Animated graph teaching panel ── */
+            <motion.div
+              key="graph-panel"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.4 }}
+              className="relative z-10 w-full px-8 flex flex-col gap-3"
+            >
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#f59e0b' }}>
+                  SPOK · Drawing
+                </p>
+                <button
+                  onClick={() => { setAnimateSpec(null); setAnimateStep(0) }}
+                  className="text-xs px-2 py-1 rounded-lg"
+                  style={{ color: 'rgba(245,158,11,0.4)', border: '1px solid rgba(245,158,11,0.15)' }}>
+                  ✕ dismiss
+                </button>
+              </div>
+              <AnimatedGraphRenderer
+                spec={animateSpec}
+                currentStep={animateStep}
+                className="w-full"
+              />
+              {/* Step progress dots */}
+              <div className="flex items-center gap-1.5 justify-center mt-1">
+                {animateSpec.steps.map((_, i) => (
+                  <div key={i} className="rounded-full transition-all duration-300"
+                    style={{
+                      width: i <= animateStep ? 6 : 4,
+                      height: i <= animateStep ? 6 : 4,
+                      background: i <= animateStep ? '#f59e0b' : 'rgba(245,158,11,0.2)',
+                    }} />
+                ))}
+              </div>
+            </motion.div>
+          ) : (
+            /* ── Default sphere + word display ── */
+            <motion.div
+              key="sphere-panel"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute bottom-28 text-xs font-mono"
-              style={{ color: 'rgba(245,158,11,0.35)' }}>
-              tap to speak
-            </motion.p>
-          )}
-        </AnimatePresence>
+              className="flex flex-col items-center"
+            >
+              {/* Outer orbit ring */}
+              <motion.div
+                className="absolute rounded-full border"
+                style={{ width: 420, height: 420, borderColor: 'rgba(245,158,11,0.08)' }}
+                animate={{ rotate: 360 }}
+                transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+              >
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full"
+                  style={{ background: '#f59e0b' }} />
+              </motion.div>
 
-        {/* Live word display */}
-        <AnimatePresence mode="wait">
-          {currentSentence && (
-            <motion.div
-              key={currentSentence}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="relative z-10 mt-6 px-6 max-w-sm text-center leading-relaxed"
-              style={{ minHeight: 48 }}>
-              {currentSentence.trim().split(/\s+/).map((word, i) => (
-                <span
-                  key={i}
-                  className="inline-block mr-1 transition-all duration-100"
-                  style={{
-                    color: i < spokenWordCount ? '#f59e0b' : 'rgba(245,158,11,0.18)',
-                    fontWeight: i < spokenWordCount ? 600 : 400,
-                    fontSize: 15,
-                  }}>
-                  {word}
-                </span>
-              ))}
+              {/* Inner orbit ring */}
+              <motion.div
+                className="absolute rounded-full border"
+                style={{ width: 340, height: 340, borderColor: 'rgba(245,158,11,0.06)' }}
+                animate={{ rotate: -360 }}
+                transition={{ duration: 14, repeat: Infinity, ease: 'linear' }}
+              >
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-1 h-1 rounded-full"
+                  style={{ background: 'rgba(245,158,11,0.6)' }} />
+              </motion.div>
+
+              {/* Three.js neural sphere — click to talk */}
+              <div className="relative z-10 w-80 h-80">
+                <JarvisScene
+                  state={jarvisState}
+                  amplitude={amplitude}
+                  className="w-full h-full"
+                  onClick={() => listening ? stopListening() : startListening()}
+                />
+              </div>
+
+              {/* Click hint */}
+              <AnimatePresence>
+                {jarvisState === 'idle' && (
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute bottom-28 text-xs font-mono"
+                    style={{ color: 'rgba(245,158,11,0.35)' }}>
+                    tap to speak
+                  </motion.p>
+                )}
+              </AnimatePresence>
+
+              {/* Live word display */}
+              <AnimatePresence mode="wait">
+                {currentSentence && (
+                  <motion.div
+                    key={currentSentence}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="relative z-10 mt-6 px-6 max-w-sm text-center leading-relaxed"
+                    style={{ minHeight: 48 }}>
+                    {currentSentence.trim().split(/\s+/).map((word, i) => (
+                      <span
+                        key={i}
+                        className="inline-block mr-1 transition-all duration-100"
+                        style={{
+                          color: i < spokenWordCount ? '#f59e0b' : 'rgba(245,158,11,0.18)',
+                          fontWeight: i < spokenWordCount ? 600 : 400,
+                          fontSize: 15,
+                        }}>
+                        {word}
+                      </span>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
         </AnimatePresence>
