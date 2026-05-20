@@ -24,8 +24,6 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Failed to parse question', raw: text }, { status: 500 })
   }
 
-  const supabase = await createClient()
-
   // Look up topic UUID from slug
   const { data: topic } = await supabase
     .from('topics').select('id').eq('slug', topicId).single()
