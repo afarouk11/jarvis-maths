@@ -5,7 +5,7 @@ import { NextRequest } from 'next/server'
 // Set this URL in Twilio console → Messaging → WhatsApp Sandbox → "When a message comes in":
 // https://studiq.org/api/whatsapp
 
-const KNOWN_COMMANDS = ['run tests', 'test', 'status', 'briefing', 'report', 'help']
+const KNOWN_COMMANDS = ['run tests', 'test', 'status', 'briefing', 'report', 'fix', 'improve', 'help']
 
 function adminClient() {
   return createClient(
@@ -36,6 +36,8 @@ export async function POST(req: NextRequest) {
     return twimlResponse(
       '🧠 StudiQ OS Commands:\n' +
       '• run tests — full UX/UI test suite\n' +
+      '• fix — auto-fix failing tests\n' +
+      '• improve — AI suggestions to enhance the site\n' +
       '• status — platform stats briefing\n' +
       '• briefing — morning stats summary\n' +
       '• report — resend last test report'
@@ -63,6 +65,8 @@ export async function POST(req: NextRequest) {
     'status':    '📊 Fetching platform stats — incoming shortly.',
     'briefing':  '☀️ Briefing queued — incoming shortly.',
     'report':    '📋 Resending last report now.',
+    'fix':       '🔧 Fix agent queued! Running tests + applying patches — report incoming in ~3 minutes.',
+    'improve':   '💡 Improvement agent queued! Analysing site — suggestions incoming in ~3 minutes.',
   }
 
   return twimlResponse(replies[matched] ?? `✅ "${matched}" queued.`)
