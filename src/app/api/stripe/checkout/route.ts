@@ -14,9 +14,9 @@ export async function POST(req: NextRequest) {
     .single()
 
   const { plan } = await req.json().catch(() => ({ plan: 'monthly' }))
-  const priceId = plan === 'annual'
+  const priceId = (plan === 'annual'
     ? process.env.STRIPE_PRO_ANNUAL_PRICE_ID!
-    : process.env.STRIPE_PRO_MONTHLY_PRICE_ID!
+    : process.env.STRIPE_PRO_MONTHLY_PRICE_ID!).trim()
 
   const origin = req.headers.get('origin') ?? 'https://studiq.org'
 
