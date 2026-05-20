@@ -13,26 +13,26 @@ export async function POST(req: NextRequest) {
     .eq('id', user.id)
     .single()
 
-  // Reuse existing customer or create a new one
-  let customerId = profile?.stripe_customer_id
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: user.email,
-      name: profile?.full_name ?? undefined,
-      metadata: { supabase_user_id: user.id },
-    })
-    customerId = customer.id
-    await supabase.from('profiles').update({ stripe_customer_id: customerId }).eq('id', user.id)
-  }
-
   const { plan } = await req.json().catch(() => ({ plan: 'monthly' }))
   const priceId = plan === 'annual'
     ? process.env.STRIPE_PRO_ANNUAL_PRICE_ID!
     : process.env.STRIPE_PRO_MONTHLY_PRICE_ID!
 
-  const origin = req.headers.get('origin') ?? 'http://localhost:3000'
+  const origin = req.headers.get('origin') ?? 'https://studiq.org'
 
   try {
+    // Reuse existing customer or create a new one
+    let customerId = profile?.stripe_customer_id
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        name: profile?.full_name ?? undefined,
+        metadata: { supabase_user_id: user.id },
+      })
+      customerId = customer.id
+      await supabase.from('profiles').update({ stripe_customer_id: customerId }).eq('id', user.id)
+    }
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     })
     return Response.json({ url: session.url })
   } catch (err: any) {
-    console.error('[stripe/checkout]', err?.message)
+    console.error('[stripe/checkout] ERROR:', err?.message, err?.type, err?.code)
     return Response.json({ error: err?.message ?? 'Stripe error' }, { status: 500 })
   }
 }
