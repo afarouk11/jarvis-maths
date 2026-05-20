@@ -20,19 +20,24 @@ export async function POST(req: NextRequest) {
 
   const origin = req.headers.get('origin') ?? 'https://studiq.org'
 
+  console.log('[stripe/checkout] priceId:', priceId, 'origin:', origin, 'existingCustomer:', profile?.stripe_customer_id ?? 'none')
+
   try {
     // Reuse existing customer or create a new one
     let customerId = profile?.stripe_customer_id
     if (!customerId) {
+      console.log('[stripe/checkout] creating customer for', user.email)
       const customer = await stripe.customers.create({
         email: user.email,
         name: profile?.full_name ?? undefined,
         metadata: { supabase_user_id: user.id },
       })
       customerId = customer.id
+      console.log('[stripe/checkout] customer created:', customerId)
       await supabase.from('profiles').update({ stripe_customer_id: customerId }).eq('id', user.id)
     }
 
+    console.log('[stripe/checkout] creating session for customer:', customerId)
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
@@ -41,9 +46,12 @@ export async function POST(req: NextRequest) {
       cancel_url: `${origin}/pricing`,
       metadata: { supabase_user_id: user.id },
     })
+    console.log('[stripe/checkout] session created:', session.id)
     return Response.json({ url: session.url })
   } catch (err: any) {
-    console.error('[stripe/checkout] ERROR:', err?.message, err?.type, err?.code)
+    console.error('[stripe/checkout] ERROR msg:', err?.message)
+    console.error('[stripe/checkout] ERROR type:', err?.type, 'code:', err?.code, 'status:', err?.statusCode)
+    console.error('[stripe/checkout] ERROR raw:', JSON.stringify(err))
     return Response.json({ error: err?.message ?? 'Stripe error' }, { status: 500 })
   }
 }
