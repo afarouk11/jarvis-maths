@@ -35,6 +35,10 @@ export default function PricingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan: billing }),
       })
+      if (res.status === 401) {
+        window.location.href = '/sign-in?next=/pricing'
+        return
+      }
       const { url, error } = await res.json()
       if (error) { alert(error); return }
       window.location.href = url

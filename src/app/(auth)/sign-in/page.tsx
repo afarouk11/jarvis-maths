@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
@@ -9,6 +9,7 @@ import { JarvisAvatar } from '@/components/jarvis/JarvisAvatar'
 
 export default function SignInPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -21,7 +22,7 @@ export default function SignInPage() {
     setError('')
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) { setError(error.message); setLoading(false); return }
-    router.push('/dashboard')
+    router.push(searchParams.get('next') ?? '/dashboard')
   }
 
   return (
