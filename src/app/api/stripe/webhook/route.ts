@@ -1,16 +1,20 @@
 import { stripe } from '@/lib/stripe'
-import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextRequest } from 'next/server'
 import Stripe from 'stripe'
 
 export const runtime = 'nodejs'
 
-async function updateSubscription(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  sub: Stripe.Subscription
-) {
+function adminClient() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
+
+async function updateSubscription(sub: Stripe.Subscription) {
   const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id
-  await supabase
+  await adminClient()
     .from('profiles')
     .update({
       stripe_subscription_id: sub.id,
@@ -22,7 +26,7 @@ async function updateSubscription(
 export async function POST(req: NextRequest) {
   const body = await req.text()
   const sig = req.headers.get('stripe-signature')!
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!.trim()
 
   let event: Stripe.Event
   try {
@@ -31,19 +35,17 @@ export async function POST(req: NextRequest) {
     return new Response('Webhook signature invalid', { status: 400 })
   }
 
-  const supabase = await createClient()
-
   switch (event.type) {
     case 'customer.subscription.created':
     case 'customer.subscription.updated':
     case 'customer.subscription.deleted':
-      await updateSubscription(supabase, event.data.object as Stripe.Subscription)
+      await updateSubscription(event.data.object as Stripe.Subscription)
       break
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session
       if (session.subscription) {
         const sub = await stripe.subscriptions.retrieve(session.subscription as string)
-        await updateSubscription(supabase, sub)
+        await updateSubscription(sub)
       }
       break
     }
