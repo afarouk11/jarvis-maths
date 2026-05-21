@@ -2,7 +2,7 @@
 
 import { useRef, useMemo, useState, useCallback, useEffect, Component, type ReactNode } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, Line } from '@react-three/drei'
+import { OrbitControls, Line, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { createNoise3D } from 'simplex-noise'
 import { motion } from 'framer-motion'
@@ -363,19 +363,57 @@ function NeuralScene({
 
   const nodePositions = useMemo(() => {
     const map = new Map<string, THREE.Vector3>()
-    const phi = Math.PI * (3 - Math.sqrt(5))
-    topics.forEach((t, i) => {
-      const y = 1 - (i / (topics.length - 1)) * 2
-      const r = Math.sqrt(Math.max(0, 1 - y * y))
-      const theta = phi * i
-      const side = Math.cos(theta) >= 0 ? 1 : -1
-      const x = (Math.cos(theta) * r * 1.05 + side * 0.12) * 1.08 * 1.3
-      const yy = y * 1.12 * 1.08 * 1.3
-      const z = Math.sin(theta) * r * 0.88 * 1.08 * 1.3
-      map.set(t.slug, new THREE.Vector3(x, yy, z))
-    })
+    const R = 1.3
+
+    // For A-level: cluster neurons into 3 spatial zones on the sphere surface.
+    // Pure → front/upper, Stats → left, Mechanics → right.
+    const A_LEVEL_ZONES: Record<string, { cx: number; cy: number; cz: number; halfAngle: number }> = {
+      'Pure Mathematics': { cx: 0,    cy: 0.5,   cz: 1,     halfAngle: 1.0 },
+      'Statistics':       { cx: -1,   cy: 0.1,   cz: -0.55, halfAngle: 0.85 },
+      'Mechanics':        { cx: 1,    cy: -0.15, cz: -0.55, halfAngle: 0.80 },
+    }
+
+    function placeInCap(slugs: string[], cx: number, cy: number, cz: number, halfAngle: number) {
+      const center = new THREE.Vector3(cx, cy, cz).normalize()
+      const ref = Math.abs(center.x) < 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0)
+      const u = new THREE.Vector3().crossVectors(ref, center).normalize()
+      const v = new THREE.Vector3().crossVectors(center, u).normalize()
+      const cosMax = Math.cos(halfAngle)
+      const phi = Math.PI * (3 - Math.sqrt(5))
+      slugs.forEach((slug, i) => {
+        const cosT = 1 - ((i + 0.5) / slugs.length) * (1 - cosMax)
+        const sinT = Math.sqrt(Math.max(0, 1 - cosT * cosT))
+        const angle = phi * i
+        const pos = u.clone().multiplyScalar(sinT * Math.cos(angle))
+          .add(v.clone().multiplyScalar(sinT * Math.sin(angle)))
+          .add(center.clone().multiplyScalar(cosT))
+          .multiplyScalar(R)
+        map.set(slug, pos)
+      })
+    }
+
+    const handled = new Set<string>()
+    for (const [sec, zone] of Object.entries(A_LEVEL_ZONES)) {
+      const slugsInSec = (topicCategories[sec] ?? []).filter(s => topics.some(t => t.slug === s))
+      if (slugsInSec.length === 0) continue
+      placeInCap(slugsInSec, zone.cx, zone.cy, zone.cz, zone.halfAngle)
+      slugsInSec.forEach(s => handled.add(s))
+    }
+
+    // GCSE or uncategorised: uniform Fibonacci spiral
+    const remaining = topics.filter(t => !handled.has(t.slug))
+    if (remaining.length > 0) {
+      const phi = Math.PI * (3 - Math.sqrt(5))
+      remaining.forEach((t, i) => {
+        const y = 1 - (i / Math.max(1, remaining.length - 1)) * 2
+        const r = Math.sqrt(Math.max(0, 1 - y * y))
+        const theta = phi * i
+        map.set(t.slug, new THREE.Vector3(Math.cos(theta) * r * R, y * R, Math.sin(theta) * r * R))
+      })
+    }
+
     return map
-  }, [topics])
+  }, [topics, topicCategories])
 
   const edgeData = useMemo(() => (
     TOPIC_EDGES
@@ -414,6 +452,36 @@ function NeuralScene({
           />
         )
       })}
+
+      {/* Section labels — only for A-level (Pure / Stats / Mech) */}
+      {'Pure Mathematics' in topicCategories && (
+        <>
+          <Html position={[0, 2.0, 2.1]} center distanceFactor={8} style={{ pointerEvents: 'none' }}>
+            <div style={{
+              background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.35)',
+              borderRadius: 6, padding: '3px 9px', color: '#93c5fd',
+              fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.12em',
+              whiteSpace: 'nowrap', textTransform: 'uppercase', backdropFilter: 'blur(4px)',
+            }}>PURE</div>
+          </Html>
+          <Html position={[-2.3, 0.3, -1.2]} center distanceFactor={8} style={{ pointerEvents: 'none' }}>
+            <div style={{
+              background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)',
+              borderRadius: 6, padding: '3px 9px', color: '#fcd34d',
+              fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.12em',
+              whiteSpace: 'nowrap', textTransform: 'uppercase', backdropFilter: 'blur(4px)',
+            }}>STATS</div>
+          </Html>
+          <Html position={[2.3, -0.3, -1.2]} center distanceFactor={8} style={{ pointerEvents: 'none' }}>
+            <div style={{
+              background: 'rgba(168,85,247,0.12)', border: '1px solid rgba(168,85,247,0.35)',
+              borderRadius: 6, padding: '3px 9px', color: '#c4b5fd',
+              fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.12em',
+              whiteSpace: 'nowrap', textTransform: 'uppercase', backdropFilter: 'blur(4px)',
+            }}>MECH</div>
+          </Html>
+        </>
+      )}
     </>
   )
 }
