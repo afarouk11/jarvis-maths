@@ -19,7 +19,7 @@ export function AccessibilityPanel() {
       <button
         onClick={() => setOpen(o => !o)}
         title="Accessibility options"
-        className="fixed bottom-6 left-6 z-50 w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-105"
+        className="fixed bottom-6 right-6 z-50 w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-105"
         style={{
           background: prefs.encouragement
             ? 'rgba(251,146,60,0.2)'
@@ -40,7 +40,7 @@ export function AccessibilityPanel() {
             initial={{ opacity: 0, scale: 0.9, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 10 }}
-            className="fixed bottom-20 left-6 z-50 rounded-2xl p-4 w-72"
+            className="fixed bottom-20 right-6 z-50 rounded-2xl p-4 w-72"
             style={{
               background: 'rgba(8,13,25,0.97)',
               border: '1px solid rgba(59,130,246,0.2)',
