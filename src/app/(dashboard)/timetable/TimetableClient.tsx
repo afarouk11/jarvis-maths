@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import Link from 'next/link'
 import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
 import { GCSE_TOPICS } from '@/lib/curriculum/gcse-topics'
 
@@ -67,43 +68,65 @@ function examCountdownText(examDate: string | null): string {
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
+function sessionHref(session: TimetableSession): string {
+  if (session.activityType === 'lesson') return `/topics/${session.topicSlug}`
+  return `/practice?topic=${session.topicSlug}`
+}
+
 function SessionCard({ session }: { session: TimetableSession }) {
   const activity = ACTIVITY_COLORS[session.activityType] ?? ACTIVITY_COLORS.practice
   const icon = getTopicIcon(session.topicSlug)
+  const href = sessionHref(session)
 
   return (
-    <div style={{
-      background: 'rgba(255,255,255,0.03)',
-      border: '1px solid rgba(255,255,255,0.06)',
-      borderRadius: 12,
-      padding: '10px 12px',
-      display: 'flex',
-      gap: 10,
-      alignItems: 'flex-start',
-    }}>
-      <span style={{ fontSize: 18, flexShrink: 0, marginTop: 1 }}>{icon}</span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-          <p style={{ fontSize: 12, fontWeight: 700, color: '#d0dbe8', lineHeight: 1.2 }}>
-            {session.topicName}
+    <Link href={href} style={{ textDecoration: 'none', display: 'block' }}>
+      <div style={{
+        background: 'rgba(255,255,255,0.03)',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 12,
+        padding: '10px 12px',
+        display: 'flex',
+        gap: 10,
+        alignItems: 'flex-start',
+        cursor: 'pointer',
+        transition: 'background 0.15s, border-color 0.15s',
+      }}
+        onMouseEnter={e => {
+          const el = e.currentTarget as HTMLDivElement
+          el.style.background = `${activity.bg}`
+          el.style.borderColor = activity.border
+        }}
+        onMouseLeave={e => {
+          const el = e.currentTarget as HTMLDivElement
+          el.style.background = 'rgba(255,255,255,0.03)'
+          el.style.borderColor = 'rgba(255,255,255,0.06)'
+        }}
+      >
+        <span style={{ fontSize: 18, flexShrink: 0, marginTop: 1 }}>{icon}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: '#d0dbe8', lineHeight: 1.2 }}>
+              {session.topicName}
+            </p>
+            <span style={{
+              fontSize: 9, fontWeight: 700, letterSpacing: '0.1em',
+              background: activity.bg, border: `1px solid ${activity.border}`,
+              color: activity.text, borderRadius: 6, padding: '2px 7px',
+              textTransform: 'uppercase', flexShrink: 0,
+            }}>
+              {activity.label}
+            </span>
+          </div>
+          <p style={{ fontSize: 10, color: '#4a6080', lineHeight: 1.4, marginBottom: 3 }}>
+            {session.reason}
           </p>
-          <span style={{
-            fontSize: 9, fontWeight: 700, letterSpacing: '0.1em',
-            background: activity.bg, border: `1px solid ${activity.border}`,
-            color: activity.text, borderRadius: 6, padding: '2px 7px',
-            textTransform: 'uppercase', flexShrink: 0,
-          }}>
-            {activity.label}
-          </span>
+          <p style={{ fontSize: 10, color: '#3a5070', fontWeight: 600 }}>
+            {session.durationMinutes} min
+          </p>
         </div>
-        <p style={{ fontSize: 10, color: '#4a6080', lineHeight: 1.4, marginBottom: 3 }}>
-          {session.reason}
-        </p>
-        <p style={{ fontSize: 10, color: '#3a5070', fontWeight: 600 }}>
-          {session.durationMinutes} min
-        </p>
+        <span style={{ fontSize: 12, color: '#3a5070', flexShrink: 0, marginTop: 2 }}>→</span>
       </div>
-    </div>
+    </Link>
   )
 }
 
