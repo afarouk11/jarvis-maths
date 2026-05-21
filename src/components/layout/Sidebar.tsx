@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, BookOpen, Zap, FileText,
-  User, LogOut, Brain, Bot, Database, Sparkles, TrendingUp, Trophy,
+  User, LogOut, Brain, Bot, Database, Sparkles, TrendingUp, Trophy, CalendarDays,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -16,8 +16,9 @@ const NAV = [
   { href: '/topics',    icon: BookOpen,        label: 'Topics',          glow: '#8b5cf6' },
   { href: '/practice',  icon: Zap,             label: 'Practice',        glow: '#f59e0b' },
   { href: '/jarvis',    icon: Bot,             label: 'SPOK',            glow: '#f59e0b' },
-  { href: '/brain',     icon: Brain,           label: 'Knowledge Brain', glow: '#c47a20' },
-  { href: '/papers',    icon: FileText,        label: 'Past Papers',     glow: '#60a5fa' },
+  { href: '/brain',      icon: Brain,        label: 'Knowledge Brain', glow: '#c47a20' },
+  { href: '/timetable', icon: CalendarDays, label: 'Study Timetable', glow: '#22c55e' },
+  { href: '/papers',    icon: FileText,     label: 'Past Papers',     glow: '#60a5fa' },
   { href: '/progress',     icon: TrendingUp, label: 'Progress',     glow: '#22c55e' },
   { href: '/leaderboard', icon: Trophy,     label: 'Leaderboard',  glow: '#fbbf24' },
   { href: '/profile',     icon: User,       label: 'Profile',      glow: '#a78bfa' },

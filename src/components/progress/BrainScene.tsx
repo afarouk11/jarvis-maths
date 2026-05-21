@@ -6,27 +6,18 @@ import { OrbitControls, Line } from '@react-three/drei'
 import * as THREE from 'three'
 import { createNoise3D } from 'simplex-noise'
 import { motion } from 'framer-motion'
-import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
 import { TOPIC_EDGES } from '@/lib/curriculum/topic-graph'
 import { masteryLabel } from '@/lib/bkt/bayesian-knowledge-tracing'
+import type { Topic } from '@/types'
 
-// Red (0%) → amber (50%) → neon blue (100%)
+// Red (0%) → blue (50%) → green (100%)
 function progressColor(pKnown: number): string {
   if (pKnown <= 0.5) {
-    // Red → amber
     const t = pKnown / 0.5
-    const r = Math.round(255)
-    const g = Math.round(t * 160)
-    const b = Math.round(0)
-    return `rgb(${r},${g},${b})`
-  } else {
-    // Amber → neon blue
-    const t = (pKnown - 0.5) / 0.5
-    const r = Math.round(255 * (1 - t))
-    const g = Math.round(160 * (1 - t) + 100 * t)
-    const b = Math.round(255 * t)
-    return `rgb(${r},${g},${b})`
+    return `rgb(${Math.round(239 + (59 - 239) * t)},${Math.round(68 + (130 - 68) * t)},${Math.round(68 + (246 - 68) * t)})`
   }
+  const t = (pKnown - 0.5) / 0.5
+  return `rgb(${Math.round(59 + (34 - 59) * t)},${Math.round(130 + (197 - 130) * t)},${Math.round(246 + (94 - 246) * t)})`
 }
 
 function progressHex(pKnown: number): string {
@@ -269,13 +260,14 @@ function InstancedPulses({ arcs, colors }: { arcs: THREE.Vector3[][]; colors: st
 
 // ── Neuron node ───────────────────────────────────────────────────────────────
 function Neuron({
-  position, color, name, slug, pKnown, onHover, onClick,
+  position, color, name, slug, pKnown, active, onHover, onClick,
 }: {
   position: THREE.Vector3
   color: string
   name: string
   slug: string
   pKnown: number
+  active: boolean
   onHover: (info: { name: string; slug: string; pKnown: number } | null) => void
   onClick: (slug: string) => void
 }) {
@@ -300,8 +292,8 @@ function Neuron({
       <meshStandardMaterial
         color={color}
         emissive={color}
-        emissiveIntensity={hovered ? 10 : 5}
-        transparent opacity={1}
+        emissiveIntensity={!active ? 0.5 : hovered ? 10 : 5}
+        transparent opacity={active ? 1 : 0.12}
       />
     </mesh>
   )
@@ -350,18 +342,30 @@ function NeuralScene({
   progress,
   onHover,
   onClick,
+  sectionFilter,
+  topics,
+  topicCategories,
 }: {
   progress: StudentProgress[]
   onHover: (info: { name: string; slug: string; pKnown: number } | null) => void
   onClick: (slug: string) => void
+  sectionFilter: string | null
+  topics: Omit<Topic, 'id' | 'parent_id'>[]
+  topicCategories: Record<string, string[]>
 }) {
   const slugMap = useMemo(() => new Map(progress.map(p => [p.topic_id, p.p_known])), [progress])
+
+  const filteredSlugs = useMemo(() => {
+    if (sectionFilter === null) return null
+    const slugs = topicCategories[sectionFilter] ?? []
+    return new Set(slugs)
+  }, [sectionFilter, topicCategories])
 
   const nodePositions = useMemo(() => {
     const map = new Map<string, THREE.Vector3>()
     const phi = Math.PI * (3 - Math.sqrt(5))
-    AQA_TOPICS.forEach((t, i) => {
-      const y = 1 - (i / (AQA_TOPICS.length - 1)) * 2
+    topics.forEach((t, i) => {
+      const y = 1 - (i / (topics.length - 1)) * 2
       const r = Math.sqrt(Math.max(0, 1 - y * y))
       const theta = phi * i
       const side = Math.cos(theta) >= 0 ? 1 : -1
@@ -371,7 +375,7 @@ function NeuralScene({
       map.set(t.slug, new THREE.Vector3(x, yy, z))
     })
     return map
-  }, [])
+  }, [topics])
 
   const edgeData = useMemo(() => (
     TOPIC_EDGES
@@ -391,10 +395,11 @@ function NeuralScene({
       <InstancedPulses arcs={edgeData.map(e => e.arc)} colors={edgeData.map(e => e.color)} />
 
       {/* Neurons */}
-      {AQA_TOPICS.map(t => {
+      {topics.map(t => {
         const pos = nodePositions.get(t.slug)!
         const pKnown = slugMap.get(t.slug) ?? 0
         const color = progressHex(pKnown)
+        const active = filteredSlugs === null || filteredSlugs.has(t.slug)
         return (
           <Neuron
             key={t.slug}
@@ -403,6 +408,7 @@ function NeuralScene({
             name={t.name}
             slug={t.slug}
             pKnown={pKnown}
+            active={active}
             onHover={onHover}
             onClick={onClick}
           />
@@ -413,10 +419,13 @@ function NeuralScene({
 }
 
 // ── Main exported scene ───────────────────────────────────────────────────────
-export default function BrainScene({ progress, onHover, onClick }: {
+export default function BrainScene({ progress, onHover, onClick, sectionFilter, topics, topicCategories }: {
   progress: StudentProgress[]
   onHover: (info: { name: string; slug: string; pKnown: number } | null) => void
   onClick: (slug: string) => void
+  sectionFilter: string | null
+  topics: Omit<Topic, 'id' | 'parent_id'>[]
+  topicCategories: Record<string, string[]>
 }) {
   const handleHover = useCallback(onHover, [onHover])
   const handleClick = useCallback(onClick, [onClick])
@@ -457,7 +466,7 @@ export default function BrainScene({ progress, onHover, onClick }: {
           <group>
             <BrainMesh />
             <HoloRings />
-            <NeuralScene progress={progress} onHover={handleHover} onClick={handleClick} />
+            <NeuralScene progress={progress} onHover={handleHover} onClick={handleClick} sectionFilter={sectionFilter} topics={topics} topicCategories={topicCategories} />
           </group>
           <OrbitControls enablePan={false} minDistance={4} maxDistance={14} autoRotate autoRotateSpeed={0.5} />
 

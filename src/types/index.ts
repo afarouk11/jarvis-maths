@@ -1,6 +1,7 @@
 export interface Profile {
   id: string
   full_name: string | null
+  level: 'GCSE' | 'A-Level'
   exam_board: 'AQA' | 'Edexcel' | 'OCR'
   target_grade: string
   exam_date: string | null
