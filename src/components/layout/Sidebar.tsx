@@ -149,10 +149,26 @@ export function Sidebar() {
       </Link>
 
       {/* Sign out */}
-      <button onClick={signOut} title="Sign out"
-        className="flex items-center justify-center w-10 h-10 rounded-xl transition-all hover:bg-red-500/10">
-        <LogOut size={16} style={{ color: '#2d3a4a' }} />
-      </button>
+      <motion.button
+        onClick={signOut}
+        title="Sign out"
+        whileHover={{ scale: 1.06 }}
+        whileTap={{ scale: 0.94 }}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: 40, height: 40, borderRadius: 12, cursor: 'pointer',
+          background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+        }}
+        onMouseEnter={e => {
+          (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.18)'
+          ;(e.currentTarget as HTMLElement).style.borderColor = 'rgba(239,68,68,0.45)'
+        }}
+        onMouseLeave={e => {
+          (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.08)'
+          ;(e.currentTarget as HTMLElement).style.borderColor = 'rgba(239,68,68,0.2)'
+        }}>
+        <LogOut size={16} style={{ color: '#f87171' }} />
+      </motion.button>
     </aside>
   )
 }
