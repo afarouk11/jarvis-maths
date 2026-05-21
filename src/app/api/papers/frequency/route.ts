@@ -17,13 +17,14 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Get the student's exam board
+  // Get the student's exam board and level
   const { data: prof } = await supabase
     .from('profiles')
-    .select('exam_board')
+    .select('exam_board, level')
     .eq('id', user.id)
     .single()
   const board = prof?.exam_board ?? 'AQA'
+  const level = prof?.level ?? 'A-Level'
 
   // Use admin client to bypass RLS for reading shared paper data
   const admin = createAdmin(
@@ -32,12 +33,21 @@ export async function GET() {
   )
 
   // QPs only — mark schemes double-count every topic
-  const { data: qpPapers } = await admin
+  // Filter by level: GCSE papers have "GCSE" in the title, A-level don't
+  let query = admin
     .from('past_papers')
     .select('id, year, title')
     .eq('processed', true)
     .eq('exam_board', board)
     .ilike('title', '%QP%')
+
+  if (level === 'GCSE') {
+    query = query.ilike('title', '%GCSE%')
+  } else {
+    query = query.not('title', 'ilike', '%GCSE%')
+  }
+
+  const { data: qpPapers } = await query
 
   if (!qpPapers || qpPapers.length === 0) return NextResponse.json({ frequency: [], totalPapers: 0 })
 
