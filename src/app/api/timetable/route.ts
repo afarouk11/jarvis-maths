@@ -2,7 +2,7 @@ import { anthropic } from '@ai-sdk/anthropic'
 import { generateText } from 'ai'
 import { createClient } from '@/lib/supabase/server'
 import { buildStudentProfile } from '@/lib/ai/student-profile'
-import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
+import { getTopics, getLevelLabel, type Level } from '@/lib/curriculum/index'
 
 export async function POST(req: Request) {
   try {
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
       { data: progress },
       studentProfileText,
     ] = await Promise.all([
-      supabase.from('profiles').select('exam_date, target_grade, full_name').eq('id', user.id).single(),
+      supabase.from('profiles').select('exam_date, target_grade, full_name, level').eq('id', user.id).single(),
       supabase.from('student_progress').select().eq('student_id', user.id),
       buildStudentProfile(user.id),
     ])
@@ -28,8 +28,11 @@ export async function POST(req: Request) {
     const examDate = profile?.exam_date ?? null
     const targetGrade = profile?.target_grade ?? 'A'
     const fullName = profile?.full_name ?? 'Student'
+    const level = (profile?.level ?? 'A-Level') as Level
+    const TOPICS = getTopics(level)
+    const levelLabel = getLevelLabel(level)
 
-    const today = '2026-05-21'
+    const today = new Date().toISOString().slice(0, 10)
 
     // Compute exam countdown
     let examCountdown: number | null = null
@@ -42,7 +45,7 @@ export async function POST(req: Request) {
     const weakTopics = progressList
       .filter(p => p.p_known < 0.5)
       .map(p => {
-        const topic = AQA_TOPICS.find(t => t.slug === p.topic_id)
+        const topic = TOPICS.find(t => t.slug === p.topic_id)
         return topic ? `${topic.name} (${Math.round(p.p_known * 100)}% mastery)` : null
       })
       .filter((t): t is string => t !== null)
@@ -50,18 +53,18 @@ export async function POST(req: Request) {
     const strongTopics = progressList
       .filter(p => p.p_known > 0.7)
       .map(p => {
-        const topic = AQA_TOPICS.find(t => t.slug === p.topic_id)
+        const topic = TOPICS.find(t => t.slug === p.topic_id)
         return topic ? `${topic.name} (${Math.round(p.p_known * 100)}% mastery)` : null
       })
       .filter((t): t is string => t !== null)
 
-    const notStartedTopics = AQA_TOPICS
+    const notStartedTopics = TOPICS
       .filter(t => !progressList.find(p => p.topic_id === t.slug))
       .map(t => t.name)
 
-    const allTopicSlugs = AQA_TOPICS.map(t => `${t.slug} → "${t.name}"`).join('\n')
+    const allTopicSlugs = TOPICS.map(t => `${t.slug} → "${t.name}"`).join('\n')
 
-    const prompt = `You are a study planner for A-level Mathematics students. Generate a 7-day study timetable for the following student.
+    const prompt = `You are a study planner for ${levelLabel} students. Generate a 7-day study timetable for the following student.
 
 STUDENT PROFILE:
 ${studentProfileText}
@@ -82,7 +85,7 @@ VALID TOPIC SLUGS (use ONLY these for topicSlug):
 ${allTopicSlugs}
 
 INSTRUCTIONS:
-1. Create a 7-day plan starting from Monday 2026-05-25 to Sunday 2026-05-31.
+1. Create a 7-day plan starting from the coming Monday (calculate from today: ${today}) for 7 consecutive days.
 2. Prioritise weak topics early in the week; use later days for stronger topics and mixed review.
 3. Each day should have 1-4 sessions that together total approximately ${hoursPerDay * 60} minutes.
 4. Activity types: "practice" (drilling questions), "lesson" (learning new content), "review" (spaced repetition of known topics).
@@ -95,7 +98,7 @@ INSTRUCTIONS:
   "weeklyPlan": [
     {
       "day": "Monday",
-      "date": "2026-05-25",
+      "date": "YYYY-MM-DD",
       "totalMinutes": ${hoursPerDay * 60},
       "sessions": [
         {

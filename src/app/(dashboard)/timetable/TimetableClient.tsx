@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
+import { GCSE_TOPICS } from '@/lib/curriculum/gcse-topics'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -44,7 +45,9 @@ const ACTIVITY_COLORS: Record<string, { bg: string; border: string; text: string
 }
 
 function getTopicIcon(slug: string): string {
-  return AQA_TOPICS.find(t => t.slug === slug)?.icon ?? '📚'
+  return AQA_TOPICS.find(t => t.slug === slug)?.icon
+    ?? GCSE_TOPICS.find(t => t.slug === slug)?.icon
+    ?? '📚'
 }
 
 function formatDate(dateStr: string): string {
@@ -54,7 +57,7 @@ function formatDate(dateStr: string): string {
 
 function examCountdownText(examDate: string | null): string {
   if (!examDate) return ''
-  const today = new Date('2026-05-21')
+  const today = new Date()
   const exam = new Date(examDate)
   const diff = Math.round((exam.getTime() - today.getTime()) / 86400000)
   if (diff <= 0) return 'Exam has passed'
@@ -105,7 +108,7 @@ function SessionCard({ session }: { session: TimetableSession }) {
 }
 
 function DayCard({ dayPlan }: { dayPlan: TimetableDay }) {
-  const isToday = dayPlan.date === '2026-05-21'
+  const isToday = dayPlan.date === new Date().toISOString().slice(0, 10)
 
   return (
     <div style={{
