@@ -11,6 +11,7 @@ import { JarvisChat } from '@/components/jarvis/JarvisChat'
 import { CheckpointBlock } from '@/components/lessons/CheckpointBlock'
 import { TryItBlock } from '@/components/lessons/TryItBlock'
 import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
+import { GCSE_TOPICS } from '@/lib/curriculum/gcse-topics'
 import type { Lesson, LessonBlock, GraphBlock, JarvisState } from '@/types'
 
 const JarvisScene = dynamic(
@@ -28,7 +29,7 @@ export default function LessonPage() {
   const [jarvisState,  setJarvisState]  = useState<JarvisState>('idle')
   const [xpGain,       setXpGain]       = useState<number | null>(null)
 
-  const topic = AQA_TOPICS.find(t => t.slug === slug)
+  const topic = AQA_TOPICS.find(t => t.slug === slug) ?? GCSE_TOPICS.find(t => t.slug === slug)
 
   useEffect(() => {
     fetch(`/api/lesson/${id}`)

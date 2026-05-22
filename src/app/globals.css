@@ -331,3 +331,36 @@ html.dyslexia-mode i {
 ::-webkit-scrollbar-track { background: #080d19; }
 ::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.3); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(59, 130, 246, 0.5); }
+
+/* ── SPOK Avatar keyframes ───────────────────────────────────────────────── */
+@keyframes spok-scan {
+  0%   { top: 0%;    opacity: 0; }
+  8%   { opacity: 1; }
+  92%  { opacity: 1; }
+  100% { top: 100%;  opacity: 0; }
+}
+
+@keyframes spok-breathe {
+  0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 10px rgba(0,255,170,0.55)); }
+  50%       { transform: scale(1.05); filter: drop-shadow(0 0 22px rgba(0,255,170,0.9)); }
+}
+
+@keyframes spok-pulse-listen {
+  0%, 100% { transform: scale(1);   opacity: 0.6; }
+  50%       { transform: scale(1.1); opacity: 1; }
+}
+
+.spok-scanline {
+  position: absolute;
+  width: 100%;
+  height: 3px;
+  background: rgba(0, 255, 170, 0.18);
+  filter: blur(1.5px);
+  animation: spok-scan 5s linear infinite;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.spok-crest-idle    { animation: spok-breathe 4s ease-in-out infinite; }
+.spok-crest-listen  { animation: spok-pulse-listen 1.2s ease-in-out infinite; }

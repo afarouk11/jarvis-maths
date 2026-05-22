@@ -2,7 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { predictedGrade, masteryColor } from '@/lib/bkt/bayesian-knowledge-tracing'
 import { computeExamReadiness } from '@/lib/exam-readiness'
-import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
+import { getTopics } from '@/lib/curriculum'
+import type { Level } from '@/lib/curriculum'
 import { isTopicLocked } from '@/lib/curriculum/topic-graph'
 import { getXPLevel } from '@/lib/xp-levels'
 import Link from 'next/link'
@@ -31,8 +32,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     supabase.from('topics').select('id, slug'),
   ])
 
+  const level = ((profile?.level as Level) ?? 'A-Level')
+  const allTopics = getTopics(level)
+
   const slugById   = new Map((topicsRows ?? []).map((t: any) => [t.id,   t.slug]))
-  const topicNames = new Map(AQA_TOPICS.map(t => [t.slug, t.name]))
+  const topicNames = new Map(allTopics.map(t => [t.slug, t.name]))
 
   const progressMap = new Map((progress ?? []).map(p => [p.topic_id, p]))
   const pKnownMap   = new Map((progress ?? []).map(p => [p.topic_id, p.p_known]))
@@ -46,7 +50,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // Exam readiness
   const readiness = computeExamReadiness({
     progress: progress ?? [],
-    totalTopics: AQA_TOPICS.length,
+    totalTopics: allTopics.length,
     examDate: profile?.exam_date ?? null,
     targetGrade: profile?.target_grade ?? 'A*',
     slugById,
@@ -116,7 +120,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <StatCard icon={<Trophy size={16} />} label="Predicted Grade" value={grade} sub={`${Math.round(avgPKnown * 100)}% mastery`} color={gradeColor} />
         <StatCard icon={<Flame size={16} />}  label="Study Streak"   value={`${profile?.streak_days ?? 0}d`} sub="days in a row" color="#f97316" />
         <XPCard xp={profile?.xp ?? 0} />
-        <StatCard icon={<BookOpen size={16} />} label="Topics Studied" value={`${progress?.length ?? 0}`} sub={`of ${AQA_TOPICS.length} total`} color="#22c55e" />
+        <StatCard icon={<BookOpen size={16} />} label="Topics Studied" value={`${progress?.length ?? 0}`} sub={`of ${allTopics.length} total`} color="#22c55e" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -133,7 +137,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {dueTopics.map(p => {
                   const slug  = slugById.get(p.topic_id) ?? p.topic_id
-                  const topic = AQA_TOPICS.find(t => t.slug === slug)
+                  const topic = allTopics.find(t => t.slug === slug)
                   return (
                     <Link key={p.id} href={`/practice?topic=${slug}`}
                       className="flex items-center gap-3 p-3 rounded-xl transition-all hover:scale-[1.01]"
@@ -195,7 +199,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <div className="space-y-3">
                 {weakTopics.map(p => {
                   const slug  = slugById.get(p.topic_id) ?? p.topic_id
-                  const topic = AQA_TOPICS.find(t => t.slug === slug)
+                  const topic = allTopics.find(t => t.slug === slug)
                   return (
                     <Link key={p.id} href={`/topics/${slug}`}
                       className="flex items-center gap-3 p-3 rounded-xl transition-all hover:scale-[1.01]"
@@ -217,7 +221,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <Section title="Recent Lessons" accent="#22c55e">
               <div className="space-y-2">
                 {recentLessons.map((l: any) => {
-                  const topic = AQA_TOPICS.find(t => t.slug === l.topic_id)
+                  const topic = allTopics.find(t => t.slug === l.topic_id)
                   return (
                     <div key={l.id} className="p-3 rounded-xl"
                       style={{ background: 'rgba(34,197,94,0.04)', border: '1px solid rgba(34,197,94,0.1)' }}>

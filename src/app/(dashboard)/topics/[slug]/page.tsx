@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
+import { GCSE_TOPICS } from '@/lib/curriculum/gcse-topics'
 import { masteryColor, masteryLabel } from '@/lib/bkt/bayesian-knowledge-tracing'
 import { JarvisChat } from '@/components/jarvis/JarvisChat'
 import { GenerateLessonButton } from '@/components/lessons/GenerateLessonButton'
@@ -11,8 +12,9 @@ interface Props { params: Promise<{ slug: string }> }
 
 export default async function TopicPage({ params }: Props) {
   const { slug } = await params
-  const topic = AQA_TOPICS.find(t => t.slug === slug)
+  const topic = AQA_TOPICS.find(t => t.slug === slug) ?? GCSE_TOPICS.find(t => t.slug === slug)
   if (!topic) notFound()
+  const isGCSE = slug.startsWith('gcse-')
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -55,7 +57,7 @@ export default async function TopicPage({ params }: Props) {
             <div>
               <h1 className="text-2xl font-bold text-white">{topic.name}</h1>
               <p className="text-sm mt-1" style={{ color: '#5a7aaa' }}>
-                {topic.year_group} · AQA A-level Mathematics
+                {topic.year_group} · {isGCSE ? 'AQA GCSE Mathematics' : 'AQA A-level Mathematics'}
               </p>
             </div>
             <Link href={`/practice?topic=${slug}`}

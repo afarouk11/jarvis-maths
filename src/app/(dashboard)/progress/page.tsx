@@ -6,7 +6,8 @@ import { GradeTrendChart } from '@/components/progress/GradeTrendChart'
 import { TopicMasteryMap } from '@/components/progress/TopicMasteryMap'
 import { getXPLevel } from '@/lib/xp-levels'
 import { masteryColor } from '@/lib/bkt/bayesian-knowledge-tracing'
-import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
+import { getTopics } from '@/lib/curriculum'
+import type { Level } from '@/lib/curriculum'
 
 const GRADE_IDX: Record<string, number> = { 'A*': 0, 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5 }
 const GRADE_COLOR: Record<string, string> = {
@@ -38,9 +39,12 @@ export default async function ProgressPage() {
   const totalCorrect = progressData.reduce((s: number, p: any) => s + (p.questions_correct ?? 0), 0)
   const accuracy = totalAttempted > 0 ? Math.round((totalCorrect / totalAttempted) * 100) : 0
 
+  const level = ((profile?.level as Level) ?? 'A-Level')
+  const allTopics = getTopics(level)
+
   const slugById    = new Map((topicsRows ?? []).map((t: any) => [t.id, t.slug]))
-  const topicNameMap = new Map(AQA_TOPICS.map(t => [t.slug, t.name]))
-  const topicIconMap = new Map(AQA_TOPICS.map(t => [t.slug, t.icon]))
+  const topicNameMap = new Map(allTopics.map(t => [t.slug, t.name]))
+  const topicIconMap = new Map(allTopics.map(t => [t.slug, t.icon]))
 
   const enriched = progressData
     .filter((p: any) => p.p_known > 0)
@@ -82,7 +86,7 @@ export default async function ProgressPage() {
         <div>
           <h1 className="text-2xl font-bold text-white">Your Progress</h1>
           <p className="text-sm mt-1" style={{ color: '#5a7aaa' }}>
-            {profile?.exam_board ?? 'AQA'} A-level Mathematics
+            {profile?.exam_board ?? 'AQA'} {level === 'GCSE' ? 'GCSE' : 'A-level'} Mathematics
             {profile?.target_grade && ` · Target: ${profile.target_grade}`}
             {profile?.exam_date && ` · Exam: ${new Date(profile.exam_date).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`}
           </p>
@@ -124,7 +128,7 @@ export default async function ProgressPage() {
             <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#5a7aaa' }}>Topics</p>
           </div>
           <p className="text-3xl font-bold" style={{ color: '#a78bfa' }}>{progressData.length}</p>
-          <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>of {AQA_TOPICS.length} started</p>
+          <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>of {allTopics.length} started</p>
         </div>
 
         {/* Streak */}

@@ -2,31 +2,22 @@
 
 import { useRef, useMemo, useState, useCallback, useEffect, Component, type ReactNode } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, Line } from '@react-three/drei'
+import { OrbitControls, Line, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { createNoise3D } from 'simplex-noise'
 import { motion } from 'framer-motion'
-import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
 import { TOPIC_EDGES } from '@/lib/curriculum/topic-graph'
 import { masteryLabel } from '@/lib/bkt/bayesian-knowledge-tracing'
+import type { Topic } from '@/types'
 
-// Red (0%) → amber (50%) → neon blue (100%)
+// Red (0%) → blue (50%) → green (100%)
 function progressColor(pKnown: number): string {
   if (pKnown <= 0.5) {
-    // Red → amber
     const t = pKnown / 0.5
-    const r = Math.round(255)
-    const g = Math.round(t * 160)
-    const b = Math.round(0)
-    return `rgb(${r},${g},${b})`
-  } else {
-    // Amber → neon blue
-    const t = (pKnown - 0.5) / 0.5
-    const r = Math.round(255 * (1 - t))
-    const g = Math.round(160 * (1 - t) + 100 * t)
-    const b = Math.round(255 * t)
-    return `rgb(${r},${g},${b})`
+    return `rgb(${Math.round(239 + (59 - 239) * t)},${Math.round(68 + (130 - 68) * t)},${Math.round(68 + (246 - 68) * t)})`
   }
+  const t = (pKnown - 0.5) / 0.5
+  return `rgb(${Math.round(59 + (34 - 59) * t)},${Math.round(130 + (197 - 130) * t)},${Math.round(246 + (94 - 246) * t)})`
 }
 
 function progressHex(pKnown: number): string {
@@ -269,13 +260,14 @@ function InstancedPulses({ arcs, colors }: { arcs: THREE.Vector3[][]; colors: st
 
 // ── Neuron node ───────────────────────────────────────────────────────────────
 function Neuron({
-  position, color, name, slug, pKnown, onHover, onClick,
+  position, color, name, slug, pKnown, active, onHover, onClick,
 }: {
   position: THREE.Vector3
   color: string
   name: string
   slug: string
   pKnown: number
+  active: boolean
   onHover: (info: { name: string; slug: string; pKnown: number } | null) => void
   onClick: (slug: string) => void
 }) {
@@ -300,8 +292,8 @@ function Neuron({
       <meshStandardMaterial
         color={color}
         emissive={color}
-        emissiveIntensity={hovered ? 10 : 5}
-        transparent opacity={1}
+        emissiveIntensity={!active ? 0.5 : hovered ? 10 : 5}
+        transparent opacity={active ? 1 : 0.12}
       />
     </mesh>
   )
@@ -350,28 +342,78 @@ function NeuralScene({
   progress,
   onHover,
   onClick,
+  sectionFilter,
+  topics,
+  topicCategories,
 }: {
   progress: StudentProgress[]
   onHover: (info: { name: string; slug: string; pKnown: number } | null) => void
   onClick: (slug: string) => void
+  sectionFilter: string | null
+  topics: Omit<Topic, 'id' | 'parent_id'>[]
+  topicCategories: Record<string, string[]>
 }) {
   const slugMap = useMemo(() => new Map(progress.map(p => [p.topic_id, p.p_known])), [progress])
 
+  const filteredSlugs = useMemo(() => {
+    if (sectionFilter === null) return null
+    const slugs = topicCategories[sectionFilter] ?? []
+    return new Set(slugs)
+  }, [sectionFilter, topicCategories])
+
   const nodePositions = useMemo(() => {
     const map = new Map<string, THREE.Vector3>()
-    const phi = Math.PI * (3 - Math.sqrt(5))
-    AQA_TOPICS.forEach((t, i) => {
-      const y = 1 - (i / (AQA_TOPICS.length - 1)) * 2
-      const r = Math.sqrt(Math.max(0, 1 - y * y))
-      const theta = phi * i
-      const side = Math.cos(theta) >= 0 ? 1 : -1
-      const x = (Math.cos(theta) * r * 1.05 + side * 0.12) * 1.08 * 1.3
-      const yy = y * 1.12 * 1.08 * 1.3
-      const z = Math.sin(theta) * r * 0.88 * 1.08 * 1.3
-      map.set(t.slug, new THREE.Vector3(x, yy, z))
-    })
+    const R = 1.3
+
+    // For A-level: cluster neurons into 3 spatial zones on the sphere surface.
+    // Pure → front/upper, Stats → left, Mechanics → right.
+    const A_LEVEL_ZONES: Record<string, { cx: number; cy: number; cz: number; halfAngle: number }> = {
+      'Pure Mathematics': { cx: 0,    cy: 0.5,   cz: 1,     halfAngle: 1.0 },
+      'Statistics':       { cx: -1,   cy: 0.1,   cz: -0.55, halfAngle: 0.85 },
+      'Mechanics':        { cx: 1,    cy: -0.15, cz: -0.55, halfAngle: 0.80 },
+    }
+
+    function placeInCap(slugs: string[], cx: number, cy: number, cz: number, halfAngle: number) {
+      const center = new THREE.Vector3(cx, cy, cz).normalize()
+      const ref = Math.abs(center.x) < 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0)
+      const u = new THREE.Vector3().crossVectors(ref, center).normalize()
+      const v = new THREE.Vector3().crossVectors(center, u).normalize()
+      const cosMax = Math.cos(halfAngle)
+      const phi = Math.PI * (3 - Math.sqrt(5))
+      slugs.forEach((slug, i) => {
+        const cosT = 1 - ((i + 0.5) / slugs.length) * (1 - cosMax)
+        const sinT = Math.sqrt(Math.max(0, 1 - cosT * cosT))
+        const angle = phi * i
+        const pos = u.clone().multiplyScalar(sinT * Math.cos(angle))
+          .add(v.clone().multiplyScalar(sinT * Math.sin(angle)))
+          .add(center.clone().multiplyScalar(cosT))
+          .multiplyScalar(R)
+        map.set(slug, pos)
+      })
+    }
+
+    const handled = new Set<string>()
+    for (const [sec, zone] of Object.entries(A_LEVEL_ZONES)) {
+      const slugsInSec = (topicCategories[sec] ?? []).filter(s => topics.some(t => t.slug === s))
+      if (slugsInSec.length === 0) continue
+      placeInCap(slugsInSec, zone.cx, zone.cy, zone.cz, zone.halfAngle)
+      slugsInSec.forEach(s => handled.add(s))
+    }
+
+    // GCSE or uncategorised: uniform Fibonacci spiral
+    const remaining = topics.filter(t => !handled.has(t.slug))
+    if (remaining.length > 0) {
+      const phi = Math.PI * (3 - Math.sqrt(5))
+      remaining.forEach((t, i) => {
+        const y = 1 - (i / Math.max(1, remaining.length - 1)) * 2
+        const r = Math.sqrt(Math.max(0, 1 - y * y))
+        const theta = phi * i
+        map.set(t.slug, new THREE.Vector3(Math.cos(theta) * r * R, y * R, Math.sin(theta) * r * R))
+      })
+    }
+
     return map
-  }, [])
+  }, [topics, topicCategories])
 
   const edgeData = useMemo(() => (
     TOPIC_EDGES
@@ -391,10 +433,11 @@ function NeuralScene({
       <InstancedPulses arcs={edgeData.map(e => e.arc)} colors={edgeData.map(e => e.color)} />
 
       {/* Neurons */}
-      {AQA_TOPICS.map(t => {
+      {topics.map(t => {
         const pos = nodePositions.get(t.slug)!
         const pKnown = slugMap.get(t.slug) ?? 0
         const color = progressHex(pKnown)
+        const active = filteredSlugs === null || filteredSlugs.has(t.slug)
         return (
           <Neuron
             key={t.slug}
@@ -403,20 +446,54 @@ function NeuralScene({
             name={t.name}
             slug={t.slug}
             pKnown={pKnown}
+            active={active}
             onHover={onHover}
             onClick={onClick}
           />
         )
       })}
+
+      {/* Section labels — only for A-level (Pure / Stats / Mech) */}
+      {'Pure Mathematics' in topicCategories && (
+        <>
+          <Html position={[0, 2.0, 2.1]} center distanceFactor={8} style={{ pointerEvents: 'none' }}>
+            <div style={{
+              background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.35)',
+              borderRadius: 6, padding: '3px 9px', color: '#93c5fd',
+              fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.12em',
+              whiteSpace: 'nowrap', textTransform: 'uppercase', backdropFilter: 'blur(4px)',
+            }}>PURE</div>
+          </Html>
+          <Html position={[-2.3, 0.3, -1.2]} center distanceFactor={8} style={{ pointerEvents: 'none' }}>
+            <div style={{
+              background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)',
+              borderRadius: 6, padding: '3px 9px', color: '#fcd34d',
+              fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.12em',
+              whiteSpace: 'nowrap', textTransform: 'uppercase', backdropFilter: 'blur(4px)',
+            }}>STATS</div>
+          </Html>
+          <Html position={[2.3, -0.3, -1.2]} center distanceFactor={8} style={{ pointerEvents: 'none' }}>
+            <div style={{
+              background: 'rgba(168,85,247,0.12)', border: '1px solid rgba(168,85,247,0.35)',
+              borderRadius: 6, padding: '3px 9px', color: '#c4b5fd',
+              fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.12em',
+              whiteSpace: 'nowrap', textTransform: 'uppercase', backdropFilter: 'blur(4px)',
+            }}>MECH</div>
+          </Html>
+        </>
+      )}
     </>
   )
 }
 
 // ── Main exported scene ───────────────────────────────────────────────────────
-export default function BrainScene({ progress, onHover, onClick }: {
+export default function BrainScene({ progress, onHover, onClick, sectionFilter, topics, topicCategories }: {
   progress: StudentProgress[]
   onHover: (info: { name: string; slug: string; pKnown: number } | null) => void
   onClick: (slug: string) => void
+  sectionFilter: string | null
+  topics: Omit<Topic, 'id' | 'parent_id'>[]
+  topicCategories: Record<string, string[]>
 }) {
   const handleHover = useCallback(onHover, [onHover])
   const handleClick = useCallback(onClick, [onClick])
@@ -457,7 +534,7 @@ export default function BrainScene({ progress, onHover, onClick }: {
           <group>
             <BrainMesh />
             <HoloRings />
-            <NeuralScene progress={progress} onHover={handleHover} onClick={handleClick} />
+            <NeuralScene progress={progress} onHover={handleHover} onClick={handleClick} sectionFilter={sectionFilter} topics={topics} topicCategories={topicCategories} />
           </group>
           <OrbitControls enablePan={false} minDistance={4} maxDistance={14} autoRotate autoRotateSpeed={0.5} />
 
