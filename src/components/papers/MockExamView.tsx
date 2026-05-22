@@ -13,7 +13,7 @@ interface MockQuestion {
 }
 interface MockSection { name: string; questions: MockQuestion[] }
 export interface MockPaper {
-  title: string; totalMarks: number; timeMinutes: number; sections: MockSection[]
+  title: string; totalMarks: number; timeMinutes: number; sections: MockSection[]; examBoard?: string
 }
 
 interface QuestionState {
@@ -176,7 +176,7 @@ export function MockExamView({ paper, focusTopics, onClose }: {
                 </div>
               </div>
               <div style={{ textAlign: 'right', fontFamily: 'Arial, sans-serif' }}>
-                <div style={{ fontSize: 24, fontWeight: 700, color: '#000', letterSpacing: 1 }}>AQA</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: '#000', letterSpacing: 1 }}>{paper.examBoard ?? 'AQA'}</div>
                 <div style={{ fontSize: 11, color: '#444', marginTop: 4 }}>Time allowed: {paper.timeMinutes} minutes</div>
                 <div style={{ fontSize: 11, color: '#444' }}>Total marks: {paper.totalMarks}</div>
               </div>

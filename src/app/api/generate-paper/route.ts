@@ -126,7 +126,7 @@ async function generateALevelPaper({ body, board, admin, userId, supabase }: any
 
   const paper = parseJson(text)
   if (!paper) return NextResponse.json({ error: 'Failed to parse paper JSON' }, { status: 500 })
-  return NextResponse.json({ paper, focusTopics: selected.map(t => t.name) })
+  return NextResponse.json({ paper: { ...paper, examBoard: board }, focusTopics: selected.map(t => t.name) })
 }
 
 // ── GCSE generator ────────────────────────────────────────────────────────────
@@ -180,7 +180,7 @@ async function generateGcsePaper({ body, board, admin, userId, supabase }: any) 
 
   const paper = parseJson(text)
   if (!paper) return NextResponse.json({ error: 'Failed to parse paper JSON' }, { status: 500 })
-  return NextResponse.json({ paper, focusTopics: selected.map(t => t.name) })
+  return NextResponse.json({ paper: { ...paper, examBoard: board }, focusTopics: selected.map(t => t.name) })
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
