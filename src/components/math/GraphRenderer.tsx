@@ -2,6 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react'
 
+export interface AnimateHighlight {
+  x: number
+  y: number
+  label: string
+  color?: string
+}
+
 export interface AnimateSpec {
   title?: string
   xDomain?: [number, number]
@@ -10,6 +17,7 @@ export interface AnimateSpec {
     label?: string
     data: GraphSpec['data']
     annotations?: GraphSpec['annotations']
+    highlights?: AnimateHighlight[]
   }>
 }
 
@@ -144,11 +152,22 @@ export function AnimatedGraphRenderer({ spec, currentStep, className }: { spec: 
   const combinedData = visibleSteps.flatMap(s => s.data)
   const combinedAnnotations = visibleSteps.flatMap(s => s.annotations ?? [])
 
+  // Current step's highlights (not accumulated — only show the latest set)
+  const currentHighlights = visibleSteps[visibleSteps.length - 1]?.highlights ?? []
+
+  // Add highlight points as scatter data so they appear on the graph
+  const highlightScatter = currentHighlights.map(h => ({
+    points: [[h.x, h.y]] as [number, number][],
+    fnType: 'points' as const,
+    graphType: 'scatter' as const,
+    color: h.color ?? '#fbbf24',
+  }))
+
   const builtSpec: GraphSpec = {
     title: spec.title,
     xDomain: spec.xDomain,
     yDomain: spec.yDomain,
-    data: combinedData,
+    data: [...combinedData, ...highlightScatter],
     annotations: combinedAnnotations.length ? combinedAnnotations : undefined,
   }
 
@@ -172,10 +191,10 @@ export function AnimatedGraphRenderer({ spec, currentStep, className }: { spec: 
           color: d.color ?? COLORS[i % COLORS.length],
         }))
 
-        functionPlot({
+        const instance = functionPlot({
           target: `#${id}`,
           width: container.clientWidth || 460,
-          height: 280,
+          height: 260,
           xAxis: { domain: builtSpec.xDomain ?? [-10, 10], label: 'x' },
           yAxis: { domain: builtSpec.yDomain ?? [-10, 10], label: 'y' },
           grid: true,
@@ -184,11 +203,23 @@ export function AnimatedGraphRenderer({ spec, currentStep, className }: { spec: 
           tip: { xLine: true, yLine: true },
         })
 
+        // Style highlight scatter points larger via SVG after render
+        if (currentHighlights.length > 0) {
+          setTimeout(() => {
+            const circles = container.querySelectorAll<SVGCircleElement>('circle.circle')
+            circles.forEach(c => {
+              c.setAttribute('r', '7')
+              c.style.filter = 'drop-shadow(0 0 6px currentColor)'
+            })
+          }, 60)
+        }
+
         // Animate newly added paths with stroke-dashoffset draw-in
         if (isNewStep && prevStepRef.current >= 0) {
           setTimeout(() => {
             const paths = container.querySelectorAll<SVGPathElement>('path.line')
-            const newPaths = Array.from(paths).slice(-builtSpec.data.length + (currentStep > 0 ? spec.steps.slice(0, currentStep).flatMap(s => s.data).length : 0))
+            const prevDataLen = currentStep > 0 ? spec.steps.slice(0, currentStep).flatMap(s => s.data).length : 0
+            const newPaths = Array.from(paths).slice(prevDataLen)
             newPaths.forEach(path => {
               const len = path.getTotalLength?.() ?? 0
               if (!len) return
@@ -211,23 +242,53 @@ export function AnimatedGraphRenderer({ spec, currentStep, className }: { spec: 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep, JSON.stringify(builtSpec)])
 
+  const currentStepLabel = visibleSteps[visibleSteps.length - 1]?.label
+
   return (
     <div className={className}>
       {spec.title && (
         <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-2">{spec.title}</p>
       )}
-      {visibleSteps[visibleSteps.length - 1]?.label && (
-        <p className="text-xs mb-1" style={{ color: 'rgba(245,158,11,0.6)' }}>
-          {visibleSteps[visibleSteps.length - 1].label}
+      {currentStepLabel && (
+        <p className="text-xs mb-2" style={{ color: 'rgba(245,158,11,0.7)' }}>
+          {currentStepLabel}
         </p>
       )}
+
+      {/* Highlight callout strip — shown when the current step has highlights */}
+      {currentHighlights.length > 0 && (
+        <div
+          className="flex flex-wrap gap-2 mb-2"
+          style={{ animation: 'fadeIn 0.3s ease-out' }}
+        >
+          {currentHighlights.map((h, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold"
+              style={{
+                background: `${h.color ?? '#fbbf24'}18`,
+                border: `1px solid ${h.color ?? '#fbbf24'}55`,
+                color: h.color ?? '#fbbf24',
+              }}
+            >
+              <svg width="8" height="8" viewBox="0 0 8 8">
+                <circle cx="4" cy="4" r="4" fill={h.color ?? '#fbbf24'} />
+              </svg>
+              <span>({h.x}, {h.y})</span>
+              <span style={{ opacity: 0.7 }}>—</span>
+              <span>{h.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div
         ref={containerRef}
         className="w-full rounded-xl overflow-hidden"
         style={{
           background: 'rgba(8,13,28,0.8)',
           border: '1px solid rgba(59,130,246,0.15)',
-          minHeight: 280,
+          minHeight: 260,
         }}
       />
     </div>

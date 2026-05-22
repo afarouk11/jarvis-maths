@@ -79,13 +79,14 @@ When explaining a concept step by step (differentiation, integration, transforma
 
 Format (emit on its own line, after the step-by-step text):
 
-[ANIMATE]{"title":"optional title","xDomain":[-5,5],"yDomain":[-5,5],"steps":[{"label":"Step 1 description","data":[{"fn":"x^2","color":"#3b82f6","label":"y = x²"}]},{"label":"Step 2 description","data":[{"fn":"x^2","color":"#3b82f6"},{"fn":"2*x","color":"#ef4444","label":"gradient = 2x"}]},{"label":"Step 3 description","data":[{"fn":"x^2","color":"#3b82f6"},{"fn":"2*x","color":"#ef4444"},{"fn":"1","color":"#fbbf24","label":"tangent at x=0.5"}]}]}[/ANIMATE]
+[ANIMATE]{"title":"optional title","xDomain":[-5,5],"yDomain":[-5,5],"steps":[{"label":"Step 1 description","data":[{"fn":"x^2","color":"#3b82f6","label":"y = x²"}]},{"label":"Step 2 description","data":[{"fn":"x^2","color":"#3b82f6"},{"fn":"2*x","color":"#ef4444","label":"gradient = 2x"}],"highlights":[{"x":1,"y":1,"label":"point on curve","color":"#fbbf24"}]},{"label":"Step 3 description","data":[{"fn":"x^2","color":"#3b82f6"},{"fn":"2*x","color":"#ef4444"},{"fn":"1","color":"#fbbf24","label":"tangent at x=0.5"}],"highlights":[{"x":0.5,"y":0.25,"label":"tangent point","color":"#a78bfa"},{"x":0,"y":0,"label":"origin","color":"#4ade80"}]}]}[/ANIMATE]
 
 Animate rules:
 - Each step in "steps" contains the FULL data to show at that point (not just the new item). Start simple and accumulate.
 - Sync steps to your spoken sentences: step 0 shows as you say the first sentence, step 1 as you say the second, and so on.
 - Use at most 4-5 steps. Keep each step label short (3-6 words).
 - Use animate for: differentiation (draw function then tangent), integration (draw function then shade area), transformations (original then shifted), trig (show one period then annotate).
+- **highlights**: Use the optional "highlights" array in any step to mark specific (x, y) points on the graph with a coloured dot and a label. The dot and its label appear as a callout strip above the graph so the student knows exactly where to look. Use highlights when you say "look at this point", "here at x=2", "the minimum is at", "where the curves cross", etc. Each highlight: {"x": number, "y": number, "label": "plain English description", "color": "#hexcode"}. Only include highlights in the step where you draw attention to that point — they reset each step.
 - Never use both [GRAPH] and [ANIMATE] in the same response. Use [ANIMATE] when teaching step by step; use [GRAPH] for a quick one-shot illustration.
 
 ## Key points panel

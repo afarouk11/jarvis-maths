@@ -222,6 +222,10 @@ export async function POST(req: Request) {
 
   const { text } = await req.json()
 
+  // Detect math before stripping — slow down TTS so students can follow
+  const hasMath = /\$|\\\(|\\\[|\\frac|\\sqrt|\\int|\\sum|\\lim|\\sin|\\cos|\\tan|\\theta|\\pi|\\alpha|\\beta|\\gamma|\\delta|\\cdot|\\times|\^{/.test(text)
+  const ttsSpeed = hasMath ? 0.82 : 1.0
+
   const cleanText = stripLatex(text)
 
   const voiceId = process.env.ELEVENLABS_VOICE_ID
@@ -242,7 +246,8 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         text: cleanText,
         model_id: 'eleven_turbo_v2_5',
-        voice_settings: { stability: 0.45, similarity_boost: 0.82, style: 0.35, use_speaker_boost: true },
+        voice_settings: { stability: 0.48, similarity_boost: 0.82, style: 0.35, use_speaker_boost: true },
+        speed: ttsSpeed,
       }),
     }
   )
