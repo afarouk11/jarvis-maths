@@ -272,7 +272,10 @@ export function useSpeechToText(onResult: (text: string) => void) {
 
   const startListening = useCallback(() => {
     const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition
-    if (!SR) return
+    if (!SR) {
+      alert('Speech recognition is not supported in this browser. Please use Chrome or Edge.')
+      return
+    }
 
     const rec = new SR() as any
     rec.continuous     = false
@@ -280,15 +283,27 @@ export function useSpeechToText(onResult: (text: string) => void) {
     rec.lang           = 'en-GB'
 
     rec.onresult = (e: any) => {
-      const transcript = e.results[0][0].transcript as string
-      onResult(transcript)
+      const result = e.results?.[0]?.[0]
+      if (result?.transcript) onResult(result.transcript as string)
     }
     rec.onend   = () => setListening(false)
-    rec.onerror = () => setListening(false)
+    rec.onerror = (e: any) => {
+      setListening(false)
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+        alert('Microphone access was denied. Please allow microphone permission in your browser settings and try again.')
+      } else if (e.error !== 'no-speech' && e.error !== 'aborted') {
+        alert(`Microphone error: ${e.error}. Please check your microphone and try again.`)
+      }
+    }
 
     recognitionRef.current = rec
-    rec.start()
-    setListening(true)
+    try {
+      rec.start()
+      setListening(true)
+    } catch (err) {
+      console.error('Failed to start speech recognition:', err)
+      setListening(false)
+    }
   }, [onResult])
 
   const stopListening = useCallback(() => {
