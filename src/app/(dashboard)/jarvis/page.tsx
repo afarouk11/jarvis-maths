@@ -1,19 +1,14 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import dynamic from 'next/dynamic'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, isReasoningUIPart, isTextUIPart } from 'ai'
 import { Send, Mic, MicOff, Volume2, VolumeX, RefreshCw, Zap, Check, X } from 'lucide-react'
 import { ThinkingBlock } from '@/components/jarvis/ThinkingBlock'
+import { JarvisAvatar } from '@/components/jarvis/JarvisAvatar'
 import { CHAT_SKILL_MODES, type SkillModeId } from '@/lib/spok-skills'
 import { useAccessibility } from '@/hooks/useAccessibility'
-
-const JarvisScene = dynamic(
-  () => import('@/components/jarvis/JarvisScene').then(m => m.JarvisScene),
-  { ssr: false, loading: () => <div className="w-full h-full" /> }
-)
 import { SpokMessage } from '@/components/math/SpokMessage'
 import { AnimatedGraphRenderer, parseAnimateSpec, type AnimateSpec } from '@/components/math/GraphRenderer'
 import { useJarvisVoice, useSpeechToText, createSentenceBuffer } from '@/hooks/useJarvisVoice'
@@ -631,14 +626,12 @@ export default function SpokPage() {
                   style={{ background: 'rgba(245,158,11,0.6)' }} />
               </motion.div>
 
-              {/* Three.js neural sphere — click to talk */}
-              <div className="relative z-10 w-80 h-80">
-                <JarvisScene
-                  state={jarvisState}
-                  amplitude={amplitude}
-                  className="w-full h-full"
-                  onClick={() => listening ? stopListening() : startListening()}
-                />
+              {/* SPOK crest avatar — click to talk */}
+              <div
+                className="relative z-10 cursor-pointer"
+                onClick={() => listening ? stopListening() : startListening()}
+              >
+                <JarvisAvatar state={jarvisState} size={300} amplitude={amplitude} />
               </div>
 
               {/* Click hint */}
