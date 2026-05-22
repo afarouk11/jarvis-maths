@@ -273,8 +273,8 @@ function PracticePageInner() {
             value={selectedSlug}
             onChange={e => setSelectedSlug(e.target.value)}
             className="px-3 py-2 rounded-lg text-sm outline-none"
-            style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', color: '#e8f0fe' }}>
-            {allTopics.map(t => <option key={t.slug} value={t.slug}>{t.name}</option>)}
+            style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', color: '#e8f0fe', colorScheme: 'dark' }}>
+            {allTopics.map(t => <option key={t.slug} value={t.slug} style={{ background: '#1e3a5f', color: '#e8f0fe' }}>{t.name}</option>)}
           </select>
           <motion.button
             whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
