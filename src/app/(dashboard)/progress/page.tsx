@@ -31,8 +31,8 @@ export default async function ProgressPage() {
   const progressData = (progress ?? []) as any[]
   const snapshotsData = snapshots ?? []
 
-  const avgPKnown = progressData.length > 0
-    ? progressData.reduce((s: number, p: any) => s + p.p_known, 0) / progressData.length
+  const avgPKnown = allTopics.length > 0
+    ? progressData.reduce((s: number, p: any) => s + p.p_known, 0) / allTopics.length
     : 0
 
   const totalAttempted = progressData.reduce((s: number, p: any) => s + (p.questions_attempted ?? 0), 0)

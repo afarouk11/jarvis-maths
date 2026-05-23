@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { updateBKT, predictedGrade } from '@/lib/bkt/bayesian-knowledge-tracing'
 import { updateSM2, qualityFromCorrect } from '@/lib/sm2/spaced-repetition'
+import { getTopics } from '@/lib/curriculum'
 import { BKTState } from '@/types'
 
 export async function GET() {
@@ -87,7 +88,7 @@ export async function POST(req: Request) {
   // Update XP and streak on the profile
   const { data: prof } = await supabase
     .from('profiles')
-    .select('xp, streak_days, last_active_at')
+    .select('xp, streak_days, last_active_at, level')
     .eq('id', user.id)
     .single()
 
@@ -131,7 +132,8 @@ export async function POST(req: Request) {
       .select('p_known')
       .eq('student_id', user.id)
     if (allProgress && allProgress.length > 0) {
-      const avg = allProgress.reduce((s, p) => s + p.p_known, 0) / allProgress.length
+      const totalTopics = getTopics(prof?.level ?? 'A-Level').length
+      const avg = allProgress.reduce((s, p) => s + p.p_known, 0) / totalTopics
       await supabase.from('grade_snapshots').insert({
         student_id: user.id,
         avg_p_known: avg,

@@ -41,7 +41,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const progressMap = new Map((progress ?? []).map(p => [p.topic_id, p]))
   const pKnownMap   = new Map((progress ?? []).map(p => [p.topic_id, p.p_known]))
   const dueTopics   = (progress ?? []).filter(p => new Date(p.next_review_at) <= new Date()).slice(0, 4)
-  const avgPKnown   = progress?.length ? progress.reduce((s, p) => s + p.p_known, 0) / progress.length : 0
+  const avgPKnown   = allTopics.length > 0 ? (progress ?? []).reduce((s, p) => s + p.p_known, 0) / allTopics.length : 0
   const grade       = predictedGrade(avgPKnown)
   const name        = profile?.full_name?.split(' ')[0] ?? 'Student'
   const weakTopics  = [...(progress ?? [])].sort((a, b) => a.p_known - b.p_known).slice(0, 3)
