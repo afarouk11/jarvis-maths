@@ -31,19 +31,19 @@ export default async function ProgressPage() {
   const progressData = (progress ?? []) as any[]
   const snapshotsData = snapshots ?? []
 
-  const avgPKnown = allTopics.length > 0
-    ? progressData.reduce((s: number, p: any) => s + p.p_known, 0) / allTopics.length
-    : 0
-  const attemptedAvgPKnown = progressData.length > 0
-    ? progressData.reduce((s: number, p: any) => s + p.p_known, 0) / progressData.length
-    : 0
-
   const totalAttempted = progressData.reduce((s: number, p: any) => s + (p.questions_attempted ?? 0), 0)
   const totalCorrect = progressData.reduce((s: number, p: any) => s + (p.questions_correct ?? 0), 0)
   const accuracy = totalAttempted > 0 ? Math.round((totalCorrect / totalAttempted) * 100) : 0
 
   const level = ((profile?.level as Level) ?? 'A-Level')
   const allTopics = getTopics(level)
+
+  const avgPKnown = allTopics.length > 0
+    ? progressData.reduce((s: number, p: any) => s + p.p_known, 0) / allTopics.length
+    : 0
+  const attemptedAvgPKnown = progressData.length > 0
+    ? progressData.reduce((s: number, p: any) => s + p.p_known, 0) / progressData.length
+    : 0
 
   const slugById    = new Map((topicsRows ?? []).map((t: any) => [t.id, t.slug]))
   const topicNameMap = new Map(allTopics.map(t => [t.slug, t.name]))
