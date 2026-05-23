@@ -41,7 +41,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const progressMap = new Map((progress ?? []).map(p => [p.topic_id, p]))
   const pKnownMap   = new Map((progress ?? []).map(p => [p.topic_id, p.p_known]))
   const dueTopics   = (progress ?? []).filter(p => new Date(p.next_review_at) <= new Date()).slice(0, 4)
-  const avgPKnown   = allTopics.length > 0 ? (progress ?? []).reduce((s, p) => s + p.p_known, 0) / allTopics.length : 0
+  const avgPKnown          = allTopics.length > 0 ? (progress ?? []).reduce((s, p) => s + p.p_known, 0) / allTopics.length : 0
+  const attemptedAvgPKnown = (progress ?? []).length > 0 ? (progress ?? []).reduce((s, p) => s + p.p_known, 0) / (progress ?? []).length : 0
   const grade       = predictedGrade(avgPKnown)
   const name        = profile?.full_name?.split(' ')[0] ?? 'Student'
   const weakTopics  = [...(progress ?? [])].sort((a, b) => a.p_known - b.p_known).slice(0, 3)
@@ -117,7 +118,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       {/* Key stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon={<Trophy size={16} />} label="Predicted Grade" value={grade} sub={`${Math.round(avgPKnown * 100)}% mastery`} color={gradeColor} />
+        <StatCard icon={<Trophy size={16} />} label="Predicted Grade" value={grade} sub={`${Math.round(avgPKnown * 100)}% across all topics`} sub2={`${Math.round(attemptedAvgPKnown * 100)}% within studied topics`} color={gradeColor} />
         <StatCard icon={<Flame size={16} />}  label="Study Streak"   value={`${profile?.streak_days ?? 0}d`} sub="days in a row" color="#f97316" />
         <XPCard xp={profile?.xp ?? 0} />
         <StatCard icon={<BookOpen size={16} />} label="Topics Studied" value={`${progress?.length ?? 0}`} sub={`of ${allTopics.length} total`} color="#22c55e" />
@@ -241,8 +242,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   )
 }
 
-function StatCard({ icon, label, value, sub, color }: {
-  icon: React.ReactNode; label: string; value: string; sub: string; color: string
+function StatCard({ icon, label, value, sub, sub2, color }: {
+  icon: React.ReactNode; label: string; value: string; sub: string; sub2?: string; color: string
 }) {
   return (
     <div className="p-5 rounded-2xl relative overflow-hidden"
@@ -257,6 +258,7 @@ function StatCard({ icon, label, value, sub, color }: {
         {value}
       </p>
       <p className="text-xs" style={{ color: '#5a7aaa', position: 'relative' }}>{sub}</p>
+      {sub2 && <p className="text-xs mt-0.5" style={{ color: '#374151', position: 'relative' }}>{sub2}</p>}
     </div>
   )
 }

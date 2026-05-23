@@ -34,6 +34,9 @@ export default async function ProgressPage() {
   const avgPKnown = allTopics.length > 0
     ? progressData.reduce((s: number, p: any) => s + p.p_known, 0) / allTopics.length
     : 0
+  const attemptedAvgPKnown = progressData.length > 0
+    ? progressData.reduce((s: number, p: any) => s + p.p_known, 0) / progressData.length
+    : 0
 
   const totalAttempted = progressData.reduce((s: number, p: any) => s + (p.questions_attempted ?? 0), 0)
   const totalCorrect = progressData.reduce((s: number, p: any) => s + (p.questions_correct ?? 0), 0)
@@ -113,6 +116,14 @@ export default async function ProgressPage() {
             style={{ color: GRADE_COLOR[profile?.target_grade ?? 'A'] ?? '#3b82f6' }}>
             {lastSnap?.grade ?? 'N/A'}
           </p>
+          <p className="text-xs mt-1" style={{ color: '#5a7aaa' }}>
+            {Math.round(avgPKnown * 100)}% across all topics
+          </p>
+          {progressData.length > 0 && (
+            <p className="text-xs mt-0.5" style={{ color: '#374151' }}>
+              {Math.round(attemptedAvgPKnown * 100)}% within studied topics
+            </p>
+          )}
           {gradeImproved !== null && (
             <p className="text-xs mt-1 font-semibold" style={{ color: gradeImproved ? '#22c55e' : '#f59e0b' }}>
               {gradeImproved ? `Up from ${firstSnap.grade}` : `Same as start`}

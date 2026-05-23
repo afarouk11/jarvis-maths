@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { getTopics } from '@/lib/curriculum'
+import type { Level } from '@/lib/curriculum'
 import { GradePrediction } from '@/components/progress/GradePrediction'
 import { GradeTrendChart } from '@/components/progress/GradeTrendChart'
 import { StreakBadge } from '@/components/progress/StreakBadge'
@@ -21,7 +23,11 @@ export default async function ProfilePage() {
   ])
 
   const progressData = progress ?? []
-  const avgPKnown = progressData.length > 0
+  const allTopics = getTopics(((profile?.level as Level) ?? 'A-Level'))
+  const avgPKnown = allTopics.length > 0
+    ? progressData.reduce((s: number, p: any) => s + p.p_known, 0) / allTopics.length
+    : 0
+  const attemptedAvgPKnown = progressData.length > 0
     ? progressData.reduce((s: number, p: any) => s + p.p_known, 0) / progressData.length
     : 0
 
@@ -35,7 +41,7 @@ export default async function ProfilePage() {
         </p>
       </div>
 
-      <GradePrediction avgPKnown={avgPKnown} targetGrade={profile?.target_grade} />
+      <GradePrediction avgPKnown={avgPKnown} targetGrade={profile?.target_grade} attemptedAvgPKnown={attemptedAvgPKnown} attemptedCount={progressData.length} />
       <GradeTrendChart snapshots={snapshots ?? []} />
       <StreakBadge streakDays={profile?.streak_days ?? 0} xp={profile?.xp ?? 0} />
 

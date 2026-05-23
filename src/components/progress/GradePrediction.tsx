@@ -18,9 +18,11 @@ const GRADE_COLOR: Record<string, string> = {
 interface Props {
   avgPKnown: number
   targetGrade?: string
+  attemptedAvgPKnown?: number
+  attemptedCount?: number
 }
 
-export function GradePrediction({ avgPKnown, targetGrade }: Props) {
+export function GradePrediction({ avgPKnown, targetGrade, attemptedAvgPKnown, attemptedCount }: Props) {
   const grade = predictedGrade(avgPKnown)
   const color = GRADE_COLOR[grade] ?? '#3b82f6'
   const pct = Math.round(avgPKnown * 100)
@@ -47,7 +49,7 @@ export function GradePrediction({ avgPKnown, targetGrade }: Props) {
             {grade}
           </motion.div>
           <p className="text-xs mt-1" style={{ color: '#5a7aaa' }}>
-            {pct}% average mastery
+            {pct}% across all topics
           </p>
         </div>
         <div className="text-right">
@@ -63,6 +65,24 @@ export function GradePrediction({ avgPKnown, targetGrade }: Props) {
           )}
         </div>
       </div>
+
+      {/* Secondary stat — mastery within studied topics only */}
+      {attemptedAvgPKnown !== undefined && (
+        <div className="flex items-center justify-between mb-3 px-3 py-2 rounded-lg"
+          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div>
+            <p className="text-xs font-semibold" style={{ color: '#93c5fd' }}>
+              {Math.round(attemptedAvgPKnown * 100)}%
+            </p>
+            <p className="text-xs" style={{ color: '#4a6070' }}>
+              mastery within studied topics{attemptedCount !== undefined ? ` (${attemptedCount})` : ''}
+            </p>
+          </div>
+          <p className="text-xs text-right" style={{ color: '#374151', maxWidth: 100 }}>
+            Overall grade includes unstudied topics
+          </p>
+        </div>
+      )}
 
       {/* Grade scale */}
       <div className="flex gap-1">
