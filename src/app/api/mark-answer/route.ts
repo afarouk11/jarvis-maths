@@ -1,11 +1,22 @@
 import { anthropic } from '@ai-sdk/anthropic'
 import { generateText } from 'ai'
 import { createClient } from '@/lib/supabase/server'
+import { isPro } from '@/lib/stripe'
 
 export async function POST(req: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: prof } = await supabase
+    .from('profiles')
+    .select('stripe_subscription_status')
+    .eq('id', user.id)
+    .single()
+
+  if (!isPro(prof?.stripe_subscription_status)) {
+    return Response.json({ error: 'pro_required' }, { status: 403 })
+  }
 
   const { stem, correctAnswer, studentAnswer, workedSolution } = await req.json()
 

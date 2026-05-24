@@ -8,7 +8,7 @@ import { MixedMath } from '@/components/math/MathRenderer'
 import { Question } from '@/types'
 import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
 import { GCSE_TOPICS } from '@/lib/curriculum/gcse-topics'
-import { CheckCircle, XCircle, Loader2, Zap } from 'lucide-react'
+import { CheckCircle, XCircle, Loader2, Zap, Check, X } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 
 interface MarkResult {
@@ -44,6 +44,8 @@ function PracticePageInner() {
   const [startTime, setStartTime] = useState(Date.now())
   const [submitted, setSubmitted] = useState(false)
   const [xpGain,    setXpGain]    = useState<number | null>(null)
+  const [proRequired, setProRequired] = useState(false)
+  const [upgradeLoading, setUpgradeLoading] = useState(false)
 
   // Study Now mode
   const [studyNowMode, setStudyNowMode] = useState(false)
@@ -120,6 +122,23 @@ function PracticePageInner() {
     generateQuestionForSlug(selectedSlug)
   }
 
+  async function handleUpgrade() {
+    setUpgradeLoading(true)
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: 'monthly' }),
+      })
+      const data = await res.json()
+      window.location.href = data.url ?? '/pricing'
+    } catch {
+      window.location.href = '/pricing'
+    } finally {
+      setUpgradeLoading(false)
+    }
+  }
+
   async function submitAnswer() {
     if (!question || !studentAnswer.trim()) return
     setMarking(true)
@@ -135,6 +154,14 @@ function PracticePageInner() {
         workedSolution: question.worked_solution,
       }),
     })
+
+    if (res.status === 403) {
+      setMarking(false)
+      setSubmitted(false)
+      setProRequired(true)
+      return
+    }
+
     const result = await res.json()
     setMarkResult(result)
     setMarking(false)
@@ -178,6 +205,78 @@ function PracticePageInner() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
+
+      {/* Pro upgrade modal — shown when AI marking requires Pro */}
+      <AnimatePresence>
+        {proRequired && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center px-6"
+            style={{ background: 'rgba(8,13,28,0.88)', backdropFilter: 'blur(10px)' }}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 24 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 24 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 260 }}
+              className="relative w-full max-w-sm rounded-3xl p-8"
+              style={{ background: 'rgba(12,17,30,0.98)', border: '1px solid rgba(245,158,11,0.25)', boxShadow: '0 0 60px rgba(245,158,11,0.08)' }}>
+              <button
+                onClick={() => setProRequired(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-lg"
+                style={{ color: '#4a6070' }}>
+                <X size={14} />
+              </button>
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5 mx-auto"
+                style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                <Zap size={22} style={{ color: '#f59e0b' }} />
+              </div>
+              <h2 className="text-lg font-bold text-white text-center mb-1"
+                style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                AI marking is Pro
+              </h2>
+              <p className="text-sm text-center mb-5" style={{ color: '#5a7aaa' }}>
+                SPOK analyses your working, awards M/A/B marks, and gives AQA-style feedback. Upgrade to unlock it.
+              </p>
+              <div className="rounded-2xl p-4 mb-5 text-center"
+                style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.15)' }}>
+                <p className="font-bold text-white" style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 32 }}>
+                  £40<span className="text-sm font-normal" style={{ color: '#5a7aaa' }}>/month</span>
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>or £400/year · cancel anytime</p>
+              </div>
+              <ul className="space-y-2 mb-6">
+                {[
+                  'AI marking with M/A/B mark breakdown',
+                  'Unlimited SPOK conversations',
+                  'AI-generated lessons on any topic',
+                  'Past paper AI with citations',
+                ].map(f => (
+                  <li key={f} className="flex items-center gap-2.5 text-sm" style={{ color: '#fde9b8' }}>
+                    <Check size={13} className="shrink-0" style={{ color: '#f59e0b' }} />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={handleUpgrade}
+                disabled={upgradeLoading}
+                className="w-full py-3 rounded-2xl text-sm font-semibold text-white transition-all hover:scale-[1.02] disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', boxShadow: '0 4px 24px rgba(245,158,11,0.25)' }}>
+                {upgradeLoading ? 'Redirecting...' : 'Upgrade to Pro'}
+              </button>
+              <button
+                onClick={() => setProRequired(false)}
+                className="w-full text-center text-xs mt-3 hover:text-white transition-colors"
+                style={{ color: '#4a6070' }}>
+                Maybe later
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {xpGain !== null && (
           <motion.div

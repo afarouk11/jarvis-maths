@@ -32,6 +32,8 @@ export default function SpokPage() {
   const prevSentenceRef = useRef('')
   const [limitReached, setLimitReached] = useState(false)
   const [upgradeLoading, setUpgradeLoading] = useState(false)
+  const [messagesUsedToday, setMessagesUsedToday] = useState<number | null>(null)
+  const FREE_LIMIT = 5
 
   useEffect(() => {
     function tick() {
@@ -40,6 +42,20 @@ export default function SpokPage() {
     tick()
     const id = setInterval(tick, 1000)
     return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/profile')
+      .then(r => r.json())
+      .then((p: { stripe_subscription_status?: string; chat_messages_today?: number; chat_messages_reset_at?: string }) => {
+        const isPro = p.stripe_subscription_status === 'active' || p.stripe_subscription_status === 'trialing'
+        if (!isPro) {
+          const today = new Date().toISOString().slice(0, 10)
+          const count = p.chat_messages_reset_at === today ? (p.chat_messages_today ?? 0) : 0
+          setMessagesUsedToday(count)
+        }
+      })
+      .catch(() => {})
   }, [])
   const bottomRef  = useRef<HTMLDivElement>(null)
   const inputRef   = useRef<HTMLInputElement>(null)
@@ -85,6 +101,7 @@ export default function SpokPage() {
       }
     },
     onFinish: ({ message }) => {
+      setMessagesUsedToday(prev => prev !== null ? prev + 1 : null)
       const remaining = sentenceBufferRef.current.flush()
       remaining.forEach(s => queueSpeak(s))
 
@@ -276,7 +293,7 @@ export default function SpokPage() {
                 Daily limit reached
               </h2>
               <p className="text-sm text-center mb-5" style={{ color: '#5a7aaa' }}>
-                You&apos;ve used your 10 free SPOK messages today. Upgrade for unlimited access, voice tutor, and more.
+                You&apos;ve used your 5 free SPOK messages today. Upgrade for unlimited access, voice tutor, and more.
               </p>
 
               {/* Price */}
@@ -437,9 +454,31 @@ export default function SpokPage() {
           <div ref={bottomRef} />
         </div>
 
+        {/* Free tier message counter */}
+        {messagesUsedToday !== null && (
+          <div className="px-6 pt-2 pb-0 shrink-0 flex items-center justify-between"
+            style={{ borderTop: '1px solid rgba(59,130,246,0.08)' }}>
+            <div className="flex items-center gap-2">
+              {Array.from({ length: FREE_LIMIT }, (_, i) => (
+                <div key={i} className="w-2 h-2 rounded-full transition-all"
+                  style={{ background: i < messagesUsedToday ? 'rgba(245,158,11,0.8)' : 'rgba(255,255,255,0.1)' }} />
+              ))}
+              <span className="text-xs ml-1" style={{ color: messagesUsedToday >= FREE_LIMIT - 1 ? '#f59e0b' : '#4a6070' }}>
+                {Math.max(0, FREE_LIMIT - messagesUsedToday)} free {Math.max(0, FREE_LIMIT - messagesUsedToday) === 1 ? 'message' : 'messages'} left today
+              </span>
+            </div>
+            <button
+              onClick={() => window.location.href = '/pricing'}
+              className="text-xs px-2.5 py-1 rounded-lg font-medium transition-colors"
+              style={{ color: '#f59e0b', border: '1px solid rgba(245,158,11,0.2)', background: 'rgba(245,158,11,0.05)' }}>
+              Upgrade
+            </button>
+          </div>
+        )}
+
         {/* Skill mode chips */}
         <div className="px-6 pt-3 pb-0 shrink-0 flex items-center gap-2 flex-wrap"
-          style={{ borderTop: '1px solid rgba(59,130,246,0.08)' }}>
+          style={{ borderTop: messagesUsedToday !== null ? 'none' : '1px solid rgba(59,130,246,0.08)' }}>
           {CHAT_SKILL_MODES.map(mode => {
             const isActive = activeMode === mode.id
             return (
