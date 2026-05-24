@@ -87,7 +87,7 @@ export default async function ProgressPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Your Progress</h1>
+          <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-space-grotesk)', letterSpacing: '-0.02em' }}>Your Progress</h1>
           <p className="text-sm mt-1" style={{ color: '#5a7aaa' }}>
             {profile?.exam_board ?? 'AQA'} {level === 'GCSE' ? 'GCSE' : 'A-level'} Mathematics
             {profile?.target_grade && ` · Target: ${profile.target_grade}`}
@@ -107,14 +107,19 @@ export default async function ProgressPage() {
       {/* Key stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {/* Grade prediction */}
-        <div className="p-4 rounded-2xl col-span-2 sm:col-span-1"
-          style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)' }}>
-          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#5a7aaa' }}>
-            Predicted Grade
+        <div className="p-4 rounded-xl col-span-2 sm:col-span-1"
+          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="flex items-center gap-1.5 mb-3">
+            <div className="p-1.5 rounded-lg" style={{ background: 'rgba(59,130,246,0.12)', color: '#3b82f6' }}>
+              <Star size={12} />
+            </div>
+            <p className="text-xs font-medium" style={{ color: '#5a7aaa' }}>Predicted Grade</p>
+          </div>
+          <p className="font-bold mb-0.5" style={{ color: GRADE_COLOR[lastSnap?.grade ?? ''] ?? '#5a7aaa', fontFamily: 'var(--font-space-grotesk)', fontSize: 28, lineHeight: 1 }}>
+            {lastSnap?.grade ?? '—'}
           </p>
-          <p className="text-4xl font-bold"
-            style={{ color: GRADE_COLOR[profile?.target_grade ?? 'A'] ?? '#3b82f6' }}>
-            {lastSnap?.grade ?? 'N/A'}
+          <p className="text-xs" style={{ color: '#3a4a5c' }}>
+            {gradeImproved === true ? `Up from ${firstSnap?.grade}` : gradeImproved === false ? 'Holding steady' : 'Keep practising'}
           </p>
           <p className="text-xs mt-1" style={{ color: '#5a7aaa' }}>
             {Math.round(avgPKnown * 100)}% across all topics
@@ -132,46 +137,50 @@ export default async function ProgressPage() {
         </div>
 
         {/* Topics covered */}
-        <div className="p-4 rounded-2xl"
-          style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)' }}>
-          <div className="flex items-center gap-1.5 mb-2">
-            <BookOpen size={12} style={{ color: '#a78bfa' }} />
-            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#5a7aaa' }}>Topics</p>
+        <div className="p-4 rounded-xl"
+          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="flex items-center gap-1.5 mb-3">
+            <div className="p-1.5 rounded-lg" style={{ background: 'rgba(167,139,250,0.12)', color: '#a78bfa' }}>
+              <BookOpen size={12} />
+            </div>
+            <p className="text-xs font-medium" style={{ color: '#5a7aaa' }}>Topics</p>
           </div>
-          <p className="text-3xl font-bold" style={{ color: '#a78bfa' }}>{progressData.length}</p>
-          <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>of {allTopics.length} started</p>
+          <p className="font-bold mb-0.5" style={{ color: '#a78bfa', fontFamily: 'var(--font-space-grotesk)', fontSize: 28, lineHeight: 1 }}>{progressData.length}</p>
+          <p className="text-xs" style={{ color: '#3a4a5c' }}>of {allTopics.length} started</p>
         </div>
 
         {/* Streak */}
-        <div className="p-4 rounded-2xl"
-          style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)' }}>
-          <div className="flex items-center gap-1.5 mb-2">
-            <Zap size={12} style={{ color: streakColor }} />
-            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#5a7aaa' }}>Streak</p>
+        <div className="p-4 rounded-xl"
+          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="flex items-center gap-1.5 mb-3">
+            <div className="p-1.5 rounded-lg" style={{ background: `${streakColor}18`, color: streakColor }}>
+              <Zap size={12} />
+            </div>
+            <p className="text-xs font-medium" style={{ color: '#5a7aaa' }}>Streak</p>
           </div>
-          <p className="text-3xl font-bold" style={{ color: streakColor }}>{streakDays}d</p>
-          <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>
+          <p className="font-bold mb-0.5" style={{ color: streakColor, fontFamily: 'var(--font-space-grotesk)', fontSize: 28, lineHeight: 1 }}>{streakDays}d</p>
+          <p className="text-xs" style={{ color: '#3a4a5c' }}>
             {streakDays === 0 ? 'Start today!' : streakDays >= 7 ? 'On fire!' : 'Keep going!'}
           </p>
         </div>
 
         {/* XP */}
-        <div className="p-4 rounded-2xl"
-          style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)' }}>
-          <div className="flex items-center gap-1.5 mb-2">
-            <Star size={12} style={{ color: '#22c55e' }} />
-            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#5a7aaa' }}>XP</p>
+        <div className="p-4 rounded-xl"
+          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="flex items-center gap-1.5 mb-3">
+            <div className="p-1.5 rounded-lg" style={{ background: 'rgba(34,197,94,0.12)', color: '#22c55e' }}>
+              <Star size={12} />
+            </div>
+            <p className="text-xs font-medium" style={{ color: '#5a7aaa' }}>XP</p>
           </div>
-          <p className="text-3xl font-bold text-green-400">{profile?.xp ?? 0}</p>
-          <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>{xpLevel.title}</p>
+          <p className="font-bold mb-0.5 text-green-400" style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 28, lineHeight: 1 }}>{profile?.xp ?? 0}</p>
+          <p className="text-xs" style={{ color: '#3a4a5c' }}>{xpLevel.title}</p>
         </div>
       </div>
 
       {/* Grade trend */}
       <div>
-        <h2 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#5a7aaa' }}>
-          Grade Over Time
-        </h2>
+        <h2 className="text-sm font-semibold text-white mb-3">Grade Over Time</h2>
         <GradeTrendChart snapshots={snapshotsData} />
       </div>
 
@@ -205,9 +214,7 @@ export default async function ProgressPage() {
           <div>
             <div className="flex items-center gap-2 mb-3">
               <CheckCircle2 size={14} style={{ color: '#22c55e' }} />
-              <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#22c55e' }}>
-                Strengths
-              </h2>
+              <h2 className="text-sm font-semibold text-white">Strengths</h2>
             </div>
             <div className="space-y-2">
               {strengths.map((topic: any) => {
@@ -234,9 +241,7 @@ export default async function ProgressPage() {
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Target size={14} style={{ color: '#f59e0b' }} />
-              <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#f59e0b' }}>
-                Needs Work
-              </h2>
+              <h2 className="text-sm font-semibold text-white">Needs Work</h2>
             </div>
             <div className="space-y-2">
               {focusAreas.length === 0 ? (
@@ -308,9 +313,7 @@ export default async function ProgressPage() {
       {/* Full mastery map */}
       {progressData.length > 0 && (
         <section>
-          <h2 className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: '#5a7aaa' }}>
-            All Topics
-          </h2>
+          <h2 className="text-sm font-semibold text-white mb-4">All Topics</h2>
           <TopicMasteryMap progress={progressData} />
         </section>
       )}

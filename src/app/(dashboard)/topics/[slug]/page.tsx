@@ -55,7 +55,7 @@ export default async function TopicPage({ params }: Props) {
         <div className="flex-1">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-white">{topic.name}</h1>
+              <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-space-grotesk)', letterSpacing: '-0.02em' }}>{topic.name}</h1>
               <p className="text-sm mt-1" style={{ color: '#5a7aaa' }}>
                 {topic.year_group} · {isGCSE ? 'AQA GCSE Mathematics' : 'AQA A-level Mathematics'}
               </p>
@@ -86,18 +86,20 @@ export default async function TopicPage({ params }: Props) {
         </div>
       </div>
 
-      {/* Stats row */}
-      {progress && (
-        <div className="grid grid-cols-3 gap-3 mb-8">
-          <StatTile label="Questions" value={String(progress.questions_attempted)} />
-          <StatTile label="Accuracy" value={accuracy !== null ? `${accuracy}%` : '—'} color={accuracy !== null ? (accuracy >= 70 ? '#22c55e' : accuracy >= 50 ? '#f59e0b' : '#ef4444') : undefined} />
-          <StatTile
-            label="Next review"
-            value={nextReview ? (isDue ? 'Due now' : nextReview.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })) : '—'}
-            color={isDue ? '#f59e0b' : undefined}
-          />
-        </div>
-      )}
+      {/* Stats row — always visible */}
+      <div className="grid grid-cols-3 gap-3 mb-8">
+        <StatTile label="Questions" value={progress ? String(progress.questions_attempted) : '—'} />
+        <StatTile
+          label="Accuracy"
+          value={accuracy !== null ? `${accuracy}%` : '—'}
+          color={accuracy !== null ? (accuracy >= 70 ? '#22c55e' : accuracy >= 50 ? '#f59e0b' : '#ef4444') : undefined}
+        />
+        <StatTile
+          label="Next review"
+          value={nextReview ? (isDue ? 'Due now' : nextReview.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })) : '—'}
+          color={isDue ? '#f59e0b' : undefined}
+        />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
 
@@ -105,7 +107,7 @@ export default async function TopicPage({ params }: Props) {
         <section>
           <div className="flex items-center gap-2 mb-4">
             <BookOpen size={14} style={{ color: '#3b82f6' }} />
-            <h2 className="text-xs font-semibold text-blue-400 uppercase tracking-wider">Lessons</h2>
+            <h2 className="text-sm font-semibold text-white">Lessons</h2>
           </div>
           {lessons && lessons.length > 0 ? (
             <div className="space-y-2">
@@ -116,9 +118,9 @@ export default async function TopicPage({ params }: Props) {
                   <span className="text-blue-400 font-mono text-sm w-6">{String(i + 1).padStart(2, '0')}</span>
                   <div className="flex-1">
                     <p className="font-medium text-white text-sm">{lesson.title}</p>
-                    <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>
-                      {lesson.estimated_minutes ? `~${lesson.estimated_minutes} min · ` : ''}
-                      {'★'.repeat(lesson.difficulty)}{'☆'.repeat(5 - lesson.difficulty)}
+                    <p className="text-xs mt-0.5 flex items-center gap-2" style={{ color: '#5a7aaa' }}>
+                      {lesson.estimated_minutes ? `~${lesson.estimated_minutes} min` : null}
+                      <DifficultyPill level={lesson.difficulty} />
                     </p>
                   </div>
                 </Link>
@@ -140,7 +142,7 @@ export default async function TopicPage({ params }: Props) {
         <section>
           <div className="flex items-center gap-2 mb-4">
             <Clock size={14} style={{ color: '#a78bfa' }} />
-            <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#a78bfa' }}>Recent Attempts</h2>
+            <h2 className="text-sm font-semibold text-white">Recent Attempts</h2>
           </div>
           {recentAttempts && recentAttempts.length > 0 ? (
             <div className="space-y-2">
@@ -203,5 +205,23 @@ function StatTile({ label, value, color = '#fff' }: { label: string; value: stri
       <p className="text-xs mb-1" style={{ color: '#5a7aaa' }}>{label}</p>
       <p className="text-xl font-bold" style={{ color }}>{value}</p>
     </div>
+  )
+}
+
+const DIFFICULTY: Record<number, { label: string; color: string }> = {
+  1: { label: 'Foundation', color: '#22c55e' },
+  2: { label: 'Easy',       color: '#3b82f6' },
+  3: { label: 'Medium',     color: '#f59e0b' },
+  4: { label: 'Hard',       color: '#ef4444' },
+  5: { label: 'Challenge',  color: '#a78bfa' },
+}
+
+function DifficultyPill({ level }: { level: number }) {
+  const d = DIFFICULTY[level] ?? DIFFICULTY[3]
+  return (
+    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
+      style={{ background: `${d.color}18`, color: d.color }}>
+      {d.label}
+    </span>
   )
 }

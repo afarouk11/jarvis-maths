@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { Check, LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { validateName } from '@/lib/validate-name'
 
 const EXAM_BOARDS  = ['AQA', 'Edexcel', 'OCR']
 const TARGET_GRADES = ['A*', 'A', 'B', 'C']
@@ -26,6 +27,7 @@ export function ProfileSettings({ initialFullName, initialExamBoard, initialTarg
   const [adhd,        setAdhd]        = useState(false)
   const [saving,      setSaving]      = useState(false)
   const [saved,       setSaved]       = useState(false)
+  const [nameError,   setNameError]   = useState('')
 
   // Load accessibility prefs from profile
   useState(() => {
@@ -41,6 +43,9 @@ export function ProfileSettings({ initialFullName, initialExamBoard, initialTarg
   }
 
   async function save() {
+    const err = validateName(fullName)
+    if (err) { setNameError(err); return }
+    setNameError('')
     setSaving(true)
     await fetch('/api/profile/setup', {
       method: 'POST',
@@ -60,8 +65,9 @@ export function ProfileSettings({ initialFullName, initialExamBoard, initialTarg
 
       <div>
         <label className="text-xs text-slate-500 mb-1 block">Full Name</label>
-        <input value={fullName} onChange={e => setFullName(e.target.value)}
+        <input value={fullName} onChange={e => { setFullName(e.target.value); setNameError('') }}
           placeholder="Your name" className={input} style={inputStyle} />
+        {nameError && <p className="text-xs mt-1 text-red-400">{nameError}</p>}
       </div>
 
       <div>

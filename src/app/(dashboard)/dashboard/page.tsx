@@ -89,29 +89,29 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       />
 
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="font-bold text-white"
-            style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 28, letterSpacing: '-0.02em' }}>
-            {greeting}, {name}.
+            style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 26, letterSpacing: '-0.02em' }}>
+            {greeting}, {name}
           </h1>
           <p className="text-sm mt-1" style={{ color: '#5a7aaa' }}>
-            {profile?.exam_board} {profile?.level === 'GCSE' ? 'GCSE' : 'A-level'} Mathematics · Target {profile?.target_grade}
+            {profile?.exam_board} {profile?.level === 'GCSE' ? 'GCSE' : 'A-level'} Maths · Target {profile?.target_grade}
           </p>
         </div>
         {daysToExam !== null && (
-          <div className="text-right px-4 py-3 rounded-2xl"
+          <div className="shrink-0 flex items-center gap-3 px-4 py-3 rounded-xl"
             style={{
-              background: daysToExam < 30 ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.07)',
-              border: `1px solid ${daysToExam < 30 ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.18)'}`,
+              background: 'rgba(255,255,255,0.03)',
+              border: `1px solid ${daysToExam < 30 ? 'rgba(239,68,68,0.25)' : 'rgba(255,255,255,0.08)'}`,
             }}>
-            <div className="flex items-center gap-2">
-              <Clock size={14} style={{ color: daysToExam < 30 ? '#f87171' : '#f59e0b' }} />
-              <span className="font-bold" style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 28, color: daysToExam < 30 ? '#f87171' : '#f59e0b' }}>
-                {daysToExam}
-              </span>
+            <Clock size={14} style={{ color: daysToExam < 30 ? '#f87171' : '#5a7aaa' }} />
+            <div>
+              <p className="font-bold leading-none" style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 22, color: daysToExam < 30 ? '#f87171' : '#e8f0fe' }}>
+                {daysToExam}d
+              </p>
+              <p className="text-[11px] mt-0.5" style={{ color: '#5a7aaa' }}>to exam</p>
             </div>
-            <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>days to exam</p>
           </div>
         )}
       </div>
@@ -134,7 +134,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
           {/* Due for review */}
           {dueTopics.length > 0 && (
-            <Section title="Due for Review" accent="#3b82f6" href="/practice" linkLabel="Start practice →">
+            <Section title="Due for Review" href="/practice" linkLabel="Start practice →">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {dueTopics.map(p => {
                   const slug  = slugById.get(p.topic_id) ?? p.topic_id
@@ -161,7 +161,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           )}
 
           {/* Mastery heat map */}
-          <Section title="All Topics" accent="#3b82f6">
+          <Section title="All Topics">
             <MasteryHeatMap topicMastery={topicMastery} />
           </Section>
         </div>
@@ -171,7 +171,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <StudyPlan />
 
           {/* Quick actions */}
-          <Section title="Quick Start" accent="#a78bfa">
+          <Section title="Quick Start">
             <div className="space-y-2">
               {[
                 { href: '/jarvis',   icon: <Bot size={15} />,      label: 'Talk to SPOK',        sub: 'Voice or text',          color: '#f59e0b' },
@@ -196,7 +196,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
           {/* Weak topics */}
           {weakTopics.length > 0 && (
-            <Section title="Needs Work" accent="#ef4444">
+            <Section title="Needs Work">
               <div className="space-y-3">
                 {weakTopics.map(p => {
                   const slug  = slugById.get(p.topic_id) ?? p.topic_id
@@ -219,7 +219,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
           {/* Recent lessons */}
           {recentLessons && recentLessons.length > 0 && (
-            <Section title="Recent Lessons" accent="#22c55e">
+            <Section title="Recent Lessons">
               <div className="space-y-2">
                 {recentLessons.map((l: any) => {
                   const topic = allTopics.find(t => t.slug === l.topic_id)
@@ -246,15 +246,13 @@ function StatCard({ icon, label, value, sub, sub2, color }: {
   icon: React.ReactNode; label: string; value: string; sub: string; sub2?: string; color: string
 }) {
   return (
-    <div className="p-5 rounded-2xl relative overflow-hidden"
-      style={{ background: 'rgba(10,14,26,0.8)', border: `1px solid ${color}18` }}>
-      {/* background glow */}
-      <div style={{ position: 'absolute', top: 0, right: 0, width: 80, height: 80, borderRadius: '50%', background: `radial-gradient(circle, ${color}14 0%, transparent 70%)`, pointerEvents: 'none' }} />
-      <div className="flex items-center gap-2 mb-4" style={{ position: 'relative' }}>
-        <div style={{ color: `${color}cc` }}>{icon}</div>
-        <p className="text-xs uppercase tracking-wider font-medium" style={{ color: '#4a6070' }}>{label}</p>
+    <div className="p-4 rounded-xl"
+      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="p-1.5 rounded-lg" style={{ background: `${color}18`, color }}>{icon}</div>
+        <p className="text-xs font-medium" style={{ color: '#5a7aaa' }}>{label}</p>
       </div>
-      <p className="font-bold mb-1" style={{ position: 'relative', color, fontFamily: 'var(--font-space-grotesk)', fontSize: 38, lineHeight: 1, textShadow: `0 0 20px ${color}40` }}>
+      <p className="font-bold mb-0.5" style={{ color, fontFamily: 'var(--font-space-grotesk)', fontSize: 28, lineHeight: 1 }}>
         {value}
       </p>
       <p className="text-xs" style={{ color: '#5a7aaa', position: 'relative' }}>{sub}</p>
@@ -264,45 +262,43 @@ function StatCard({ icon, label, value, sub, sub2, color }: {
 }
 
 function XPCard({ xp }: { xp: number }) {
-  const lvl  = getXPLevel(xp)
+  const lvl   = getXPLevel(xp)
   const isMax = lvl.level === 10
 
   return (
-    <div className="p-5 rounded-2xl relative overflow-hidden"
-      style={{ background: 'rgba(10,14,26,0.8)', border: `1px solid ${lvl.color}18` }}>
-      <div style={{ position: 'absolute', top: 0, right: 0, width: 80, height: 80, borderRadius: '50%', background: `radial-gradient(circle, ${lvl.color}14 0%, transparent 70%)`, pointerEvents: 'none' }} />
-      <div className="flex items-center gap-2 mb-4" style={{ position: 'relative' }}>
-        <Zap size={16} style={{ color: `${lvl.color}cc` }} />
-        <p className="text-xs uppercase tracking-wider font-medium" style={{ color: '#4a6070' }}>Level</p>
+    <div className="p-4 rounded-xl"
+      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="p-1.5 rounded-lg" style={{ background: `${lvl.color}18`, color: lvl.color }}>
+          <Zap size={16} />
+        </div>
+        <p className="text-xs font-medium" style={{ color: '#5a7aaa' }}>XP Level</p>
       </div>
-      <div className="flex items-baseline gap-2 mb-2" style={{ position: 'relative' }}>
-        <p className="font-bold" style={{ color: lvl.color, fontFamily: 'var(--font-space-grotesk)', fontSize: 38, lineHeight: 1, textShadow: `0 0 20px ${lvl.color}40` }}>
+      <div className="flex items-baseline gap-1.5 mb-2">
+        <p className="font-bold" style={{ color: lvl.color, fontFamily: 'var(--font-space-grotesk)', fontSize: 28, lineHeight: 1 }}>
           {lvl.level}
         </p>
-        <p className="text-sm font-semibold" style={{ color: lvl.color }}>{lvl.title}</p>
+        <p className="text-sm font-medium" style={{ color: '#5a7aaa' }}>{lvl.title}</p>
       </div>
-      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)', position: 'relative' }}>
+      <div className="h-1 rounded-full overflow-hidden mb-1.5" style={{ background: 'rgba(255,255,255,0.06)' }}>
         <div className="h-full rounded-full transition-all" style={{ width: `${Math.round(lvl.progress * 100)}%`, background: lvl.color }} />
       </div>
-      <p className="text-xs mt-1.5" style={{ color: '#5a7aaa', position: 'relative' }}>
-        {isMax ? `${xp} XP · Max level` : `${xp} XP · ${lvl.xpToNext - lvl.xpIntoLevel} to Lv.${lvl.level + 1}`}
+      <p className="text-xs" style={{ color: '#3a4a5c' }}>
+        {isMax ? `${xp} XP · Max level` : `${lvl.xpToNext - lvl.xpIntoLevel} XP to level ${lvl.level + 1}`}
       </p>
     </div>
   )
 }
 
-function Section({ title, accent, href, linkLabel, children }: {
-  title: string; accent: string; href?: string; linkLabel?: string; children: React.ReactNode
+function Section({ title, href, linkLabel, children }: {
+  title: string; accent?: string; href?: string; linkLabel?: string; children: React.ReactNode
 }) {
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div style={{ width: 3, height: 14, borderRadius: 2, background: accent }} />
-          <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: accent }}>{title}</h2>
-        </div>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-white">{title}</h2>
         {href && linkLabel && (
-          <Link href={href} className="text-xs transition-colors hover:text-blue-300" style={{ color: '#4a6070' }}>
+          <Link href={href} className="text-xs font-medium transition-colors hover:text-blue-400" style={{ color: '#5a7aaa' }}>
             {linkLabel}
           </Link>
         )}

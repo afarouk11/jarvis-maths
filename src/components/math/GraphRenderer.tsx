@@ -203,15 +203,101 @@ export function AnimatedGraphRenderer({ spec, currentStep, className }: { spec: 
           tip: { xLine: true, yLine: true },
         })
 
-        // Style highlight scatter points larger via SVG after render
+        // SPOK pointer annotations — pulsing rings + labels on the graph
         if (currentHighlights.length > 0) {
           setTimeout(() => {
-            const circles = container.querySelectorAll<SVGCircleElement>('circle.circle')
-            circles.forEach(c => {
-              c.setAttribute('r', '7')
-              c.style.filter = 'drop-shadow(0 0 6px currentColor)'
+            const svgEl     = container.querySelector<SVGElement>('svg')
+            const canvasGrp = container.querySelector<SVGGElement>('g.canvas')
+
+            // Style the underlying scatter circles
+            container.querySelectorAll<SVGCircleElement>('circle.circle').forEach(c => {
+              c.setAttribute('r', '6')
+              c.setAttribute('stroke', 'rgba(255,255,255,0.85)')
+              c.setAttribute('stroke-width', '1.5')
             })
-          }, 60)
+
+            const xScale = instance.meta?.xScale
+            const yScale = instance.meta?.yScale
+            if (!svgEl || !canvasGrp || !xScale || !yScale) return
+
+            // Inject CSS keyframes once per SVG (uses transform scale — cross-browser safe)
+            if (!svgEl.querySelector('#spok-kf')) {
+              const kf = document.createElementNS('http://www.w3.org/2000/svg', 'style')
+              kf.id = 'spok-kf'
+              kf.textContent = [
+                '@keyframes spkP{0%{transform:scale(1);opacity:.72}100%{transform:scale(3.4);opacity:0}}',
+                '.spk-r{transform-box:fill-box;transform-origin:center;animation:spkP 1.6s ease-out infinite}',
+                '.spk-r2{transform-box:fill-box;transform-origin:center;animation:spkP 1.6s ease-out .65s infinite}',
+              ].join('')
+              svgEl.prepend(kf)
+            }
+
+            // Remove previous SPOK annotations
+            canvasGrp.querySelectorAll('.spk-ann').forEach(el => el.remove())
+
+            // Plot area inner dimensions (for bounds checking + label flip)
+            const marginLeft  = instance.meta.margin?.left  ?? 35
+            const marginRight = instance.meta.margin?.right ?? 15
+            const marginTop   = instance.meta.margin?.top   ?? 20
+            const marginBot   = instance.meta.margin?.bottom ?? 25
+            const innerW = (instance.meta.width  ?? 460) - marginLeft - marginRight
+            const innerH = (instance.meta.height ?? 260) - marginTop  - marginBot
+
+            currentHighlights.forEach(h => {
+              const px = xScale(h.x)
+              const py = yScale(h.y)
+              // Skip points outside plot bounds
+              if (px < -10 || px > innerW + 10 || py < -10 || py > innerH + 10) return
+
+              const color = h.color ?? '#fbbf24'
+              const ann   = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+              ann.setAttribute('class', 'spk-ann')
+
+              const mkRing = (cls: string) => {
+                const r = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+                r.setAttribute('class', cls)
+                r.setAttribute('cx', String(px)); r.setAttribute('cy', String(py)); r.setAttribute('r', '9')
+                r.setAttribute('fill', 'none');   r.setAttribute('stroke', color)
+                r.setAttribute('stroke-width', cls === 'spk-r' ? '2' : '1.5')
+                return r
+              }
+              ann.appendChild(mkRing('spk-r'))
+              ann.appendChild(mkRing('spk-r2'))
+
+              // Bright center dot
+              const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+              dot.setAttribute('cx', String(px)); dot.setAttribute('cy', String(py)); dot.setAttribute('r', '5')
+              dot.setAttribute('fill', color)
+              dot.setAttribute('stroke', 'rgba(255,255,255,0.9)'); dot.setAttribute('stroke-width', '1.5')
+              dot.style.filter = `drop-shadow(0 0 7px ${color})`
+              ann.appendChild(dot)
+
+              // Smart label — flip to left if near right edge, flip below if near top
+              const label   = h.label.length > 22 ? h.label.slice(0, 20) + '…' : h.label
+              const labelW  = label.length * 6.2 + 10
+              const onRight = px > innerW * 0.65
+              const onTop   = py < 22
+              const labelX  = onRight ? px - labelW - 8 : px + 12
+              const labelY  = onTop   ? py + 20         : py - 12
+
+              const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+              bg.setAttribute('x', String(labelX - 3));    bg.setAttribute('y', String(labelY - 11))
+              bg.setAttribute('width', String(labelW));    bg.setAttribute('height', '15')
+              bg.setAttribute('rx', '3');                  bg.setAttribute('fill', 'rgba(8,13,28,0.88)')
+              bg.setAttribute('stroke', color);            bg.setAttribute('stroke-width', '0.6')
+              bg.setAttribute('stroke-opacity', '0.55')
+              ann.appendChild(bg)
+
+              const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text')
+              txt.setAttribute('x', String(labelX));       txt.setAttribute('y', String(labelY))
+              txt.setAttribute('font-size', '9.5');        txt.setAttribute('font-family', 'system-ui,sans-serif')
+              txt.setAttribute('font-weight', '600');      txt.setAttribute('fill', color)
+              txt.textContent = label
+              ann.appendChild(txt)
+
+              canvasGrp.appendChild(ann)
+            })
+          }, 80)
         }
 
         // Animate newly added paths with stroke-dashoffset draw-in

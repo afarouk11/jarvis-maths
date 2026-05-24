@@ -570,31 +570,6 @@ export default function SpokPage() {
       {/* ── RIGHT — Spok visual ────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden">
 
-        {/* Background HUD grid */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: 'linear-gradient(rgba(245,158,11,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(245,158,11,0.5) 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
-        }} />
-
-        {/* Corner HUD brackets */}
-        {[
-          'top-4 left-4 border-t border-l',
-          'top-4 right-4 border-t border-r',
-          'bottom-4 left-4 border-b border-l',
-          'bottom-4 right-4 border-b border-r',
-        ].map((cls, i) => (
-          <div key={i} className={`absolute w-8 h-8 ${cls}`}
-            style={{ borderColor: 'rgba(245,158,11,0.3)' }} />
-        ))}
-
-        {/* Scan line animation */}
-        <motion.div
-          className="absolute left-0 right-0 h-px pointer-events-none"
-          style={{ background: 'linear-gradient(90deg, transparent, rgba(245,158,11,0.3), transparent)' }}
-          animate={{ top: ['0%', '100%'] }}
-          transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-        />
-
         <AnimatePresence mode="wait">
           {animateSpec ? (
             /* ── Animated graph teaching panel ── */
