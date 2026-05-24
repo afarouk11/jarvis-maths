@@ -1,9 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 export async function GET(req: Request) {
+  const resend = new Resend(process.env.RESEND_API_KEY)
   const secret = req.headers.get('x-cron-secret') ?? new URL(req.url).searchParams.get('secret')
   if (secret !== process.env.CRON_SECRET) {
     return Response.json({ error: 'Forbidden' }, { status: 403 })
