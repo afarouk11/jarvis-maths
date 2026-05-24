@@ -14,60 +14,117 @@ export async function GET(req: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const [{ data: profile }, { data: mastery }, { data: exams }] = await Promise.all([
-      supabase.from('profiles').select('name, full_name, streak, xp').eq('id', user.id).single(),
-      supabase.from('topic_mastery').select('topic, mastery_level, next_review_date, total_attempts').eq('user_id', user.id),
-      supabase.from('exams').select('exam_date').eq('user_id', user.id).order('exam_date', { ascending: true }).limit(1),
+    const [
+      { data: profile },
+      { data: progress },
+      { data: topics },
+      { data: lastMessages },
+    ] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('full_name, exam_date, target_grade, streak_days, last_active_at, level, exam_board')
+        .eq('id', user.id)
+        .single(),
+      supabase
+        .from('student_progress')
+        .select('topic_id, p_known, next_review_at, last_attempted_at')
+        .eq('student_id', user.id),
+      supabase
+        .from('topics')
+        .select('id, name'),
+      supabase
+        .from('spok_messages')
+        .select('role, content, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(6),
     ])
 
-    const name = profile?.full_name || profile?.name || null
-    const today = new Date().toISOString().slice(0, 10)
+    const topicNameById = new Map((topics ?? []).map((t: { id: string; name: string }) => [t.id, t.name]))
+    const now = new Date()
+    const rows = progress ?? []
 
-    const dueTopics = (mastery ?? [])
-      .filter(m => m.next_review_date && m.next_review_date <= today)
-      .sort((a, b) => (a.mastery_level ?? 5) - (b.mastery_level ?? 5))
+    // Due topics (spaced repetition)
+    const dueTopics = rows
+      .filter(r => new Date(r.next_review_at) <= now)
+      .sort((a, b) => a.p_known - b.p_known)
       .slice(0, 3)
-      .map(m => m.topic)
+      .map(r => topicNameById.get(r.topic_id) ?? null)
+      .filter(Boolean) as string[]
 
-    const weakTopics = (mastery ?? [])
-      .filter(m => (m.mastery_level ?? 5) < 3 && (m.total_attempts ?? 0) > 0)
-      .sort((a, b) => (a.mastery_level ?? 5) - (b.mastery_level ?? 5))
-      .slice(0, 3)
-      .map(m => m.topic)
+    // Weakest practiced topic
+    const weakest = rows.length > 0
+      ? rows.reduce((a, b) => a.p_known < b.p_known ? a : b)
+      : null
+    const weakestName = weakest ? (topicNameById.get(weakest.topic_id) ?? null) : null
 
-    const examDate = exams?.[0]?.exam_date
-    const daysToExam = examDate
-      ? Math.ceil((new Date(examDate).getTime() - Date.now()) / 86400000)
+    // Last practiced topic (most recent last_attempted_at)
+    const lastPracticed = rows
+      .filter(r => r.last_attempted_at)
+      .sort((a, b) => new Date(b.last_attempted_at).getTime() - new Date(a.last_attempted_at).getTime())[0]
+    const lastPracticedName = lastPracticed ? (topicNameById.get(lastPracticed.topic_id) ?? null) : null
+    const lastPracticedMastery = lastPracticed ? Math.round(lastPracticed.p_known * 100) : null
+
+    // Last SPOK chat topic (from message history — grab most recent user question)
+    const lastUserMessage = (lastMessages ?? [])
+      .find(m => m.role === 'user')
+    const lastChatSnippet = lastUserMessage
+      ? lastUserMessage.content.slice(0, 80).replace(/\s+/g, ' ').trim()
       : null
 
-    const namePart = name ? `${name}` : 'there'
-    const streakPart = (profile?.streak ?? 0) > 1 ? `${profile!.streak}-day streak` : null
+    // Exam countdown
+    let daysToExam: number | null = null
+    if (profile?.exam_date) {
+      daysToExam = Math.max(0, Math.ceil((new Date(profile.exam_date).getTime() - now.getTime()) / 86400000))
+    }
 
-    let contextPart = ''
-    if (dueTopics.length > 0) contextPart += `Topics due for review: ${dueTopics.join(', ')}. `
-    if (weakTopics.length > 0) contextPart += `Weakest areas: ${weakTopics.join(', ')}. `
-    if (daysToExam !== null && daysToExam > 0 && daysToExam < 120) contextPart += `Exam in ${daysToExam} days. `
-    if (streakPart) contextPart += `Currently on a ${streakPart}. `
+    const name = profile?.full_name?.split(' ')[0] ?? null
+    const streak = profile?.streak_days ?? 0
+
+    // Build context string for the AI
+    const parts: string[] = []
+    if (lastPracticedName) {
+      parts.push(`Last practice session: ${lastPracticedName} (${lastPracticedMastery}% mastery).`)
+    }
+    if (lastChatSnippet && !lastPracticedName) {
+      parts.push(`Last chat topic: "${lastChatSnippet}".`)
+    }
+    if (dueTopics.length > 0) {
+      parts.push(`Due for review today: ${dueTopics.join(', ')}.`)
+    }
+    if (weakestName && weakestName !== lastPracticedName) {
+      parts.push(`Weakest area: ${weakestName}.`)
+    }
+    if (daysToExam !== null && daysToExam < 120) {
+      parts.push(`Exam in ${daysToExam} days.`)
+    }
+    if (streak > 1) {
+      parts.push(`On a ${streak}-day study streak.`)
+    }
+
+    const context = parts.join(' ')
+    const namePart = name ?? 'there'
 
     const encouragementExtra = encouragement
-      ? ' This student has encouragement mode on — be noticeably warm, open with a genuine personal welcome, and end with something that acknowledges their effort or progress specifically.'
+      ? ' This student has encouragement mode on — be noticeably warm and end with something that acknowledges their specific effort or progress.'
       : ''
 
     const { text } = await generateText({
       model: anthropic('claude-haiku-4-5-20251001'),
       system: `You are SPOK, an A-level maths tutor who genuinely cares about your students.
-Speak in natural, conversational sentences — no markdown, no bullet points, no lists, no dashes.
-Be warm, human, and direct. Sound like a brilliant friend checking in, not a system announcing a status update.
-Keep it to 2 sentences maximum. End with exactly one specific, encouraging thing the student should do right now.
-Never start with "Hello" or "Hi" — open with something more personal and immediate.${encouragementExtra}`,
-      prompt: contextPart
-        ? `Greet ${namePart} and tell them what to focus on based on this context: ${contextPart}`
-        : `Give ${namePart} a warm welcome and invite them to ask a maths question or pick a topic to practise.`,
+Speak in 2–3 natural conversational sentences — no markdown, no bullet points, no dashes, no lists.
+Be warm and direct. Sound like a brilliant friend checking in, not a system reading a status report.
+First mention what they last worked on (if known). Then tell them what to focus on today.
+Never start with "Hello" or "Hi". Open with something personal and immediate.${encouragementExtra}`,
+      prompt: context
+        ? `Brief ${namePart} on their last session and what to do today: ${context}`
+        : `Welcome ${namePart} back and invite them to ask a maths question or pick a topic to practise.`,
     })
 
     return NextResponse.json({ greeting: text.trim() })
-  } catch (err: any) {
-    console.error('[greeting]', err?.message ?? err)
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[greeting]', message)
     return NextResponse.json({ error: 'Failed to generate greeting' }, { status: 500 })
   }
 }

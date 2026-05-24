@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, isReasoningUIPart, isTextUIPart } from 'ai'
-import { Send, Mic, MicOff, Volume2, VolumeX, RefreshCw, Zap, Check, X } from 'lucide-react'
+import { Send, Mic, MicOff, Volume2, VolumeX, RefreshCw, Zap, Check, X, Lock } from 'lucide-react'
 import { ThinkingBlock } from '@/components/jarvis/ThinkingBlock'
 import { JarvisAvatar } from '@/components/jarvis/JarvisAvatar'
 import { CHAT_SKILL_MODES, type SkillModeId } from '@/lib/spok-skills'
@@ -33,6 +33,7 @@ export default function SpokPage() {
   const [limitReached, setLimitReached] = useState(false)
   const [upgradeLoading, setUpgradeLoading] = useState(false)
   const [messagesUsedToday, setMessagesUsedToday] = useState<number | null>(null)
+  const [avgMastery, setAvgMastery] = useState<number>(0)
   const FREE_LIMIT = 5
 
   useEffect(() => {
@@ -53,6 +54,14 @@ export default function SpokPage() {
           const today = new Date().toISOString().slice(0, 10)
           const count = p.chat_messages_reset_at === today ? (p.chat_messages_today ?? 0) : 0
           setMessagesUsedToday(count)
+        }
+      })
+      .catch(() => {})
+    fetch('/api/progress')
+      .then(r => r.json())
+      .then((rows: Array<{ p_known: number }>) => {
+        if (Array.isArray(rows) && rows.length > 0) {
+          setAvgMastery(rows.reduce((s, r) => s + (r.p_known ?? 0), 0) / rows.length)
         }
       })
       .catch(() => {})
@@ -481,21 +490,33 @@ export default function SpokPage() {
           style={{ borderTop: messagesUsedToday !== null ? 'none' : '1px solid rgba(59,130,246,0.08)' }}>
           {CHAT_SKILL_MODES.map(mode => {
             const isActive = activeMode === mode.id
+            const isLocked = mode.minMastery > 0 && avgMastery < mode.minMastery
+            const pct = Math.round(mode.minMastery * 100)
             return (
-              <button
-                key={mode.id}
-                type="button"
-                onClick={() => setActiveMode(isActive ? null : mode.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
-                style={{
-                  background: isActive ? `${mode.color}22` : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${isActive ? mode.color + '55' : 'rgba(255,255,255,0.07)'}`,
-                  color: isActive ? mode.color : '#4a6070',
-                  boxShadow: isActive ? `0 0 12px ${mode.glowColor}` : 'none',
-                }}>
-                <span>{mode.emoji}</span>
-                {mode.shortLabel}
-              </button>
+              <div key={mode.id} className="relative group">
+                <button
+                  type="button"
+                  onClick={() => !isLocked && setActiveMode(isActive ? null : mode.id)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                  style={{
+                    background: isLocked ? 'rgba(255,255,255,0.02)' : isActive ? `${mode.color}22` : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${isLocked ? 'rgba(255,255,255,0.05)' : isActive ? mode.color + '55' : 'rgba(255,255,255,0.07)'}`,
+                    color: isLocked ? '#2a3a4a' : isActive ? mode.color : '#4a6070',
+                    boxShadow: isActive && !isLocked ? `0 0 12px ${mode.glowColor}` : 'none',
+                    cursor: isLocked ? 'not-allowed' : 'pointer',
+                  }}>
+                  {isLocked ? <Lock size={10} /> : <span>{mode.emoji}</span>}
+                  {mode.shortLabel}
+                </button>
+                {isLocked && (
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    style={{ background: 'rgba(12,17,30,0.95)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8' }}>
+                    Unlocks at {pct}% avg mastery
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent"
+                      style={{ borderTopColor: 'rgba(12,17,30,0.95)' }} />
+                  </div>
+                )}
+              </div>
             )
           })}
           {activeMode && (

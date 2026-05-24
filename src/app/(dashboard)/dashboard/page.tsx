@@ -14,6 +14,8 @@ import { SpokRecommendation } from '@/components/dashboard/SpokRecommendation'
 import { ExamReadinessCard } from '@/components/dashboard/ExamReadinessCard'
 import { MasteryHeatMap } from '@/components/dashboard/MasteryHeatMap'
 import { UpgradedBanner } from '@/components/dashboard/UpgradedBanner'
+import { MorningBriefing } from '@/components/dashboard/MorningBriefing'
+import { ShareButton } from '@/components/dashboard/ShareButton'
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ upgraded?: string }> }) {
   const params = await searchParams
@@ -77,6 +79,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-7">
       <UpgradedBanner show={justUpgraded} />
+      <MorningBriefing />
       <DueNotification dueCount={dueTopics.length} />
 
       {/* SPOK recommendation bar */}
@@ -99,21 +102,29 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             {profile?.exam_board} {profile?.level === 'GCSE' ? 'GCSE' : 'A-level'} Maths · Target {profile?.target_grade}
           </p>
         </div>
-        {daysToExam !== null && (
-          <div className="shrink-0 flex items-center gap-3 px-4 py-3 rounded-xl"
-            style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: `1px solid ${daysToExam < 30 ? 'rgba(239,68,68,0.25)' : 'rgba(255,255,255,0.08)'}`,
-            }}>
-            <Clock size={14} style={{ color: daysToExam < 30 ? '#f87171' : '#5a7aaa' }} />
-            <div>
-              <p className="font-bold leading-none" style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 22, color: daysToExam < 30 ? '#f87171' : '#e8f0fe' }}>
-                {daysToExam}d
-              </p>
-              <p className="text-[11px] mt-0.5" style={{ color: '#5a7aaa' }}>to exam</p>
+        <div className="flex items-center gap-3">
+          <ShareButton
+            name={name}
+            grade={grade}
+            mastery={Math.round(avgPKnown * 100)}
+            topic={`${profile?.exam_board ?? 'AQA'} ${profile?.level === 'GCSE' ? 'GCSE' : 'A-level'} Maths`}
+          />
+          {daysToExam !== null && (
+            <div className="shrink-0 flex items-center gap-3 px-4 py-3 rounded-xl"
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: `1px solid ${daysToExam < 30 ? 'rgba(239,68,68,0.25)' : 'rgba(255,255,255,0.08)'}`,
+              }}>
+              <Clock size={14} style={{ color: daysToExam < 30 ? '#f87171' : '#5a7aaa' }} />
+              <div>
+                <p className="font-bold leading-none" style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 22, color: daysToExam < 30 ? '#f87171' : '#e8f0fe' }}>
+                  {daysToExam}d
+                </p>
+                <p className="text-[11px] mt-0.5" style={{ color: '#5a7aaa' }}>to exam</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Key stats */}
