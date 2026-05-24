@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MixedMath } from '@/components/math/MathRenderer'
+import { MathKeypad } from '@/components/math/MathKeypad'
 import { X, ChevronDown, ChevronUp, CheckCircle, XCircle, Loader2, Trophy, BookmarkPlus, BookmarkCheck } from 'lucide-react'
 
 interface WorkedStep { label: string; content: string }
@@ -40,6 +41,7 @@ export function MockExamView({ paper, focusTopics, onClose }: {
   const [saving, setSaving]   = useState(false)
   const [saved, setSaved]     = useState(false)
   const [saveErr, setSaveErr] = useState<string | null>(null)
+  const textareaRefs = useRef<Record<number, HTMLTextAreaElement | null>>({})
 
   async function savePaper() {
     setSaving(true)
@@ -264,10 +266,20 @@ export function MockExamView({ paper, focusTopics, onClose }: {
 
                           {/* Answer lines + textarea overlay */}
                           <div style={{ marginTop: 16, position: 'relative' }}>
-                            <div style={{ color: '#888', fontSize: 11, fontFamily: 'Arial, sans-serif', marginBottom: 6 }}>
+                            <div style={{ color: '#888', fontSize: 11, fontFamily: 'Arial, sans-serif', marginBottom: 4 }}>
                               Answer space:
                             </div>
+                            {!st.result && (
+                              <div style={{ marginBottom: 6 }}>
+                                <MathKeypad
+                                  getTextarea={() => textareaRefs.current[q.number] ?? null}
+                                  setValue={v => updateState(q.number, { studentAnswer: v })}
+                                  variant="light"
+                                />
+                              </div>
+                            )}
                             <textarea
+                              ref={el => { textareaRefs.current[q.number] = el }}
                               value={st.studentAnswer}
                               onChange={e => updateState(q.number, { studentAnswer: e.target.value })}
                               disabled={!!st.result}

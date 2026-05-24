@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Lightbulb, ChevronRight, Send } from 'lucide-react'
 import { MixedMath } from '@/components/math/MathRenderer'
+import { MathKeypad } from '@/components/math/MathKeypad'
 import type { TryItBlock as TryItBlockType } from '@/types'
 
 interface Props {
@@ -23,6 +24,7 @@ export function TryItBlock({ block, onComplete }: Props) {
   const [answer, setAnswer] = useState('')
   const [marking, setMarking] = useState<Marking | null>(null)
   const [loading, setLoading] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   async function submit() {
     if (!answer.trim() || loading) return
@@ -90,7 +92,9 @@ export function TryItBlock({ block, onComplete }: Props) {
         {/* Answer input */}
         {!marking && (
           <div className="space-y-3">
+            <MathKeypad getTextarea={() => textareaRef.current} setValue={setAnswer} />
             <textarea
+              ref={textareaRef}
               value={answer}
               onChange={e => setAnswer(e.target.value)}
               placeholder="Type your answer here — use plain text, e.g. dy/dx = 20x^4 - 3"

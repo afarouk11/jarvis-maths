@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { StepByStepSolution } from '@/components/math/StepByStepSolution'
 import { MixedMath } from '@/components/math/MathRenderer'
+import { MathKeypad } from '@/components/math/MathKeypad'
 import { Question } from '@/types'
 import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
 import { GCSE_TOPICS } from '@/lib/curriculum/gcse-topics'
@@ -46,6 +47,8 @@ function PracticePageInner() {
   const [xpGain,    setXpGain]    = useState<number | null>(null)
   const [proRequired, setProRequired] = useState(false)
   const [upgradeLoading, setUpgradeLoading] = useState(false)
+
+  const answerTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Study Now mode
   const [studyNowMode, setStudyNowMode] = useState(false)
@@ -292,8 +295,8 @@ function PracticePageInner() {
 
       <div className="mb-6 flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Practice</h1>
-          <p className="text-sm mt-1" style={{ color: '#5a7aaa' }}>Adaptive questions · Auto-marked by Spok</p>
+          <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-space-grotesk)', letterSpacing: '-0.02em' }}>Practice</h1>
+          <p className="text-sm mt-1" style={{ color: '#5a7aaa' }}>Adaptive questions tailored to your gaps</p>
         </div>
         {studyNowDone && (
           <motion.div
@@ -425,10 +428,14 @@ function PracticePageInner() {
             {/* Answer input */}
             {!submitted && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-4">
-                <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#5a7aaa' }}>
-                  Your answer
-                </p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#5a7aaa' }}>
+                    Your answer
+                  </p>
+                  <MathKeypad getTextarea={() => answerTextareaRef.current} setValue={setStudentAnswer} />
+                </div>
                 <textarea
+                  ref={answerTextareaRef}
                   value={studentAnswer}
                   onChange={e => setStudentAnswer(e.target.value)}
                   placeholder="Type your answer here... (you can use plain text, e.g. x = 3 or x^2 + 2x)"
