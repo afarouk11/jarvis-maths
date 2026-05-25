@@ -10,7 +10,7 @@ export default async function TopicsPage() {
 
   const [{ data: progress }, { data: profile }] = await Promise.all([
     supabase.from('student_progress').select('topic_id, p_known').eq('student_id', user.id),
-    supabase.from('profiles').select('level').eq('id', user.id).single(),
+    supabase.from('profiles').select('level, exam_board').eq('id', user.id).single(),
   ])
 
   const level = (profile?.level ?? 'A-Level') as Level
@@ -27,7 +27,7 @@ export default async function TopicsPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-space-grotesk)', letterSpacing: '-0.02em' }}>Topics</h1>
         <p className="text-sm mt-1" style={{ color: '#5a7aaa' }}>
-          {profile?.level === 'GCSE' ? 'AQA GCSE' : 'AQA A-level'} Mathematics — {studied} of {topics.length} topics started
+          {profile?.exam_board ?? 'AQA'} {profile?.level === 'GCSE' ? 'GCSE' : 'A-level'} Mathematics — {studied} of {topics.length} topics started
         </p>
       </div>
 
