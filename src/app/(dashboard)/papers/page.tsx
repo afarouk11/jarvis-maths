@@ -87,7 +87,7 @@ export default function PapersPage() {
       if (!res.ok) {
         const text = await res.text()
         let msg = `Server error ${res.status}`
-        try { msg = JSON.parse(text).error ?? msg } catch { /* plain text */ }
+        try { const p = JSON.parse(text); msg = [p.error, p.details].filter(Boolean).join(' — ') || msg } catch { msg = text.slice(0, 200) }
         setGenerateError(msg)
       } else {
         const json = await res.json()
