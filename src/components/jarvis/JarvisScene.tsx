@@ -480,9 +480,9 @@ export function JarvisScene({ amplitude, state, className, onClick }: Props) {
         powerPreference: 'low-power',
         failIfMajorPerformanceCaveat: false,
       }}
-      style={{ background: 'transparent' }}
+      style={{ background: '#080d19' }}
       onCreated={({ gl }) => {
-        gl.setClearColor(0x000000, 0)
+        gl.setClearColor(0x080d19, 1)
         const ctx = gl.getContext()
         if (!ctx) return
         ctx.canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault() }, false)
