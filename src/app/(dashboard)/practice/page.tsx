@@ -9,7 +9,8 @@ import { MathKeypad } from '@/components/math/MathKeypad'
 import { Question } from '@/types'
 import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
 import { GCSE_TOPICS } from '@/lib/curriculum/gcse-topics'
-import { CheckCircle, XCircle, Loader2, Zap, Check, X } from 'lucide-react'
+import { CheckCircle, XCircle, Loader2, Zap, Check, X, Pen, Type } from 'lucide-react'
+import { DrawingCanvas } from '@/components/ui/DrawingCanvas'
 import { Skeleton } from '@/components/ui/skeleton'
 
 interface MarkResult {
@@ -48,6 +49,8 @@ function PracticePageInner() {
   const [proRequired, setProRequired] = useState(false)
   const [upgradeLoading, setUpgradeLoading] = useState(false)
   const [generateError, setGenerateError] = useState<string | null>(null)
+  const [drawMode, setDrawMode] = useState(false)
+  const [drawingImage, setDrawingImage] = useState('')
 
   const answerTextareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -108,6 +111,7 @@ function PracticePageInner() {
     setRevealed(false)
     setQuestion(null)
     setStudentAnswer('')
+    setDrawingImage('')
     setMarkResult(null)
     setSubmitted(false)
     setStartTime(Date.now())
@@ -157,19 +161,23 @@ function PracticePageInner() {
   }
 
   async function submitAnswer() {
-    if (!question || !studentAnswer.trim()) return
+    const hasAnswer = drawMode ? !!drawingImage : !!studentAnswer.trim()
+    if (!question || !hasAnswer) return
     setMarking(true)
     setSubmitted(true)
+
+    const body: Record<string, unknown> = {
+      stem: question.stem,
+      correctAnswer: question.answer,
+      workedSolution: question.worked_solution,
+    }
+    if (drawMode) body.studentAnswerImage = drawingImage
+    else body.studentAnswer = studentAnswer
 
     const res = await fetch('/api/mark-answer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        stem: question.stem,
-        correctAnswer: question.answer,
-        studentAnswer,
-        workedSolution: question.worked_solution,
-      }),
+      body: JSON.stringify(body),
     })
 
     if (res.status === 403) {
@@ -456,29 +464,44 @@ function PracticePageInner() {
             {!submitted && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#5a7aaa' }}>
-                    Your answer
-                  </p>
-                  <MathKeypad getTextarea={() => answerTextareaRef.current} setValue={setStudentAnswer} />
+                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#5a7aaa' }}>Your answer</p>
+                  <div className="flex items-center gap-2">
+                    {/* Type / Draw toggle */}
+                    <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid rgba(59,130,246,0.2)' }}>
+                      <button onClick={() => setDrawMode(false)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors"
+                        style={{ background: !drawMode ? 'rgba(59,130,246,0.25)' : 'transparent', color: !drawMode ? '#60a5fa' : '#5a7aaa' }}>
+                        <Type size={11} /> Type
+                      </button>
+                      <button onClick={() => setDrawMode(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors"
+                        style={{ background: drawMode ? 'rgba(59,130,246,0.25)' : 'transparent', color: drawMode ? '#60a5fa' : '#5a7aaa' }}>
+                        <Pen size={11} /> Draw
+                      </button>
+                    </div>
+                    {!drawMode && <MathKeypad getTextarea={() => answerTextareaRef.current} setValue={setStudentAnswer} />}
+                  </div>
                 </div>
-                <textarea
-                  ref={answerTextareaRef}
-                  value={studentAnswer}
-                  onChange={e => setStudentAnswer(e.target.value)}
-                  placeholder="Type your answer here... (you can use plain text, e.g. x = 3 or x^2 + 2x)"
-                  rows={4}
-                  className="w-full rounded-xl p-4 text-sm outline-none resize-none"
-                  style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(59,130,246,0.2)',
-                    color: '#e8f0fe',
-                  }}
-                />
+
+                {drawMode ? (
+                  <DrawingCanvas marks={question.marks} onChange={setDrawingImage} />
+                ) : (
+                  <textarea
+                    ref={answerTextareaRef}
+                    value={studentAnswer}
+                    onChange={e => setStudentAnswer(e.target.value)}
+                    placeholder="Type your answer here... (you can use plain text, e.g. x = 3 or x^2 + 2x)"
+                    rows={4}
+                    className="w-full rounded-xl p-4 text-sm outline-none resize-none"
+                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(59,130,246,0.2)', color: '#e8f0fe' }}
+                  />
+                )}
+
                 <div className="flex gap-2 mt-2">
                   <motion.button
                     whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                     onClick={submitAnswer}
-                    disabled={!studentAnswer.trim() || marking}
+                    disabled={(drawMode ? !drawingImage : !studentAnswer.trim()) || marking}
                     className="px-5 py-2.5 rounded-xl text-sm font-medium disabled:opacity-40"
                     style={{ background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.35)', color: '#60a5fa' }}>
                     {marking ? (
