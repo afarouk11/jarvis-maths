@@ -24,7 +24,7 @@ class CanvasErrorBoundary extends Component<
   }
   render() {
     if (this.state.crashed) return this.props.fallback
-    return <div key={this.state.key}>{this.props.children}</div>
+    return <div key={this.state.key} style={{ width: '100%', height: '100%' }}>{this.props.children}</div>
   }
 }
 
@@ -480,7 +480,7 @@ export function JarvisScene({ amplitude, state, className, onClick }: Props) {
         powerPreference: 'low-power',
         failIfMajorPerformanceCaveat: false,
       }}
-      style={{ background: '#080d19' }}
+      style={{ width: '100%', height: '100%', background: '#080d19' }}
       onCreated={({ gl }) => {
         gl.setClearColor(0x080d19, 1)
         const ctx = gl.getContext()
