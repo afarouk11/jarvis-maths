@@ -117,12 +117,18 @@ async function generateALevelPaper({ body, board, admin, userId, supabase }: any
     marks: distributeMarks(cfg.totalMarks, selected.length)[i],
   }))
 
-  const { text } = await generateText({
-    model: anthropic('claude-haiku-4-5'),
-    temperature: 1,
-    system: 'You are an exam paper generator. You respond ONLY with valid JSON — no prose, no markdown fences, no explanation.',
-    prompt: buildALevelPrompt(board, cfg, selected, qPH, seed, diff),
-  })
+  let text: string
+  try {
+    const result = await generateText({
+      model: anthropic('claude-sonnet-4-6'),
+      temperature: 1,
+      system: 'You are an exam paper generator. You respond ONLY with valid JSON — no prose, no markdown fences, no explanation.',
+      prompt: buildALevelPrompt(board, cfg, selected, qPH, seed, diff),
+    })
+    text = result.text
+  } catch (err: any) {
+    return NextResponse.json({ error: 'AI generation failed', details: String(err?.message ?? err) }, { status: 500 })
+  }
 
   const paper = parseJson(text)
   if (!paper) return NextResponse.json({ error: 'Failed to parse paper JSON' }, { status: 500 })
@@ -171,12 +177,18 @@ async function generateGcsePaper({ body, board, admin, userId, supabase }: any) 
     marks: distributeMarks(cfg.totalMarks, selected.length)[i],
   }))
 
-  const { text } = await generateText({
-    model: anthropic('claude-haiku-4-5'),
-    temperature: 1,
-    system: 'You are a GCSE exam paper generator. You respond ONLY with valid JSON — no prose, no markdown fences, no explanation.',
-    prompt: buildGcsePrompt(board, cfg, paperType, selected, qPH, seed, diff),
-  })
+  let text: string
+  try {
+    const result = await generateText({
+      model: anthropic('claude-sonnet-4-6'),
+      temperature: 1,
+      system: 'You are a GCSE exam paper generator. You respond ONLY with valid JSON — no prose, no markdown fences, no explanation.',
+      prompt: buildGcsePrompt(board, cfg, paperType, selected, qPH, seed, diff),
+    })
+    text = result.text
+  } catch (err: any) {
+    return NextResponse.json({ error: 'AI generation failed', details: String(err?.message ?? err) }, { status: 500 })
+  }
 
   const paper = parseJson(text)
   if (!paper) return NextResponse.json({ error: 'Failed to parse paper JSON' }, { status: 500 })

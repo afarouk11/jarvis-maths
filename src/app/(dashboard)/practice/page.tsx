@@ -47,6 +47,7 @@ function PracticePageInner() {
   const [xpGain,    setXpGain]    = useState<number | null>(null)
   const [proRequired, setProRequired] = useState(false)
   const [upgradeLoading, setUpgradeLoading] = useState(false)
+  const [generateError, setGenerateError] = useState<string | null>(null)
 
   const answerTextareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -103,6 +104,7 @@ function PracticePageInner() {
 
   async function generateQuestionForSlug(slug: string) {
     setLoading(true)
+    setGenerateError(null)
     setRevealed(false)
     setQuestion(null)
     setStudentAnswer('')
@@ -111,14 +113,26 @@ function PracticePageInner() {
     setStartTime(Date.now())
 
     const topic = allTopics.find(t => t.slug === slug)!
-    const res = await fetch('/api/generate-question', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topicId: slug, topicName: topic.name, difficulty: 3 }),
-    })
-    const data = await res.json()
-    setQuestion(data)
-    setLoading(false)
+    try {
+      const res = await fetch('/api/generate-question', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topicId: slug, topicName: topic.name, difficulty: 3 }),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        let msg = `Server error ${res.status}`
+        try { msg = JSON.parse(text).error ?? msg } catch { /* plain text */ }
+        setGenerateError(msg)
+      } else {
+        const data = await res.json()
+        setQuestion(data)
+      }
+    } catch (err: any) {
+      setGenerateError(err?.message ?? 'Network error — please try again')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function generateQuestion() {
@@ -386,6 +400,19 @@ function PracticePageInner() {
             {loading ? 'Generating...' : question ? 'New question' : 'Start'}
           </motion.button>
         </div>
+      )}
+
+      {/* Error state */}
+      {generateError && !loading && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          className="rounded-2xl p-4 mb-4 flex items-start gap-3"
+          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
+          <XCircle size={16} className="text-red-400 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-red-300">Generation failed</p>
+            <p className="text-xs mt-0.5" style={{ color: '#f87171' }}>{generateError}</p>
+          </div>
+        </motion.div>
       )}
 
       {/* Loading skeleton */}

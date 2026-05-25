@@ -11,10 +11,16 @@ export async function POST(req: Request) {
 
   const { topicId, topicName, difficulty = 3 } = await req.json()
 
-  const { text } = await generateText({
-    model: anthropic('claude-haiku-4-5-20251001'),
-    prompt: buildQuestionPrompt(topicName, difficulty),
-  })
+  let text: string
+  try {
+    const result = await generateText({
+      model: anthropic('claude-haiku-4-5-20251001'),
+      prompt: buildQuestionPrompt(topicName, difficulty),
+    })
+    text = result.text
+  } catch (err: any) {
+    return Response.json({ error: 'AI generation failed', details: String(err?.message ?? err) }, { status: 500 })
+  }
 
   let question
   try {
