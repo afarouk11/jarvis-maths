@@ -204,7 +204,7 @@ function GlowCore({ amplitude, state }: { amplitude: number; state: JarvisState 
       <mesh ref={innerRef}>
         <icosahedronGeometry args={[0.38, 1]} />
         <meshStandardMaterial
-          color={coreColor} emissive={emissive} emissiveIntensity={2}
+          color={coreColor} emissive={emissive} emissiveIntensity={4}
           transparent opacity={0.9} roughness={0} metalness={1} wireframe />
       </mesh>
 
@@ -244,7 +244,7 @@ function Corona({ state }: { state: JarvisState }) {
         emissive={emissive}
         emissiveIntensity={0.4}
         transparent
-        opacity={0.07}
+        opacity={0.14}
         depthWrite={false}
         side={THREE.BackSide}
       />
@@ -471,7 +471,7 @@ interface Props {
 export function JarvisScene({ amplitude, state, className, onClick }: Props) {
   const canvas = (
     <Canvas
-      camera={{ position: [0, 0, 6], fov: 42 }}
+      camera={{ position: [0, 0, 4.2], fov: 55 }}
       dpr={1}
       performance={{ min: 0.5 }}
       gl={{
@@ -487,16 +487,17 @@ export function JarvisScene({ amplitude, state, className, onClick }: Props) {
         ctx.canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault() }, false)
       }}>
       <ambientLight intensity={0.05} />
-      <pointLight position={[4,  4,  4]}  color={state === 'listening' ? '#22c55e' : '#f59e0b'} intensity={1.5} />
-      <pointLight position={[-3, -3, -4]} color="#1e3a8a" intensity={0.6} />
+      <pointLight position={[4,  4,  4]}  color={state === 'listening' ? '#22c55e' : '#f59e0b'} intensity={4.0} />
+      <pointLight position={[-3, -3, -4]} color="#1e3a8a" intensity={0.8} />
+      <pointLight position={[0,  0,  3]}  color={state === 'listening' ? '#22c55e' : '#f59e0b'} intensity={2.0} />
       <Scene amplitude={amplitude} state={state} />
       <PulseRings state={state} />
       <HitSphere onClick={onClick} />
       <EffectComposer frameBufferType={THREE.HalfFloatType}>
         <Bloom
-          luminanceThreshold={0.15}
-          luminanceSmoothing={0.9}
-          intensity={2.0}
+          luminanceThreshold={0.08}
+          luminanceSmoothing={0.85}
+          intensity={4.5}
         />
       </EffectComposer>
     </Canvas>
