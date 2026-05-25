@@ -343,11 +343,11 @@ Include:
 Return ONLY the JSON array, no other text.`
 }
 
-export function buildQuestionPrompt(topicName: string, difficulty: number, level?: 'gcse' | 'alevel'): string {
+export function buildQuestionPrompt(topicName: string, difficulty: number, level?: 'gcse' | 'alevel', kbContext: string = ''): string {
   const levelLabel = level === 'gcse' ? 'GCSE' : 'A-level'
   const boardLabel = level === 'gcse' ? 'AQA GCSE (Higher tier)' : 'AQA A-level'
   return `Generate a ${levelLabel} maths exam question on "${topicName}" at difficulty ${difficulty}/5.
-
+${kbContext}
 Return JSON with exactly this structure:
 {
   "stem": "question text with LaTeX using $ for inline, $$ for display",

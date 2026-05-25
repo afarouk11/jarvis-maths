@@ -35,8 +35,15 @@ export default function AdminPage() {
   })
 
   useEffect(() => {
-    createClient().auth.getUser().then(({ data: { user } }) => {
-      setAuthorized(user?.email === 'adamfarouk7@hotmail.com')
+    const supabase = createClient()
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) { setAuthorized(false); return }
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single()
+      setAuthorized(prof?.is_admin ?? false)
     })
   }, [])
 

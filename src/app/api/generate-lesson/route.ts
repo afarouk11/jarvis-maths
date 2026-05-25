@@ -32,9 +32,32 @@ export async function POST(req: NextRequest) {
 
     if (!topic) return NextResponse.json({ error: 'Topic not found — run /api/seed-topics first' }, { status: 404 })
 
+    let kbContext = ''
+    if (process.env.OPENAI_API_KEY) {
+      try {
+        const { embedText } = await import('@/lib/ai/embeddings')
+        const embedding = await embedText(topic.name)
+        const { data: knowledge } = await supabase.rpc('match_knowledge', {
+          query_embedding: embedding,
+          match_count: 4,
+          min_similarity: 0.35,
+        })
+        if (knowledge && knowledge.length > 0) {
+          kbContext = '\n\nCURATED KNOWLEDGE BASE — use these as the basis for your worked examples and concept explanations:\n'
+          kbContext += (knowledge as Array<{ type: string; title: string; content: string }>)
+            .map(k => `[${k.type.replace('_', ' ')} — ${k.title}]\n${k.content}`)
+            .join('\n\n')
+          kbContext += '\n'
+        }
+      } catch {
+        // Non-fatal — continue without KB
+      }
+    }
+
     const { text } = await generateText({
       model: anthropic('claude-opus-4-7'),
       prompt: `Generate an interactive A-level Maths lesson on "${topic.name}" for AQA.
+${kbContext}
 
 Return ONLY valid JSON (no markdown fences) with this exact shape:
 
