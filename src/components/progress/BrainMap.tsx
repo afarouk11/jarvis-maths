@@ -391,7 +391,9 @@ export function BrainMap({ progress, avgPKnown, grade, topicsActive, totalTopics
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {['ALL', ...Object.keys(topicCategories)].map(pill => {
             const isActive = pill === 'ALL' ? sectionFilter === null : sectionFilter === pill
-            const label = pill === 'ALL' ? 'ALL' : pill.split(' ')[0].toUpperCase().slice(0, 5)
+            const SHORT: Record<string, string> = { Statistics: 'STATS', Mechanics: 'MECH' }
+            const word = pill.split(' ')[0]
+            const label = pill === 'ALL' ? 'ALL' : (SHORT[word] ?? word.toUpperCase().slice(0, 5))
             return (
               <button
                 key={pill}
