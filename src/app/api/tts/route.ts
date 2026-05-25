@@ -222,9 +222,11 @@ export async function POST(req: Request) {
 
   const { text } = await req.json()
 
-  // Detect math before stripping — slow down TTS so students can follow
-  const hasMath = /\$|\\\(|\\\[|\\frac|\\sqrt|\\int|\\sum|\\lim|\\sin|\\cos|\\tan|\\theta|\\pi|\\alpha|\\beta|\\gamma|\\delta|\\cdot|\\times|\^{/.test(text)
-  const ttsSpeed = hasMath ? 0.82 : 1.0
+  // Detect math density before stripping — slow down TTS proportionally so students can follow
+  // Count distinct math blocks (inline/display/operators) to determine how dense the expression is
+  const mathBlocks = (text.match(/\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]|\\frac\{|\\sqrt\{?|\\int_?|\\sum_?|\\lim/g) ?? []).length
+  const hasMath   = mathBlocks > 0 || /\$|\\[a-zA-Z]+|[_^]\{/.test(text)
+  const ttsSpeed  = mathBlocks >= 3 ? 0.70 : hasMath ? 0.75 : 1.0
 
   const cleanText = stripLatex(text)
 

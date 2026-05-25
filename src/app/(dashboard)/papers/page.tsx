@@ -40,7 +40,7 @@ export default function PapersPage() {
   useEffect(() => {
     // Read student level from profile
     fetch('/api/profile').then(r => r.json()).then(d => {
-      const l = d?.profile?.level ?? 'A-Level'
+      const l = d?.level ?? 'A-Level'
       setLevel(l)
       setPaperType(l === 'GCSE' ? 'non-calc' : 'pure')
     }).catch(() => {})
@@ -106,9 +106,9 @@ export default function PapersPage() {
       )}
 
       {/* ── My Papers ── */}
-      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(139,92,246,0.2)' }}>
+      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="px-5 py-4 flex items-center justify-between"
-          style={{ background: 'rgba(139,92,246,0.07)', borderBottom: '1px solid rgba(139,92,246,0.14)' }}>
+          style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
           <div>
             <h1 className="text-base font-bold text-white">My Papers</h1>
             <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>
@@ -254,7 +254,7 @@ export default function PapersPage() {
                       </div>
                       <span className="text-xs font-mono" style={{ color: '#f59e0b' }}>{item.percent}%</span>
                     </div>
-                    <div className="h-1.5 rounded-full bg-slate-800">
+                    <div className="h-1 rounded-full bg-slate-800">
                       <motion.div className="h-full rounded-full"
                         style={{ background: item.due ? '#ef4444' : i < 3 ? '#f59e0b' : i < 6 ? '#f97316' : '#3b82f6' }}
                         initial={{ width: 0 }} animate={{ width: `${item.percent}%` }}

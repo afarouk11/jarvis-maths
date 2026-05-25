@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { JarvisAvatar } from '@/components/jarvis/JarvisAvatar'
+import { validateName } from '@/lib/validate-name'
 
 export default function SignUpPage() {
   const router = useRouter()
@@ -18,6 +19,8 @@ export default function SignUpPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
+    const nameError = validateName(form.fullName)
+    if (nameError) { setError(nameError); setLoading(false); return }
     const { error } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,

@@ -34,7 +34,7 @@ export default async function ProfilePage() {
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-white">{profile?.full_name ?? 'Your Profile'}</h1>
+        <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-space-grotesk)', letterSpacing: '-0.02em' }}>{profile?.full_name ?? 'Your Profile'}</h1>
         <p className="text-sm mt-1" style={{ color: '#5a7aaa' }}>
           {profile?.exam_board} A-level · Target: {profile?.target_grade}
           {profile?.exam_date && ` · Exam: ${new Date(profile.exam_date).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`}
@@ -46,23 +46,17 @@ export default async function ProfilePage() {
       <StreakBadge streakDays={profile?.streak_days ?? 0} xp={profile?.xp ?? 0} />
 
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: '#3b82f6' }}>
-          Topic Mastery Map
-        </h2>
+        <h2 className="text-sm font-semibold text-white mb-4">Topic Mastery Map</h2>
         <TopicMasteryMap progress={progressData} />
       </section>
 
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: '#a78bfa' }}>
-          Subscription
-        </h2>
+        <h2 className="text-sm font-semibold text-white mb-4">Subscription</h2>
         <BillingSection isPro={isPro(profile?.stripe_subscription_status)} />
       </section>
 
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: '#f59e0b' }}>
-          Settings
-        </h2>
+        <h2 className="text-sm font-semibold text-white mb-4">Settings</h2>
         <ProfileSettings
           initialFullName={profile?.full_name ?? ''}
           initialExamBoard={profile?.exam_board ?? 'AQA'}

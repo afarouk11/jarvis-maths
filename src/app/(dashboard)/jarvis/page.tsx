@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, isReasoningUIPart, isTextUIPart } from 'ai'
-import { Send, Mic, MicOff, Volume2, VolumeX, RefreshCw, Zap, Check, X } from 'lucide-react'
+import { Send, Mic, MicOff, Volume2, VolumeX, RefreshCw, Zap, Check, X, Lock } from 'lucide-react'
 import { ThinkingBlock } from '@/components/jarvis/ThinkingBlock'
 import { JarvisAvatar } from '@/components/jarvis/JarvisAvatar'
 import { CHAT_SKILL_MODES, type SkillModeId } from '@/lib/spok-skills'
@@ -32,6 +32,9 @@ export default function SpokPage() {
   const prevSentenceRef = useRef('')
   const [limitReached, setLimitReached] = useState(false)
   const [upgradeLoading, setUpgradeLoading] = useState(false)
+  const [messagesUsedToday, setMessagesUsedToday] = useState<number | null>(null)
+  const [avgMastery, setAvgMastery] = useState<number>(0)
+  const FREE_LIMIT = 5
 
   useEffect(() => {
     function tick() {
@@ -40,6 +43,28 @@ export default function SpokPage() {
     tick()
     const id = setInterval(tick, 1000)
     return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/profile')
+      .then(r => r.json())
+      .then((p: { stripe_subscription_status?: string; chat_messages_today?: number; chat_messages_reset_at?: string }) => {
+        const isPro = p.stripe_subscription_status === 'active' || p.stripe_subscription_status === 'trialing'
+        if (!isPro) {
+          const today = new Date().toISOString().slice(0, 10)
+          const count = p.chat_messages_reset_at === today ? (p.chat_messages_today ?? 0) : 0
+          setMessagesUsedToday(count)
+        }
+      })
+      .catch(() => {})
+    fetch('/api/progress')
+      .then(r => r.json())
+      .then((rows: Array<{ p_known: number }>) => {
+        if (Array.isArray(rows) && rows.length > 0) {
+          setAvgMastery(rows.reduce((s, r) => s + (r.p_known ?? 0), 0) / rows.length)
+        }
+      })
+      .catch(() => {})
   }, [])
   const bottomRef  = useRef<HTMLDivElement>(null)
   const inputRef   = useRef<HTMLInputElement>(null)
@@ -85,6 +110,7 @@ export default function SpokPage() {
       }
     },
     onFinish: ({ message }) => {
+      setMessagesUsedToday(prev => prev !== null ? prev + 1 : null)
       const remaining = sentenceBufferRef.current.flush()
       remaining.forEach(s => queueSpeak(s))
 
@@ -276,7 +302,7 @@ export default function SpokPage() {
                 Daily limit reached
               </h2>
               <p className="text-sm text-center mb-5" style={{ color: '#5a7aaa' }}>
-                You&apos;ve used your 10 free SPOK messages today. Upgrade for unlimited access, voice tutor, and more.
+                You&apos;ve used your 5 free SPOK messages today. Upgrade for unlimited access, voice tutor, and more.
               </p>
 
               {/* Price */}
@@ -437,26 +463,60 @@ export default function SpokPage() {
           <div ref={bottomRef} />
         </div>
 
+        {/* Free tier message counter */}
+        {messagesUsedToday !== null && (
+          <div className="px-6 pt-2 pb-0 shrink-0 flex items-center justify-between"
+            style={{ borderTop: '1px solid rgba(59,130,246,0.08)' }}>
+            <div className="flex items-center gap-2">
+              {Array.from({ length: FREE_LIMIT }, (_, i) => (
+                <div key={i} className="w-2 h-2 rounded-full transition-all"
+                  style={{ background: i < messagesUsedToday ? 'rgba(245,158,11,0.8)' : 'rgba(255,255,255,0.1)' }} />
+              ))}
+              <span className="text-xs ml-1" style={{ color: messagesUsedToday >= FREE_LIMIT - 1 ? '#f59e0b' : '#4a6070' }}>
+                {Math.max(0, FREE_LIMIT - messagesUsedToday)} free {Math.max(0, FREE_LIMIT - messagesUsedToday) === 1 ? 'message' : 'messages'} left today
+              </span>
+            </div>
+            <button
+              onClick={() => window.location.href = '/pricing'}
+              className="text-xs px-2.5 py-1 rounded-lg font-medium transition-colors"
+              style={{ color: '#f59e0b', border: '1px solid rgba(245,158,11,0.2)', background: 'rgba(245,158,11,0.05)' }}>
+              Upgrade
+            </button>
+          </div>
+        )}
+
         {/* Skill mode chips */}
         <div className="px-6 pt-3 pb-0 shrink-0 flex items-center gap-2 flex-wrap"
-          style={{ borderTop: '1px solid rgba(59,130,246,0.08)' }}>
+          style={{ borderTop: messagesUsedToday !== null ? 'none' : '1px solid rgba(59,130,246,0.08)' }}>
           {CHAT_SKILL_MODES.map(mode => {
             const isActive = activeMode === mode.id
+            const isLocked = mode.minMastery > 0 && avgMastery < mode.minMastery
+            const pct = Math.round(mode.minMastery * 100)
             return (
-              <button
-                key={mode.id}
-                type="button"
-                onClick={() => setActiveMode(isActive ? null : mode.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
-                style={{
-                  background: isActive ? `${mode.color}22` : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${isActive ? mode.color + '55' : 'rgba(255,255,255,0.07)'}`,
-                  color: isActive ? mode.color : '#4a6070',
-                  boxShadow: isActive ? `0 0 12px ${mode.glowColor}` : 'none',
-                }}>
-                <span>{mode.emoji}</span>
-                {mode.shortLabel}
-              </button>
+              <div key={mode.id} className="relative group">
+                <button
+                  type="button"
+                  onClick={() => !isLocked && setActiveMode(isActive ? null : mode.id)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                  style={{
+                    background: isLocked ? 'rgba(255,255,255,0.02)' : isActive ? `${mode.color}22` : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${isLocked ? 'rgba(255,255,255,0.05)' : isActive ? mode.color + '55' : 'rgba(255,255,255,0.07)'}`,
+                    color: isLocked ? '#2a3a4a' : isActive ? mode.color : '#4a6070',
+                    boxShadow: isActive && !isLocked ? `0 0 12px ${mode.glowColor}` : 'none',
+                    cursor: isLocked ? 'not-allowed' : 'pointer',
+                  }}>
+                  {isLocked ? <Lock size={10} /> : <span>{mode.emoji}</span>}
+                  {mode.shortLabel}
+                </button>
+                {isLocked && (
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    style={{ background: 'rgba(12,17,30,0.95)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8' }}>
+                    Unlocks at {pct}% avg mastery
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent"
+                      style={{ borderTopColor: 'rgba(12,17,30,0.95)' }} />
+                  </div>
+                )}
+              </div>
             )
           })}
           {activeMode && (
@@ -530,31 +590,6 @@ export default function SpokPage() {
 
       {/* ── RIGHT — Spok visual ────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden">
-
-        {/* Background HUD grid */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: 'linear-gradient(rgba(245,158,11,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(245,158,11,0.5) 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
-        }} />
-
-        {/* Corner HUD brackets */}
-        {[
-          'top-4 left-4 border-t border-l',
-          'top-4 right-4 border-t border-r',
-          'bottom-4 left-4 border-b border-l',
-          'bottom-4 right-4 border-b border-r',
-        ].map((cls, i) => (
-          <div key={i} className={`absolute w-8 h-8 ${cls}`}
-            style={{ borderColor: 'rgba(245,158,11,0.3)' }} />
-        ))}
-
-        {/* Scan line animation */}
-        <motion.div
-          className="absolute left-0 right-0 h-px pointer-events-none"
-          style={{ background: 'linear-gradient(90deg, transparent, rgba(245,158,11,0.3), transparent)' }}
-          animate={{ top: ['0%', '100%'] }}
-          transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-        />
 
         <AnimatePresence mode="wait">
           {animateSpec ? (

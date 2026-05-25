@@ -113,12 +113,13 @@ export function BrainMap({ progress, avgPKnown, grade, topicsActive, totalTopics
   useEffect(() => {
     const supabase = createClient()
     let channel: ReturnType<typeof supabase.channel> | null = null
+    let cancelled = false
 
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
+      if (!user || cancelled) return
 
       channel = supabase
-        .channel('brain-progress-realtime')
+        .channel(`brain-progress-${user.id}`)
         .on(
           'postgres_changes',
           {
@@ -158,7 +159,7 @@ export function BrainMap({ progress, avgPKnown, grade, topicsActive, totalTopics
     })
 
     return () => {
-      // Use the same supabase instance so the channel is actually removed
+      cancelled = true
       if (channel) supabase.removeChannel(channel)
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
     }

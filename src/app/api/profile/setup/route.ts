@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { validateName } from '@/lib/validate-name'
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -8,6 +9,11 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { fullName, examBoard, targetGrade, yearGroup, examDate, level, dyslexiaMode, adhdMode } = await req.json()
+
+  if (fullName) {
+    const nameError = validateName(fullName)
+    if (nameError) return NextResponse.json({ error: nameError }, { status: 400 })
+  }
 
   const admin = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
