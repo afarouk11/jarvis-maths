@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { embedBatch, chunkText, guessTopicSlug } from '@/lib/ai/embeddings'
+import { anthropic } from '@ai-sdk/anthropic'
+import { generateText } from 'ai'
 import { join } from 'path'
 import { pathToFileURL } from 'url'
 
@@ -46,20 +48,47 @@ export async function POST(req: NextRequest) {
     const paper_number = form.get('paper_number') ? parseInt(form.get('paper_number') as string) : null
 
     if (!file || !title) return NextResponse.json({ error: 'file and title required' }, { status: 400 })
-    if (!file.name.endsWith('.pdf')) return NextResponse.json({ error: 'PDF files only' }, { status: 400 })
+
+    const isImage = /\.(jpe?g|png|webp)$/i.test(file.name)
+    const isPDF   = file.name.endsWith('.pdf')
+    if (!isPDF && !isImage) return NextResponse.json({ error: 'PDF or image files only (PDF, JPEG, PNG, WebP)' }, { status: 400 })
 
     const buffer = Buffer.from(await file.arrayBuffer())
 
     let text = ''
-    try {
-      text = await extractPDFText(buffer)
-    } catch (err) {
-      console.error('[PDF upload] parse error:', err)
-      return NextResponse.json({ error: `Failed to parse PDF: ${(err as any)?.message ?? err}` }, { status: 500 })
-    }
-
-    if (text.trim().length < 100) {
-      return NextResponse.json({ error: 'PDF appears to be image-based (no extractable text)' }, { status: 400 })
+    if (isPDF) {
+      try {
+        text = await extractPDFText(buffer)
+      } catch (err) {
+        console.error('[PDF upload] parse error:', err)
+        return NextResponse.json({ error: `Failed to parse PDF: ${(err as any)?.message ?? err}` }, { status: 500 })
+      }
+      if (text.trim().length < 100) {
+        return NextResponse.json({ error: 'PDF appears to be image-based (no extractable text). Try uploading as an image instead.' }, { status: 400 })
+      }
+    } else {
+      // Image — extract text via Claude vision
+      try {
+        const mimeType = file.name.endsWith('.png') ? 'image/png' : 'image/jpeg'
+        const base64   = buffer.toString('base64')
+        const { text: extracted } = await generateText({
+          model: anthropic('claude-haiku-4-5-20251001'),
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Extract ALL text and mathematical content from this past paper image. Include every question, sub-part, diagram description, mark allocation, and any instructions. Preserve the structure and numbering. Output plain text only.' },
+              { type: 'image', image: `data:${mimeType};base64,${base64}` as any },
+            ],
+          }],
+        })
+        text = extracted
+      } catch (err) {
+        console.error('[Image upload] vision error:', err)
+        return NextResponse.json({ error: `Failed to extract text from image: ${(err as any)?.message ?? err}` }, { status: 500 })
+      }
+      if (text.trim().length < 50) {
+        return NextResponse.json({ error: 'Could not extract enough content from the image. Please ensure the image is clear and well-lit.' }, { status: 400 })
+      }
     }
 
     const admin = createServiceClient(

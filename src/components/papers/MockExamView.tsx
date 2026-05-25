@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MixedMath } from '@/components/math/MathRenderer'
-import { X, ChevronDown, ChevronUp, CheckCircle, XCircle, Loader2, Trophy, BookmarkPlus, BookmarkCheck } from 'lucide-react'
+import { X, ChevronDown, ChevronUp, CheckCircle, XCircle, Loader2, Trophy, BookmarkPlus, BookmarkCheck, Pen, Type } from 'lucide-react'
+import { DrawingCanvas } from '@/components/ui/DrawingCanvas'
 
 interface WorkedStep { label: string; content: string }
 interface MockQuestion {
@@ -18,6 +19,8 @@ export interface MockPaper {
 
 interface QuestionState {
   studentAnswer: string
+  drawingImage: string
+  drawMode: boolean
   marking: boolean
   result: { correct: boolean; quality: number; feedback: string; partialCredit: boolean } | null
   marksEarned: number
@@ -33,7 +36,7 @@ export function MockExamView({ paper, focusTopics, onClose }: {
 
   const [states, setStates] = useState<Record<number, QuestionState>>(() =>
     Object.fromEntries(allQuestions.map(q => [q.number, {
-      studentAnswer: '', marking: false, result: null, marksEarned: 0, revealed: false,
+      studentAnswer: '', drawingImage: '', drawMode: false, marking: false, result: null, marksEarned: 0, revealed: false,
     }]))
   )
   const [expandedSolutions, setExpandedSolutions] = useState<Set<number>>(new Set())
@@ -68,7 +71,8 @@ export function MockExamView({ paper, focusTopics, onClose }: {
 
   async function markQuestion(q: MockQuestion) {
     const s = states[q.number]
-    if (!s.studentAnswer.trim()) return
+    const hasAnswer = s.drawMode ? !!s.drawingImage : !!s.studentAnswer.trim()
+    if (!hasAnswer) return
     updateState(q.number, { marking: true })
     const res = await fetch('/api/mark-answer', {
       method: 'POST',
@@ -76,7 +80,8 @@ export function MockExamView({ paper, focusTopics, onClose }: {
       body: JSON.stringify({
         stem: q.stem,
         correctAnswer: q.answer,
-        studentAnswer: s.studentAnswer,
+        studentAnswer: s.drawMode ? undefined : s.studentAnswer,
+        studentAnswerImage: s.drawMode ? s.drawingImage : undefined,
         workedSolution: q.worked_solution,
       }),
     })
@@ -264,30 +269,55 @@ export function MockExamView({ paper, focusTopics, onClose }: {
 
                           {/* Answer lines + textarea overlay */}
                           <div style={{ marginTop: 16, position: 'relative' }}>
-                            <div style={{ color: '#888', fontSize: 11, fontFamily: 'Arial, sans-serif', marginBottom: 6 }}>
-                              Answer space:
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                              <div style={{ color: '#888', fontSize: 11, fontFamily: 'Arial, sans-serif' }}>Answer space:</div>
+                              {!st.result && (
+                                <div style={{ display: 'flex', gap: 4 }}>
+                                  {([{ mode: false, icon: <Type size={11} />, label: 'Type' }, { mode: true, icon: <Pen size={11} />, label: 'Draw' }] as const).map(opt => (
+                                    <button key={String(opt.mode)} onClick={() => updateState(q.number, { drawMode: opt.mode as boolean })}
+                                      style={{
+                                        display: 'flex', alignItems: 'center', gap: 3, padding: '2px 8px',
+                                        fontSize: 10, borderRadius: 4, cursor: 'pointer',
+                                        background: st.drawMode === opt.mode ? '#1d4ed8' : '#f3f4f6',
+                                        color: st.drawMode === opt.mode ? '#fff' : '#6b7280',
+                                        border: `1px solid ${st.drawMode === opt.mode ? '#1d4ed8' : '#d1d5db'}`,
+                                      }}>
+                                      {opt.icon} {opt.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                            <textarea
-                              value={st.studentAnswer}
-                              onChange={e => updateState(q.number, { studentAnswer: e.target.value })}
-                              disabled={!!st.result}
-                              placeholder="Write your answer here..."
-                              rows={Math.max(3, q.marks + 1)}
-                              style={{
-                                width: '100%',
-                                fontFamily: "'Times New Roman', Times, serif",
-                                fontSize: 14,
-                                color: '#000',
-                                backgroundColor: st.result ? '#f9fafb' : '#fff',
-                                backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, #d0d7de 31px, #d0d7de 32px)',
-                                border: '1px solid #aaa',
-                                borderRadius: 0,
-                                padding: '8px 10px',
-                                resize: 'vertical',
-                                outline: 'none',
-                                lineHeight: '2.2',
-                              }}
-                            />
+
+                            {st.drawMode && !st.result ? (
+                              <DrawingCanvas
+                                marks={q.marks}
+                                disabled={!!st.result}
+                                onChange={img => updateState(q.number, { drawingImage: img })}
+                              />
+                            ) : (
+                              <textarea
+                                value={st.studentAnswer}
+                                onChange={e => updateState(q.number, { studentAnswer: e.target.value })}
+                                disabled={!!st.result}
+                                placeholder="Write your answer here..."
+                                rows={Math.max(3, q.marks + 1)}
+                                style={{
+                                  width: '100%',
+                                  fontFamily: "'Times New Roman', Times, serif",
+                                  fontSize: 14,
+                                  color: '#000',
+                                  backgroundColor: st.result ? '#f9fafb' : '#fff',
+                                  backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, #d0d7de 31px, #d0d7de 32px)',
+                                  border: '1px solid #aaa',
+                                  borderRadius: 0,
+                                  padding: '8px 10px',
+                                  resize: 'vertical',
+                                  outline: 'none',
+                                  lineHeight: '2.2',
+                                }}
+                              />
+                            )}
 
                             {/* Marks awarded badge */}
                             {st.result && (
