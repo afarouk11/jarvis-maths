@@ -1,7 +1,13 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { motion, AnimatePresence } from 'framer-motion'
 import { JarvisState } from '@/types'
+
+const JarvisScene = dynamic(
+  () => import('./JarvisScene').then(m => ({ default: m.JarvisScene })),
+  { ssr: false }
+)
 
 interface Props {
   state: JarvisState
@@ -41,6 +47,15 @@ const EDGES = [
 ]
 
 export function JarvisAvatar({ state, size = 56, amplitude = 0 }: Props) {
+  // Render the full 3D scene for large avatars
+  if (size >= 100) {
+    return (
+      <div style={{ width: size, height: size }}>
+        <JarvisScene amplitude={amplitude} state={state} />
+      </div>
+    )
+  }
+
   const r = size / 2
   const scale = size / 100
 
