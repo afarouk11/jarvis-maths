@@ -482,6 +482,7 @@ export function JarvisScene({ amplitude, state, className, onClick }: Props) {
       }}
       style={{ background: 'transparent' }}
       onCreated={({ gl }) => {
+        gl.setClearColor(0x000000, 0)
         const ctx = gl.getContext()
         if (!ctx) return
         ctx.canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault() }, false)
