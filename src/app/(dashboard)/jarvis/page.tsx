@@ -7,6 +7,8 @@ import { DefaultChatTransport, isReasoningUIPart, isTextUIPart } from 'ai'
 import { Send, Mic, MicOff, Volume2, VolumeX, RefreshCw, Zap, Check, X, Lock } from 'lucide-react'
 import { ThinkingBlock } from '@/components/jarvis/ThinkingBlock'
 import { JarvisAvatar } from '@/components/jarvis/JarvisAvatar'
+import dynamic from 'next/dynamic'
+const JarvisScene = dynamic(() => import('@/components/jarvis/JarvisScene').then(m => ({ default: m.JarvisScene })), { ssr: false })
 import { CHAT_SKILL_MODES, type SkillModeId } from '@/lib/spok-skills'
 import { useAccessibility } from '@/hooks/useAccessibility'
 import { SpokMessage } from '@/components/math/SpokMessage'
@@ -588,21 +590,28 @@ export default function SpokPage() {
         </form>
       </div>
 
-      {/* ── RIGHT — Spok visual ────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden">
+      {/* ── RIGHT — Full-panel Three.js canvas with overlaid UI ─────── */}
+      <div className="flex-1 relative overflow-hidden" style={{ background: '#080d19' }}>
 
-        <AnimatePresence mode="wait">
-          {animateSpec ? (
-            /* ── Animated graph teaching panel ── */
+        {/* Three.js canvas fills the entire panel */}
+        <div className="absolute inset-0" onClick={() => listening ? stopListening() : startListening()} style={{ cursor: 'pointer' }}>
+          <JarvisScene amplitude={amplitude} state={jarvisState} />
+        </div>
+
+        {/* Graph teaching panel — overlaid when active */}
+        <AnimatePresence>
+          {animateSpec && (
             <motion.div
               key="graph-panel"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.4 }}
-              className="relative z-10 w-full px-8 flex flex-col gap-3"
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center px-8 gap-3"
+              style={{ background: 'rgba(8,13,25,0.85)', backdropFilter: 'blur(8px)' }}
+              onClick={e => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between w-full mb-1">
                 <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#f59e0b' }}>
                   SPOK · Drawing
                 </p>
@@ -613,12 +622,7 @@ export default function SpokPage() {
                   ✕ dismiss
                 </button>
               </div>
-              <AnimatedGraphRenderer
-                spec={animateSpec}
-                currentStep={animateStep}
-                className="w-full"
-              />
-              {/* Step progress dots */}
+              <AnimatedGraphRenderer spec={animateSpec} currentStep={animateStep} className="w-full" />
               <div className="flex items-center gap-1.5 justify-center mt-1">
                 {animateSpec.steps.map((_, i) => (
                   <div key={i} className="rounded-full transition-all duration-300"
@@ -630,97 +634,58 @@ export default function SpokPage() {
                 ))}
               </div>
             </motion.div>
-          ) : (
-            /* ── Default sphere + word display ── */
+          )}
+        </AnimatePresence>
+
+        {/* Live word display — centre of panel */}
+        <AnimatePresence mode="wait">
+          {currentSentence && !animateSpec && (
             <motion.div
-              key="sphere-panel"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              key={currentSentence}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="flex flex-col items-center"
+              className="absolute left-0 right-0 bottom-40 z-10 px-8 text-center leading-relaxed pointer-events-none"
             >
-              {/* Outer orbit ring */}
-              <motion.div
-                className="absolute rounded-full border"
-                style={{ width: 420, height: 420, borderColor: 'rgba(245,158,11,0.08)' }}
-                animate={{ rotate: 360 }}
-                transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-              >
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full"
-                  style={{ background: '#f59e0b' }} />
-              </motion.div>
-
-              {/* Inner orbit ring */}
-              <motion.div
-                className="absolute rounded-full border"
-                style={{ width: 340, height: 340, borderColor: 'rgba(245,158,11,0.06)' }}
-                animate={{ rotate: -360 }}
-                transition={{ duration: 14, repeat: Infinity, ease: 'linear' }}
-              >
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-1 h-1 rounded-full"
-                  style={{ background: 'rgba(245,158,11,0.6)' }} />
-              </motion.div>
-
-              {/* SPOK crest avatar — click to talk */}
-              <div
-                className="relative z-10 cursor-pointer"
-                onClick={() => listening ? stopListening() : startListening()}
-              >
-                <JarvisAvatar state={jarvisState} size={300} amplitude={amplitude} />
-              </div>
-
-              {/* Click hint */}
-              <AnimatePresence>
-                {jarvisState === 'idle' && (
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute bottom-28 text-xs font-mono"
-                    style={{ color: 'rgba(245,158,11,0.35)' }}>
-                    tap to speak
-                  </motion.p>
-                )}
-              </AnimatePresence>
-
-              {/* Live word display */}
-              <AnimatePresence mode="wait">
-                {currentSentence && (
-                  <motion.div
-                    key={currentSentence}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="relative z-10 mt-6 px-6 max-w-sm text-center leading-relaxed"
-                    style={{ minHeight: 48 }}>
-                    {currentSentence.trim().split(/\s+/).map((word, i) => (
-                      <span
-                        key={i}
-                        className="inline-block mr-1 transition-all duration-100"
-                        style={{
-                          color: i < spokenWordCount ? '#f59e0b' : 'rgba(245,158,11,0.18)',
-                          fontWeight: i < spokenWordCount ? 600 : 400,
-                          fontSize: 15,
-                        }}>
-                        {word}
-                      </span>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {currentSentence.trim().split(/\s+/).map((word, i) => (
+                <span
+                  key={i}
+                  className="inline-block mr-1 transition-all duration-100"
+                  style={{
+                    color: i < spokenWordCount ? '#f59e0b' : 'rgba(245,158,11,0.18)',
+                    fontWeight: i < spokenWordCount ? 600 : 400,
+                    fontSize: 15,
+                  }}>
+                  {word}
+                </span>
+              ))}
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Status + waveform bars below */}
-        <div className="relative z-10 mt-4 flex flex-col items-center gap-3">
-          {/* Live waveform bars — amplitude driven */}
+        {/* Tap to speak hint */}
+        <AnimatePresence>
+          {jarvisState === 'idle' && !animateSpec && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute bottom-24 left-0 right-0 text-center text-xs font-mono z-10 pointer-events-none"
+              style={{ color: 'rgba(245,158,11,0.35)' }}>
+              tap to speak
+            </motion.p>
+          )}
+        </AnimatePresence>
+
+        {/* Status + waveform — bottom of panel */}
+        <div className="absolute bottom-6 left-0 right-0 z-10 flex flex-col items-center gap-2 pointer-events-none">
+          {/* Live waveform bars */}
           <div className="flex items-end gap-1 h-8">
             {Array.from({ length: 20 }, (_, i) => {
               const phase = Math.sin((i / 20) * Math.PI)
               const barH  = speaking ? `${8 + phase * amplitude * 80}%` : '15%'
               return (
-                <motion.div
+                <div
                   key={i}
                   className="w-1 rounded-full"
                   style={{
@@ -734,7 +699,6 @@ export default function SpokPage() {
             })}
           </div>
 
-          {/* Status label */}
           <motion.p
             key={jarvisState}
             initial={{ opacity: 0, y: 4 }}
@@ -744,7 +708,6 @@ export default function SpokPage() {
             {statusLabel}
           </motion.p>
 
-          {/* HUD readout line */}
           <p className="text-xs font-mono" style={{ color: 'rgba(245,158,11,0.3)' }}>
             AMP {(amplitude * 100).toFixed(0).padStart(3, '0')} · {clock}
           </p>
