@@ -23,6 +23,10 @@ export default async function TopicPage({ params }: Props) {
   const { data: topicRow } = await supabase
     .from('topics').select('id').eq('slug', slug).single()
 
+  const { data: profile } = await supabase
+    .from('profiles').select('exam_board').eq('id', user.id).single()
+  const examBoard = profile?.exam_board ?? 'AQA'
+
   const [{ data: lessons }, { data: progress }, { data: recentAttempts }] = await Promise.all([
     topicRow
       ? supabase.from('lessons').select().eq('topic_id', topicRow.id).order('difficulty')
@@ -57,7 +61,7 @@ export default async function TopicPage({ params }: Props) {
             <div>
               <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-space-grotesk)', letterSpacing: '-0.02em' }}>{topic.name}</h1>
               <p className="text-sm mt-1" style={{ color: '#5a7aaa' }}>
-                {topic.year_group} · {isGCSE ? 'AQA GCSE Mathematics' : 'AQA A-level Mathematics'}
+                {topic.year_group} · {isGCSE ? `${examBoard} GCSE Mathematics` : `${examBoard} A-level Mathematics`}
               </p>
             </div>
             <Link href={`/practice?topic=${slug}`}
