@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type DiagramElement =
+export type DiagramElement =
   | { kind: 'circle'; cx: number; cy: number; r: number; color?: string; label?: string; dashed?: boolean }
-  | { kind: 'point'; x: number; y: number; label?: string; color?: string }
+  | { kind: 'point'; x: number; y: number; label?: string; color?: string; draggable?: boolean }
   | { kind: 'vector'; x1: number; y1: number; x2: number; y2: number; label?: string; color?: string; dashed?: boolean }
   | { kind: 'segment'; x1: number; y1: number; x2: number; y2: number; label?: string; color?: string; dashed?: boolean }
   | { kind: 'north'; x: number; y: number; len?: number }
@@ -74,15 +74,28 @@ interface Coords {
   yMax: number
 }
 
-function renderCircle(el: Extract<DiagramElement, { kind: 'circle' }>, c: Coords, key: number) {
+interface RenderOptions {
+  hoveredKey: string | null
+  onElementClick?: (label: string, description: string) => void
+}
+
+function renderCircle(
+  el: Extract<DiagramElement, { kind: 'circle' }>,
+  c: Coords,
+  key: number,
+  opts: RenderOptions,
+) {
   const cx = c.mx(el.cx)
   const cy = c.my(el.cy)
   const r = c.mLen(el.r)
   const color = el.color ?? '#3b82f6'
   const labelY = cy - r - 8
+  const hitKey = `circle-${key}`
+  const isHovered = opts.hoveredKey === hitKey
+  const isClickable = Boolean(el.label && opts.onElementClick)
 
   return (
-    <g key={key}>
+    <g key={key} filter={isHovered && isClickable ? 'url(#amber-glow)' : undefined}>
       <circle
         cx={cx}
         cy={cy}
@@ -123,10 +136,14 @@ function renderPoint(
   el: Extract<DiagramElement, { kind: 'point' }>,
   c: Coords,
   key: number,
+  opts: RenderOptions,
+  overridePos?: { x: number; y: number },
 ) {
-  const px = c.mx(el.x)
-  const py = c.my(el.y)
+  const px = c.mx(overridePos?.x ?? el.x)
+  const py = c.my(overridePos?.y ?? el.y)
   const color = el.color ?? '#ffffff'
+  const hitKey = `point-${key}`
+  const isHovered = opts.hoveredKey === hitKey
 
   // Centre of diagram in SVG coords
   const svgCx = c.mx((c.xMin + c.xMax) / 2)
@@ -151,10 +168,19 @@ function renderPoint(
 
   const label = el.label ?? ''
   const labelW = label.length * 6.5 + 8
+  const isClickable = Boolean(label && opts.onElementClick)
 
   return (
-    <g key={key}>
+    <g key={key} filter={isHovered && isClickable ? 'url(#amber-glow)' : undefined}>
       <circle cx={px} cy={py} r={4.5} fill={color} />
+      {el.draggable && (
+        /* 4-dot drag handle icon */
+        <g style={{ pointerEvents: 'none' }}>
+          {[[-3, -3], [3, -3], [-3, 3], [3, 3]].map(([ox, oy], di) => (
+            <circle key={di} cx={px + 10 + (ox ?? 0)} cy={py + (oy ?? 0)} r={1} fill="rgba(245,158,11,0.6)" />
+          ))}
+        </g>
+      )}
       {label && (
         <>
           <rect
@@ -186,11 +212,13 @@ function renderVector(
   el: Extract<DiagramElement, { kind: 'vector' }>,
   c: Coords,
   key: number,
+  opts: RenderOptions,
+  overrideCoords?: { x1: number; y1: number; x2: number; y2: number },
 ) {
-  const x1 = c.mx(el.x1)
-  const y1 = c.my(el.y1)
-  const x2 = c.mx(el.x2)
-  const y2 = c.my(el.y2)
+  const x1 = c.mx(overrideCoords?.x1 ?? el.x1)
+  const y1 = c.my(overrideCoords?.y1 ?? el.y1)
+  const x2 = c.mx(overrideCoords?.x2 ?? el.x2)
+  const y2 = c.my(overrideCoords?.y2 ?? el.y2)
   const color = el.color ?? '#3b82f6'
   const mid = markerId(color)
 
@@ -206,8 +234,12 @@ function renderVector(
   const midY = (y1 + y2) / 2
   const [ox, oy] = perpOffset(x1, y1, x2, y2, 12)
 
+  const hitKey = `vector-${key}`
+  const isHovered = opts.hoveredKey === hitKey
+  const isClickable = Boolean(el.label && opts.onElementClick)
+
   return (
-    <g key={key}>
+    <g key={key} filter={isHovered && isClickable ? 'url(#amber-glow)' : undefined}>
       <line
         x1={x1}
         y1={y1}
@@ -249,19 +281,25 @@ function renderSegment(
   el: Extract<DiagramElement, { kind: 'segment' }>,
   c: Coords,
   key: number,
+  opts: RenderOptions,
+  overrideCoords?: { x1: number; y1: number; x2: number; y2: number },
 ) {
-  const x1 = c.mx(el.x1)
-  const y1 = c.my(el.y1)
-  const x2 = c.mx(el.x2)
-  const y2 = c.my(el.y2)
+  const x1 = c.mx(overrideCoords?.x1 ?? el.x1)
+  const y1 = c.my(overrideCoords?.y1 ?? el.y1)
+  const x2 = c.mx(overrideCoords?.x2 ?? el.x2)
+  const y2 = c.my(overrideCoords?.y2 ?? el.y2)
   const color = el.color ?? '#4ade80'
 
   const midX = (x1 + x2) / 2
   const midY = (y1 + y2) / 2
   const [ox, oy] = perpOffset(x1, y1, x2, y2, 12)
 
+  const hitKey = `segment-${key}`
+  const isHovered = opts.hoveredKey === hitKey
+  const isClickable = Boolean(el.label && opts.onElementClick)
+
   return (
-    <g key={key}>
+    <g key={key} filter={isHovered && isClickable ? 'url(#amber-glow)' : undefined}>
       <line
         x1={x1}
         y1={y1}
@@ -345,6 +383,7 @@ function renderArc(
   el: Extract<DiagramElement, { kind: 'arc' }>,
   c: Coords,
   key: number,
+  opts: RenderOptions,
 ) {
   const svgCx = c.mx(el.cx)
   const svgCy = c.my(el.cy)
@@ -372,8 +411,12 @@ function renderArc(
   const labelX = svgCx + labelDist * Math.cos(midSvgAngle)
   const labelY = svgCy + labelDist * Math.sin(midSvgAngle)
 
+  const hitKey = `arc-${key}`
+  const isHovered = opts.hoveredKey === hitKey
+  const isClickable = Boolean(el.label && opts.onElementClick)
+
   return (
-    <g key={key}>
+    <g key={key} filter={isHovered && isClickable ? 'url(#amber-glow)' : undefined}>
       <path
         d={d}
         fill="none"
@@ -538,7 +581,7 @@ function renderGrid(c: Coords) {
   return lines
 }
 
-// ─── Defs (arrowhead markers) ─────────────────────────────────────────────────
+// ─── Defs (arrowhead markers + glow filter) ───────────────────────────────────
 
 function renderDefs(elements: DiagramElement[]) {
   // Collect unique colors needed for arrowhead markers
@@ -577,7 +620,14 @@ function renderDefs(elements: DiagramElement[]) {
     )
   })
 
-  return <defs>{markers}</defs>
+  return (
+    <defs>
+      {markers}
+      <filter id="amber-glow" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#f59e0b" floodOpacity="0.9" />
+      </filter>
+    </defs>
+  )
 }
 
 // ─── Tooltip ─────────────────────────────────────────────────────────────────
@@ -588,9 +638,132 @@ interface TooltipState {
   lines: string[]
 }
 
+// ─── Whiteboard Canvas Component ──────────────────────────────────────────────
+
+type WhiteboardTool = 'pen' | 'eraser'
+
+interface WhiteboardCanvasProps {
+  width: number
+  height: number
+}
+
+function WhiteboardCanvas({ width, height }: WhiteboardCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const isDrawing = useRef(false)
+  const [tool, setTool] = useState<WhiteboardTool>('pen')
+
+  const getCtxPoint = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current
+    if (!canvas) return null
+    const rect = canvas.getBoundingClientRect()
+    return {
+      x: ((e.clientX - rect.left) / rect.width) * width,
+      y: ((e.clientY - rect.top) / rect.height) * height,
+    }
+  }, [width, height])
+
+  const onPointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    const ctx = canvasRef.current?.getContext('2d')
+    const pt = getCtxPoint(e)
+    if (!ctx || !pt) return
+    isDrawing.current = true
+    ctx.beginPath()
+    ctx.moveTo(pt.x, pt.y)
+    if (tool === 'pen') {
+      ctx.globalCompositeOperation = 'source-over'
+      ctx.strokeStyle = '#f59e0b'
+      ctx.lineWidth = 2
+    } else {
+      ctx.globalCompositeOperation = 'destination-out'
+      ctx.lineWidth = 16
+    }
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+  }, [tool, getCtxPoint])
+
+  const onPointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDrawing.current) return
+    const ctx = canvasRef.current?.getContext('2d')
+    const pt = getCtxPoint(e)
+    if (!ctx || !pt) return
+    ctx.lineTo(pt.x, pt.y)
+    ctx.stroke()
+  }, [getCtxPoint])
+
+  const onPointerUp = useCallback(() => {
+    isDrawing.current = false
+    const ctx = canvasRef.current?.getContext('2d')
+    if (ctx) ctx.globalCompositeOperation = 'source-over'
+  }, [])
+
+  const clearCanvas = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+  }, [])
+
+  return (
+    <div style={{ position: 'absolute', inset: 0, zIndex: 10 }}>
+      <canvas
+        ref={canvasRef}
+        width={width}
+        height={height}
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', cursor: 'crosshair', background: 'transparent' }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerLeave={onPointerUp}
+      />
+      {/* Whiteboard toolbar */}
+      <div style={{
+        position: 'absolute', bottom: 8, left: 10,
+        display: 'flex', gap: 4, zIndex: 11,
+      }}>
+        {([
+          { t: 'pen' as WhiteboardTool, icon: '✏' },
+          { t: 'eraser' as WhiteboardTool, icon: '◻' },
+        ] as const).map(({ t, icon }) => (
+          <button
+            key={t}
+            onClick={() => setTool(t)}
+            title={t}
+            style={{
+              width: 24, height: 24, borderRadius: 5, fontSize: 12,
+              background: tool === t ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.06)',
+              border: `1px solid ${tool === t ? 'rgba(245,158,11,0.5)' : 'rgba(255,255,255,0.12)'}`,
+              color: tool === t ? '#f59e0b' : 'rgba(255,255,255,0.6)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+            {icon}
+          </button>
+        ))}
+        <button
+          onClick={clearCanvas}
+          title="Clear"
+          style={{
+            width: 24, height: 24, borderRadius: 5, fontSize: 12,
+            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+            color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+          ✕
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function DiagramRenderer({ spec, className }: { spec: DiagramSpec; className?: string }): React.JSX.Element {
+interface DiagramRendererProps {
+  spec: DiagramSpec
+  className?: string
+  onElementClick?: (label: string, description: string) => void
+}
+
+export function DiagramRenderer({ spec, className, onElementClick }: DiagramRendererProps): React.JSX.Element {
   const xDomain: [number, number] = spec.xDomain ?? [-8, 8]
   const yDomain: [number, number] = spec.yDomain ?? [-8, 8]
   const c = makeCoords(xDomain, yDomain)
@@ -603,6 +776,42 @@ export function DiagramRenderer({ spec, className }: { spec: DiagramSpec; classN
 
   // ── Tooltip state ──
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
+
+  // ── Hover state for clickable elements ──
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null)
+
+  // ── Whiteboard state ──
+  const [whiteboardActive, setWhiteboardActive] = useState(false)
+
+  // ── Draggable points state ──
+  const [draggedPositions, setDraggedPositions] = useState<Record<string, { x: number; y: number }>>({})
+  const [draggingLabel, setDraggingLabel] = useState<string | null>(null)
+  const [dragTooltip, setDragTooltip] = useState<{ label: string; x: number; y: number } | null>(null)
+  const activeDragRef = useRef<{ label: string; origX: number; origY: number } | null>(null)
+
+  // Convert SVG pixel coords (in viewBox space) to math coords
+  const svgToMath = useCallback((svgX: number, svgY: number) => {
+    const [xMin, xMax] = xDomain
+    const [yMin, yMax] = yDomain
+    const mathX = xMin + ((svgX - MARGIN.left) / INNER_W) * (xMax - xMin)
+    const mathY = yMax - ((svgY - MARGIN.top) / INNER_H) * (yMax - yMin)
+    return { mathX, mathY }
+  }, [xDomain, yDomain])
+
+  // Convert client coords to viewBox coords
+  const clientToViewBox = useCallback((clientX: number, clientY: number) => {
+    const svg = svgRef.current
+    if (!svg) return null
+    const rect = svg.getBoundingClientRect()
+    const svgX = ((clientX - rect.left) / rect.width) * W
+    const svgY = ((clientY - rect.top) / rect.height) * H
+    // Undo pan/zoom
+    const centreX = W / 2
+    const centreY = H / 2
+    const unzoomedX = (svgX - pan.x - centreX) / zoom + centreX
+    const unzoomedY = (svgY - pan.y - centreY) / zoom + centreY
+    return { svgX: unzoomedX, svgY: unzoomedY }
+  }, [zoom, pan])
 
   const onWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault()
@@ -626,22 +835,72 @@ export function DiagramRenderer({ spec, className }: { spec: DiagramSpec; classN
 
   const resetView = () => { setZoom(1); setPan({ x: 0, y: 0 }) }
 
+  // ── Draggable point handlers ──
+  const handleDragPointMove = useCallback((e: MouseEvent) => {
+    const active = activeDragRef.current
+    if (!active) return
+    const vb = clientToViewBox(e.clientX, e.clientY)
+    if (!vb) return
+    const { mathX, mathY } = svgToMath(vb.svgX, vb.svgY)
+    setDraggedPositions(prev => ({ ...prev, [active.label]: { x: mathX, y: mathY } }))
+    setDragTooltip({ label: active.label, x: mathX, y: mathY })
+  }, [clientToViewBox, svgToMath])
+
+  const handleDragPointUp = useCallback(() => {
+    activeDragRef.current = null
+    setDraggingLabel(null)
+    setDragTooltip(null)
+    window.removeEventListener('mousemove', handleDragPointMove)
+    window.removeEventListener('mouseup', handleDragPointUp)
+  }, [handleDragPointMove])
+
+  useEffect(() => {
+    return () => {
+      window.removeEventListener('mousemove', handleDragPointMove)
+      window.removeEventListener('mouseup', handleDragPointUp)
+    }
+  }, [handleDragPointMove, handleDragPointUp])
+
   // Build hover targets from point elements
   const hoverTargets = spec.elements
     .filter((el): el is Extract<DiagramElement, { kind: 'point' }> => el.kind === 'point')
-    .map(el => ({
-      svgX: c.mx(el.x),
-      svgY: c.my(el.y),
-      lines: [
-        el.label ? `${el.label}` : '',
-        `(${el.x}, ${el.y})`,
-      ].filter(Boolean),
-      mathX: el.x,
-      mathY: el.y,
-    }))
+    .map(el => {
+      const overridePos = el.label ? draggedPositions[el.label] : undefined
+      return {
+        svgX: c.mx(overridePos?.x ?? el.x),
+        svgY: c.my(overridePos?.y ?? el.y),
+        lines: [
+          el.label ? `${el.label}` : '',
+          `(${el.x}, ${el.y})`,
+        ].filter(Boolean),
+        mathX: el.x,
+        mathY: el.y,
+        label: el.label,
+      }
+    })
+
+  // Build render options
+  const opts: RenderOptions = { hoveredKey, onElementClick }
+
+  // Compute overridden segment/vector endpoints
+  const getEndpointOverride = useCallback((el: Extract<DiagramElement, { kind: 'segment' | 'vector' }>) => {
+    let x1 = el.x1, y1 = el.y1, x2 = el.x2, y2 = el.y2
+    let changed = false
+    for (const [label, pos] of Object.entries(draggedPositions)) {
+      const origEl = spec.elements.find(
+        e => e.kind === 'point' && e.label === label
+      ) as Extract<DiagramElement, { kind: 'point' }> | undefined
+      if (!origEl) continue
+      if (origEl.x === el.x1 && origEl.y === el.y1) { x1 = pos.x; y1 = pos.y; changed = true }
+      if (origEl.x === el.x2 && origEl.y === el.y2) { x2 = pos.x; y2 = pos.y; changed = true }
+    }
+    return changed ? { x1, y1, x2, y2 } : undefined
+  }, [draggedPositions, spec.elements])
 
   const transform = `translate(${pan.x}, ${pan.y}) scale(${zoom})`
   const transformOrigin = `${W / 2} ${H / 2}`
+
+  const isDraggingAPoint = draggingLabel !== null
 
   return (
     <div className={className}>
@@ -652,6 +911,37 @@ export function DiagramRenderer({ spec, className }: { spec: DiagramSpec; classN
       )}
 
       <div style={{ position: 'relative' }}>
+        {/* Whiteboard button (when inactive) */}
+        {!whiteboardActive && (
+          <button
+            onClick={() => setWhiteboardActive(true)}
+            title="Open whiteboard"
+            style={{
+              position: 'absolute', bottom: 8, left: 10, zIndex: 5,
+              width: 22, height: 22, borderRadius: 5, fontSize: 13,
+              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+              color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+            📝
+          </button>
+        )}
+
+        {/* Done button (when whiteboard active) */}
+        {whiteboardActive && (
+          <button
+            onClick={() => setWhiteboardActive(false)}
+            title="Close whiteboard"
+            style={{
+              position: 'absolute', top: 8, right: 10, zIndex: 15,
+              padding: '2px 8px', borderRadius: 5, fontSize: 11,
+              background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)',
+              color: '#f59e0b', cursor: 'pointer',
+            }}>
+            Done
+          </button>
+        )}
+
         <svg
           ref={svgRef}
           viewBox={`0 0 ${W} ${H}`}
@@ -662,8 +952,9 @@ export function DiagramRenderer({ spec, className }: { spec: DiagramSpec; classN
             borderRadius: 12,
             border: '1px solid rgba(59,130,246,0.12)',
             display: 'block',
-            cursor: dragRef.current ? 'grabbing' : 'grab',
+            cursor: isDraggingAPoint ? 'none' : dragRef.current ? 'grabbing' : whiteboardActive ? 'none' : 'grab',
             userSelect: 'none',
+            pointerEvents: whiteboardActive ? 'none' : 'auto',
           }}
           aria-label={spec.title ?? 'Geometry diagram'}
           role="img"
@@ -680,31 +971,153 @@ export function DiagramRenderer({ spec, className }: { spec: DiagramSpec; classN
 
             {spec.elements.map((el, i) => {
               switch (el.kind) {
-                case 'circle':     return renderCircle(el, c, i)
-                case 'point':      return renderPoint(el, c, i)
-                case 'vector':     return renderVector(el, c, i)
-                case 'segment':    return renderSegment(el, c, i)
+                case 'circle':
+                  return renderCircle(el, c, i, opts)
+                case 'point': {
+                  const overridePos = el.label ? draggedPositions[el.label] : undefined
+                  return renderPoint(el, c, i, opts, overridePos)
+                }
+                case 'vector': {
+                  const ov = getEndpointOverride(el)
+                  return renderVector(el, c, i, opts, ov)
+                }
+                case 'segment': {
+                  const ov = getEndpointOverride(el)
+                  return renderSegment(el, c, i, opts, ov)
+                }
                 case 'north':      return renderNorth(el, c, i)
-                case 'arc':        return renderArc(el, c, i)
+                case 'arc':        return renderArc(el, c, i, opts)
                 case 'rightangle': return renderRightAngle(el, c, i)
                 case 'label':      return renderLabel(el, c, i)
                 default:           return null
               }
             })}
 
-            {/* Invisible hover hit areas for points */}
-            {hoverTargets.map((pt, i) => (
-              <circle
-                key={`hit-${i}`}
-                cx={pt.svgX}
-                cy={pt.svgY}
-                r={14}
-                fill="transparent"
-                style={{ cursor: 'crosshair' }}
-                onMouseEnter={() => setTooltip({ svgX: pt.svgX, svgY: pt.svgY, lines: pt.lines })}
-                onMouseLeave={() => setTooltip(null)}
-              />
-            ))}
+            {/* Invisible hit areas for all labelled elements */}
+            {spec.elements.map((el, i) => {
+              if (el.kind === 'point') {
+                const hitKey = `point-${i}`
+                const overridePos = el.label ? draggedPositions[el.label] : undefined
+                const px = c.mx(overridePos?.x ?? el.x)
+                const py = c.my(overridePos?.y ?? el.y)
+                const isDraggable = el.draggable === true
+                const isClickable = Boolean(el.label && onElementClick)
+
+                if (!el.label && !isDraggable) return null
+
+                return (
+                  <circle
+                    key={`hit-${i}`}
+                    cx={px}
+                    cy={py}
+                    r={isDraggable ? 16 : 14}
+                    fill="transparent"
+                    style={{ cursor: isDraggable ? 'grab' : isClickable ? 'pointer' : 'crosshair' }}
+                    onMouseEnter={() => {
+                      setTooltip({ svgX: px, svgY: py, lines: [el.label ?? '', `(${el.x}, ${el.y})`].filter(Boolean) })
+                      if (isClickable || isDraggable) setHoveredKey(hitKey)
+                    }}
+                    onMouseLeave={() => {
+                      setTooltip(null)
+                      setHoveredKey(null)
+                    }}
+                    onMouseDown={isDraggable && el.label ? (e) => {
+                      e.stopPropagation()
+                      activeDragRef.current = { label: el.label!, origX: el.x, origY: el.y }
+                      setDraggingLabel(el.label!)
+                      window.addEventListener('mousemove', handleDragPointMove)
+                      window.addEventListener('mouseup', handleDragPointUp)
+                    } : undefined}
+                    onClick={isClickable && !isDraggingAPoint && el.label ? () => {
+                      const pos = draggedPositions[el.label!]
+                      const descX = pos ? pos.x.toFixed(2) : String(el.x)
+                      const descY = pos ? pos.y.toFixed(2) : String(el.y)
+                      onElementClick!(el.label!, `point ${el.label} at (${descX}, ${descY})`)
+                    } : undefined}
+                  />
+                )
+              }
+
+              if (el.kind === 'circle' && el.label && onElementClick) {
+                const hitKey = `circle-${i}`
+                const svgCx = c.mx(el.cx)
+                const svgCy = c.my(el.cy)
+                const svgR = c.mLen(el.r)
+                return (
+                  <circle
+                    key={`hit-${i}`}
+                    cx={svgCx}
+                    cy={svgCy}
+                    r={svgR + 6}
+                    fill="transparent"
+                    style={{ cursor: 'pointer' }}
+                    onMouseEnter={() => setHoveredKey(hitKey)}
+                    onMouseLeave={() => setHoveredKey(null)}
+                    onClick={() => onElementClick(
+                      el.label ?? 'circle',
+                      `circle with centre (${el.cx}, ${el.cy}) and radius ${el.r}`
+                    )}
+                  />
+                )
+              }
+
+              if ((el.kind === 'segment' || el.kind === 'vector') && el.label && onElementClick) {
+                const hitKey = `${el.kind}-${i}`
+                const ov = getEndpointOverride(el)
+                const x1s = c.mx(ov?.x1 ?? el.x1)
+                const y1s = c.my(ov?.y1 ?? el.y1)
+                const x2s = c.mx(ov?.x2 ?? el.x2)
+                const y2s = c.my(ov?.y2 ?? el.y2)
+                const midX = (x1s + x2s) / 2
+                const midY = (y1s + y2s) / 2
+                const description = el.kind === 'segment'
+                  ? `line segment labelled '${el.label}'`
+                  : `vector labelled '${el.label}'`
+                return (
+                  <rect
+                    key={`hit-${i}`}
+                    x={midX - 16}
+                    y={midY - 10}
+                    width={32}
+                    height={20}
+                    rx={4}
+                    fill="transparent"
+                    style={{ cursor: 'pointer' }}
+                    onMouseEnter={() => setHoveredKey(hitKey)}
+                    onMouseLeave={() => setHoveredKey(null)}
+                    onClick={() => onElementClick(el.label ?? el.kind, description)}
+                  />
+                )
+              }
+
+              if (el.kind === 'arc' && el.label && onElementClick) {
+                const hitKey = `arc-${i}`
+                const svgCx = c.mx(el.cx)
+                const svgCy = c.my(el.cy)
+                const span = ((el.fromAngle - el.toAngle) % 360 + 360) % 360
+                const midMathAngle = el.fromAngle - span / 2
+                const midSvgAngle = (-midMathAngle * Math.PI) / 180
+                const labelDist = c.mLen(el.r) + 14
+                const labelX = svgCx + labelDist * Math.cos(midSvgAngle)
+                const labelY = svgCy + labelDist * Math.sin(midSvgAngle)
+                const description = `angle of ${el.label} marked here`
+                return (
+                  <circle
+                    key={`hit-${i}`}
+                    cx={labelX}
+                    cy={labelY}
+                    r={12}
+                    fill="transparent"
+                    style={{ cursor: 'pointer' }}
+                    onMouseEnter={() => setHoveredKey(hitKey)}
+                    onMouseLeave={() => setHoveredKey(null)}
+                    onClick={() => onElementClick(el.label ?? 'angle', description)}
+                  />
+                )
+              }
+
+              return null
+            })}
 
             {/* Tooltip rendered inside the zoom group so it moves with the diagram */}
             {tooltip && (() => {
@@ -726,10 +1139,36 @@ export function DiagramRenderer({ spec, className }: { spec: DiagramSpec; classN
                 </g>
               )
             })()}
+
+            {/* Drag position tooltip */}
+            {dragTooltip && (() => {
+              const pos = draggedPositions[dragTooltip.label]
+              if (!pos) return null
+              const px = c.mx(pos.x)
+              const py = c.my(pos.y)
+              const text = `(${pos.x.toFixed(2)}, ${pos.y.toFixed(2)})`
+              const ttW = text.length * 6.5 + 12
+              return (
+                <g style={{ pointerEvents: 'none' }}>
+                  <rect x={px + 8} y={py - 20} width={ttW} height={14} rx={3}
+                    fill="rgba(245,158,11,0.9)" />
+                  <text x={px + 8 + ttW / 2} y={py - 10}
+                    textAnchor="middle" fontSize={9} fontFamily="system-ui,sans-serif"
+                    fill="#080d1c" fontWeight={700}>
+                    {text}
+                  </text>
+                </g>
+              )
+            })()}
           </g>
         </svg>
 
-        {/* Controls */}
+        {/* Whiteboard canvas overlay */}
+        {whiteboardActive && (
+          <WhiteboardCanvas width={W} height={H} />
+        )}
+
+        {/* Zoom Controls */}
         <div style={{ position: 'absolute', bottom: 8, right: 10, display: 'flex', gap: 4 }}>
           {[
             { label: '+', action: () => setZoom(z => Math.min(6, z * 1.3)) },
@@ -749,9 +1188,9 @@ export function DiagramRenderer({ spec, className }: { spec: DiagramSpec; classN
         </div>
 
         {/* Hint */}
-        <p style={{ position: 'absolute', bottom: 10, left: 10, fontSize: 9,
+        <p style={{ position: 'absolute', bottom: 10, left: whiteboardActive ? 120 : 38, fontSize: 9,
           color: 'rgba(255,255,255,0.2)', pointerEvents: 'none' }}>
-          scroll to zoom · drag to pan
+          {whiteboardActive ? 'draw mode' : 'scroll to zoom · drag to pan'}
         </p>
       </div>
     </div>

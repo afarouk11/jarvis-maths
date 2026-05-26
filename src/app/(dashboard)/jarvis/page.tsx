@@ -14,6 +14,7 @@ import { useAccessibility } from '@/hooks/useAccessibility'
 import { SpokMessage } from '@/components/math/SpokMessage'
 import { AnimatedGraphRenderer, parseAnimateSpec, type AnimateSpec } from '@/components/math/GraphRenderer'
 import { DiagramRenderer, parseDiagramSpec, type DiagramSpec } from '@/components/math/DiagramRenderer'
+import { AnimatedDiagramRenderer, parseAnimDiagramSpec, type AnimDiagramSpec } from '@/components/math/AnimatedDiagramRenderer'
 import { useJarvisVoice, useSpeechToText, createSentenceBuffer } from '@/hooks/useJarvisVoice'
 import type { JarvisState } from '@/types'
 
@@ -33,6 +34,8 @@ export default function SpokPage() {
   const [animateSpec, setAnimateSpec] = useState<AnimateSpec | null>(null)
   const [animateStep, setAnimateStep] = useState(0)
   const [diagramSpec, setDiagramSpec] = useState<DiagramSpec | null>(null)
+  const [animDiagramSpec, setAnimDiagramSpec] = useState<AnimDiagramSpec | null>(null)
+  const [animDiagramStep, setAnimDiagramStep] = useState(0)
   const prevSentenceRef = useRef('')
   const [limitReached, setLimitReached] = useState(false)
   const [upgradeLoading, setUpgradeLoading] = useState(false)
@@ -118,8 +121,9 @@ export default function SpokPage() {
       const remaining = sentenceBufferRef.current.flush()
       remaining.forEach(s => queueSpeak(s))
 
-      // Fallback: if streaming TTS never triggered, speak the whole message at once
-      if (spokenLengthRef.current === 0) {
+      // Fallback: if streaming TTS never triggered AND flush produced nothing, speak the whole message at once.
+      // Must check remaining.length — speak() calls stopSpeaking() which would kill any queueSpeak() chains.
+      if (spokenLengthRef.current === 0 && remaining.length === 0) {
         const text = message.parts
           ? (message.parts.filter(isTextUIPart).map((p: any) => p.text).join('')
             || (message.parts as any[]).filter((p: any) => p.type === 'text').map((p: any) => p.text ?? '').join(''))
@@ -149,15 +153,28 @@ export default function SpokPage() {
         setAnimateSpec(parsed)
         setAnimateStep(0)
         setDiagramSpec(null)
+        setAnimDiagramSpec(null)
         prevSentenceRef.current = ''
       }
     } else {
-      const diagMatch = fullText.match(/\[DIAGRAM\]([\s\S]*?)\[\/DIAGRAM\]/)
-      if (diagMatch) {
-        const parsed = parseDiagramSpec(diagMatch[1].trim())
+      const adiagramMatch = fullText.match(/\[ADIAGRAM\]([\s\S]*?)\[\/ADIAGRAM\]/)
+      if (adiagramMatch) {
+        const parsed = parseAnimDiagramSpec(adiagramMatch[1].trim())
         if (parsed) {
-          setDiagramSpec(parsed)
+          setAnimDiagramSpec(parsed)
+          setAnimDiagramStep(0)
           setAnimateSpec(null)
+          setDiagramSpec(null)
+        }
+      } else {
+        const diagMatch = fullText.match(/\[DIAGRAM\]([\s\S]*?)\[\/DIAGRAM\]/)
+        if (diagMatch) {
+          const parsed = parseDiagramSpec(diagMatch[1].trim())
+          if (parsed) {
+            setDiagramSpec(parsed)
+            setAnimateSpec(null)
+            setAnimDiagramSpec(null)
+          }
         }
       }
     }
@@ -165,11 +182,17 @@ export default function SpokPage() {
 
   // Advance animate step each time a new sentence starts playing
   useEffect(() => {
-    if (!animateSpec || !currentSentence) return
+    if (!currentSentence) return
     if (currentSentence === prevSentenceRef.current) return
     prevSentenceRef.current = currentSentence
-    setAnimateStep(prev => Math.min(prev + 1, animateSpec.steps.length - 1))
-  }, [currentSentence, animateSpec])
+
+    if (animateSpec) {
+      setAnimateStep(prev => Math.min(prev + 1, animateSpec.steps.length - 1))
+    }
+    if (animDiagramSpec) {
+      setAnimDiagramStep(prev => Math.min(prev + 1, animDiagramSpec.steps.length - 1))
+    }
+  }, [currentSentence, animateSpec, animDiagramSpec])
 
   // Feed streaming text into sentence buffer as it arrives
   useEffect(() => {
@@ -257,6 +280,8 @@ export default function SpokPage() {
     setAnimateSpec(null)
     setAnimateStep(0)
     setDiagramSpec(null)
+    setAnimDiagramSpec(null)
+    setAnimDiagramStep(0)
     sendMessage({ text: inputValue.trim() })
     setInputValue('')
   }
@@ -270,6 +295,9 @@ export default function SpokPage() {
     spokenLengthRef.current = 0
     setAnimateSpec(null)
     setAnimateStep(0)
+    setDiagramSpec(null)
+    setAnimDiagramSpec(null)
+    setAnimDiagramStep(0)
     sendMessage({ text })
   }
 
@@ -279,6 +307,11 @@ export default function SpokPage() {
     listening: 'Listening',
     idle:      'Ready',
   }[jarvisState]
+
+  const handleElementClick = useCallback((label: string, description: string) => {
+    setInputValue(`Explain ${description} in this diagram`)
+    inputRef.current?.focus()
+  }, [])
 
   return (
     <div className="flex h-[calc(100vh-0px)] overflow-hidden relative" style={{ background: '#080d19' }}>
@@ -674,14 +707,58 @@ export default function SpokPage() {
                   ✕ dismiss
                 </button>
               </div>
-              <DiagramRenderer spec={diagramSpec} className="w-full" />
+              <DiagramRenderer spec={diagramSpec} className="w-full" onElementClick={handleElementClick} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Animated diagram panel — overlaid when active */}
+        <AnimatePresence>
+          {animDiagramSpec && !animateSpec && !diagramSpec && (
+            <motion.div
+              key="adiagram-panel"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.4 }}
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center px-8 gap-3"
+              style={{ background: 'rgba(8,13,25,0.88)', backdropFilter: 'blur(8px)' }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between w-full mb-1">
+                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#f59e0b' }}>
+                  SPOK · Drawing
+                </p>
+                <button
+                  onClick={() => { setAnimDiagramSpec(null); setAnimDiagramStep(0) }}
+                  className="text-xs px-2 py-1 rounded-lg"
+                  style={{ color: 'rgba(245,158,11,0.4)', border: '1px solid rgba(245,158,11,0.15)' }}>
+                  ✕ dismiss
+                </button>
+              </div>
+              <AnimatedDiagramRenderer
+                spec={animDiagramSpec}
+                currentStep={animDiagramStep}
+                className="w-full"
+                onElementClick={handleElementClick}
+              />
+              <div className="flex items-center gap-1.5 justify-center mt-1">
+                {animDiagramSpec.steps.map((_, i) => (
+                  <div key={i} className="rounded-full transition-all duration-300"
+                    style={{
+                      width: i <= animDiagramStep ? 6 : 4,
+                      height: i <= animDiagramStep ? 6 : 4,
+                      background: i <= animDiagramStep ? '#f59e0b' : 'rgba(245,158,11,0.2)',
+                    }} />
+                ))}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* Live word display — centre of panel */}
         <AnimatePresence mode="wait">
-          {currentSentence && !animateSpec && !diagramSpec && (
+          {currentSentence && !animateSpec && !diagramSpec && !animDiagramSpec && (
             <motion.div
               key={currentSentence}
               initial={{ opacity: 0, y: 8 }}
@@ -707,7 +784,7 @@ export default function SpokPage() {
 
         {/* Tap to speak hint */}
         <AnimatePresence>
-          {jarvisState === 'idle' && !animateSpec && !diagramSpec && (
+          {jarvisState === 'idle' && !animateSpec && !diagramSpec && !animDiagramSpec && (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

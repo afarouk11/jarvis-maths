@@ -5,9 +5,14 @@ import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import { GraphRenderer, parseGraphSpec } from '@/components/math/GraphRenderer'
 import { DiagramRenderer, parseDiagramSpec } from '@/components/math/DiagramRenderer'
+import { AnimatedDiagramRenderer, parseAnimDiagramSpec } from '@/components/math/AnimatedDiagramRenderer'
 
 function stripAnimateBlocks(text: string): string {
   return text.replace(/\[ANIMATE\][\s\S]*?\[\/ANIMATE\]/g, '')
+}
+
+function stripAnimDiagramBlocks(text: string): string {
+  return text.replace(/\[ADIAGRAM\][\s\S]*?\[\/ADIAGRAM\]/g, '')
 }
 
 function parseKeyPoints(text: string): string[] | null {
@@ -34,7 +39,18 @@ interface Props {
 export function SpokMessage({ content, color = '#d1deff' }: Props) {
   const keyPoints = parseKeyPoints(content)
   const withoutAnimate = stripAnimateBlocks(content)
-  const cleaned = stripKeyPointsBlocks(withoutAnimate)
+  const withoutAnimDiagram = stripAnimDiagramBlocks(withoutAnimate)
+  const cleaned = stripKeyPointsBlocks(withoutAnimDiagram)
+
+  // Also parse [ADIAGRAM] blocks directly for in-chat rendering
+  const adiagramSegments: Array<{ index: number; content: string }> = []
+  const ADIAGRAM_RE = /\[ADIAGRAM\]([\s\S]*?)\[\/ADIAGRAM\]/g
+  let adiagramMatch
+  while ((adiagramMatch = ADIAGRAM_RE.exec(content)) !== null) {
+    if (adiagramMatch[1] !== undefined) {
+      adiagramSegments.push({ index: adiagramMatch.index, content: adiagramMatch[1].trim() })
+    }
+  }
 
   const BLOCK_RE = /\[GRAPH\]([\s\S]*?)\[\/GRAPH\]|\[DIAGRAM\]([\s\S]*?)\[\/DIAGRAM\]/g
   const segments: Array<{ type: 'text' | 'graph' | 'diagram'; content: string }> = []
@@ -66,6 +82,20 @@ export function SpokMessage({ content, color = '#d1deff' }: Props) {
         }
         return seg.content.trim() ? (
           <MarkdownMath key={i} content={seg.content} color={color} />
+        ) : null
+      })}
+
+      {/* Render any [ADIAGRAM] blocks found in the original content */}
+      {adiagramSegments.map((seg, i) => {
+        const spec = parseAnimDiagramSpec(seg.content)
+        // currentStep=999 shows the last step (fully accumulated diagram)
+        return spec ? (
+          <AnimatedDiagramRenderer
+            key={`adiagram-${i}`}
+            spec={spec}
+            currentStep={999}
+            className="mt-2"
+          />
         ) : null
       })}
 
