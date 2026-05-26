@@ -16,6 +16,7 @@ import { MasteryHeatMap } from '@/components/dashboard/MasteryHeatMap'
 import { UpgradedBanner } from '@/components/dashboard/UpgradedBanner'
 import { MorningBriefing } from '@/components/dashboard/MorningBriefing'
 import { ShareButton } from '@/components/dashboard/ShareButton'
+import { CreatorsReel } from '@/components/dashboard/CreatorsReel'
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ upgraded?: string }> }) {
   const params = await searchParams
@@ -90,6 +91,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         examBoard={profile?.exam_board ?? 'AQA'}
         topicsRows={topicsRows ?? []}
       />
+
+      {/* Creators reel */}
+      <CreatorsReel />
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4">

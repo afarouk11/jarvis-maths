@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
+import { Database, Clapperboard } from 'lucide-react'
 
 const TYPES = [
   { value: 'worked_example', label: 'Worked Example' },
@@ -10,6 +11,17 @@ const TYPES = [
   { value: 'formula',        label: 'Formula / Identity' },
   { value: 'tip',            label: 'Exam Tip' },
 ]
+
+interface CreatorVideoRow {
+  id: string
+  creator_name: string
+  creator_handle: string | null
+  title: string
+  youtube_id: string
+  topic_tag: string | null
+  approved: boolean
+  created_at: string
+}
 
 interface Entry {
   id: string
@@ -26,6 +38,16 @@ export default function AdminPage() {
   const [saving, setSaving]         = useState(false)
   const [deleting, setDeleting]     = useState<string | null>(null)
   const [toast, setToast]           = useState('')
+  const [tab, setTab]               = useState<'knowledge' | 'creators'>('knowledge')
+
+  // Creators state
+  const [videos, setVideos]         = useState<CreatorVideoRow[]>([])
+  const [videoSaving, setVideoSaving] = useState(false)
+  const [videoDeleting, setVideoDeleting] = useState<string | null>(null)
+  const [videoForm, setVideoForm]   = useState({
+    creator_name: '', creator_handle: '', title: '',
+    youtube_url: '', topic_tag: '', description: '', approved: false,
+  })
 
   const [form, setForm] = useState({
     topic_slug: '',
@@ -54,6 +76,15 @@ export default function AdminPage() {
       .select('id, topic_slug, type, title, content, created_at')
       .order('created_at', { ascending: false })
       .then(({ data }) => setEntries(data ?? []))
+  }, [authorized])
+
+  useEffect(() => {
+    if (!authorized) return
+    createClient()
+      .from('creator_videos')
+      .select('id, creator_name, creator_handle, title, youtube_id, topic_tag, approved, created_at')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setVideos(data ?? []))
   }, [authorized])
 
   function showToast(msg: string) {
@@ -103,6 +134,52 @@ export default function AdminPage() {
     }
   }
 
+  async function handleVideoSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!videoForm.creator_name.trim() || !videoForm.title.trim() || !videoForm.youtube_url.trim()) return
+    setVideoSaving(true)
+    try {
+      const res = await fetch('/api/creators', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(videoForm),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      showToast('Creator video added.')
+      setVideoForm({ creator_name: '', creator_handle: '', title: '', youtube_url: '', topic_tag: '', description: '', approved: false })
+      // reload
+      const { data } = await createClient().from('creator_videos').select('id, creator_name, creator_handle, title, youtube_id, topic_tag, approved, created_at').order('created_at', { ascending: false })
+      setVideos(data ?? [])
+    } catch (err: any) {
+      showToast('Error: ' + err.message)
+    } finally {
+      setVideoSaving(false)
+    }
+  }
+
+  async function handleVideoApprove(id: string, approved: boolean) {
+    await fetch('/api/creators', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, approved }),
+    })
+    setVideos(prev => prev.map(v => v.id === id ? { ...v, approved } : v))
+  }
+
+  async function handleVideoDelete(id: string) {
+    setVideoDeleting(id)
+    try {
+      await fetch('/api/creators', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+      setVideos(prev => prev.filter(v => v.id !== id))
+    } finally {
+      setVideoDeleting(null)
+    }
+  }
+
   if (authorized === null) return null
   if (!authorized) return (
     <div className="flex items-center justify-center min-h-screen">
@@ -111,12 +188,33 @@ export default function AdminPage() {
   )
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-10 space-y-10">
+    <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-white">Knowledge Base</h1>
-        <p className="text-sm text-slate-400 mt-1">Add worked examples, concepts, and formulas for SPOK to retrieve.</p>
+        <h1 className="text-2xl font-bold text-white">Admin</h1>
+        <p className="text-sm text-slate-400 mt-1">Manage knowledge base entries and creator videos.</p>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-2">
+        {([
+          { key: 'knowledge', label: 'Knowledge Base', icon: <Database size={13} /> },
+          { key: 'creators',  label: 'Creators',       icon: <Clapperboard size={13} /> },
+        ] as const).map(({ key, label, icon }) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all"
+            style={{
+              background: tab === key ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${tab === key ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)'}`,
+              color: tab === key ? '#a5b4fc' : '#5a7aaa',
+            }}>
+            {icon}{label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'knowledge' && <>
       {/* Add form */}
       <form onSubmit={handleSubmit} className="space-y-4 rounded-xl p-5"
         style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
@@ -214,6 +312,110 @@ export default function AdminPage() {
           </div>
         ))}
       </div>
+      </>}
+
+      {tab === 'creators' && <>
+        {/* Add creator video */}
+        <form onSubmit={handleVideoSubmit} className="space-y-4 rounded-xl p-5"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <p className="text-sm font-semibold text-white">Add Creator Video</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Creator name *</label>
+              <input value={videoForm.creator_name} onChange={e => setVideoForm(f => ({ ...f, creator_name: e.target.value }))}
+                placeholder="e.g. Tibees" className="w-full rounded-lg px-3 py-2 text-sm text-white outline-none placeholder:text-slate-600"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Handle (no @)</label>
+              <input value={videoForm.creator_handle} onChange={e => setVideoForm(f => ({ ...f, creator_handle: e.target.value }))}
+                placeholder="tibees" className="w-full rounded-lg px-3 py-2 text-sm text-white outline-none placeholder:text-slate-600"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Video title *</label>
+            <input value={videoForm.title} onChange={e => setVideoForm(f => ({ ...f, title: e.target.value }))}
+              placeholder="e.g. Integration by Parts Explained" className="w-full rounded-lg px-3 py-2 text-sm text-white outline-none placeholder:text-slate-600"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">YouTube URL *</label>
+            <input value={videoForm.youtube_url} onChange={e => setVideoForm(f => ({ ...f, youtube_url: e.target.value }))}
+              placeholder="https://www.youtube.com/watch?v=…" className="w-full rounded-lg px-3 py-2 text-sm text-white outline-none placeholder:text-slate-600"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Topic tag</label>
+              <input value={videoForm.topic_tag} onChange={e => setVideoForm(f => ({ ...f, topic_tag: e.target.value }))}
+                placeholder="e.g. Integration" className="w-full rounded-lg px-3 py-2 text-sm text-white outline-none placeholder:text-slate-600"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+            </div>
+            <div className="flex items-end pb-2">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" checked={videoForm.approved} onChange={e => setVideoForm(f => ({ ...f, approved: e.target.checked }))}
+                  className="rounded accent-indigo-500" />
+                <span className="text-xs text-slate-400">Approve immediately</span>
+              </label>
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Short description (optional)</label>
+            <textarea value={videoForm.description} onChange={e => setVideoForm(f => ({ ...f, description: e.target.value }))}
+              rows={2} placeholder="One-liner shown under the video title"
+              className="w-full rounded-lg px-3 py-2 text-sm text-white outline-none placeholder:text-slate-600 resize-none"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+          </div>
+          <button type="submit"
+            disabled={videoSaving || !videoForm.creator_name.trim() || !videoForm.title.trim() || !videoForm.youtube_url.trim()}
+            className="px-4 py-2 rounded-lg text-sm font-medium transition-opacity disabled:opacity-40"
+            style={{ background: 'rgba(99,102,241,0.3)', border: '1px solid rgba(99,102,241,0.4)', color: '#a5b4fc' }}>
+            {videoSaving ? 'Saving...' : 'Add Video'}
+          </button>
+        </form>
+
+        {/* Video list */}
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-slate-300">{videos.length} videos</h2>
+          {videos.map(v => (
+            <div key={v.id} className="rounded-xl px-4 py-3 flex items-start gap-3"
+              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              {/* Thumbnail */}
+              <img src={`https://img.youtube.com/vi/${v.youtube_id}/default.jpg`} alt=""
+                className="w-16 h-11 rounded-lg object-cover shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-white font-medium truncate">{v.title}</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {v.creator_handle ? `@${v.creator_handle}` : v.creator_name}
+                  {v.topic_tag && ` · ${v.topic_tag}`}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => handleVideoApprove(v.id, !v.approved)}
+                  className="text-xs px-2 py-1 rounded-lg transition-colors"
+                  style={{
+                    background: v.approved ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
+                    color: v.approved ? '#4ade80' : '#5a7aaa',
+                    border: `1px solid ${v.approved ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                  }}>
+                  {v.approved ? '✓ Live' : 'Approve'}
+                </button>
+                <button
+                  onClick={() => handleVideoDelete(v.id)}
+                  disabled={videoDeleting === v.id}
+                  className="text-xs text-red-400 hover:text-red-300 disabled:opacity-40">
+                  {videoDeleting === v.id ? '...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          ))}
+          {videos.length === 0 && (
+            <p className="text-sm text-center py-8" style={{ color: '#3a4a5c' }}>No creator videos yet.</p>
+          )}
+        </div>
+      </>}
     </div>
   )
 }
