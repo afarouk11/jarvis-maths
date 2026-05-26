@@ -45,6 +45,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_progress_update on student_progress;
 create trigger on_progress_update
 after insert or update on student_progress
 for each row execute function update_student_streak();
@@ -63,6 +64,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_attempt_award_xp on question_attempts;
 create trigger on_attempt_award_xp
 after insert on question_attempts
 for each row execute function award_xp();

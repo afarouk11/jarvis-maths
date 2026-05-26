@@ -12,6 +12,6 @@ create table if not exists school_enquiries (
 alter table school_enquiries enable row level security;
 
 -- Only the service role can read (admin only via server-side)
-create policy "service role full access" on school_enquiries
-  using (true)
-  with check (true);
+do $$ begin
+  create policy "service role full access" on school_enquiries using (true) with check (true);
+exception when duplicate_object then null; end $$;

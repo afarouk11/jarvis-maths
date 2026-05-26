@@ -38,8 +38,12 @@ alter table past_papers  enable row level security;
 alter table paper_chunks enable row level security;
 
 -- Papers readable by all authenticated users
-create policy "papers_read"  on past_papers  for select using (auth.role() = 'authenticated');
-create policy "chunks_read"  on paper_chunks for select using (auth.role() = 'authenticated');
+do $$ begin
+  create policy "papers_read" on past_papers for select using (auth.role() = 'authenticated');
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "chunks_read" on paper_chunks for select using (auth.role() = 'authenticated');
+exception when duplicate_object then null; end $$;
 
 -- RAG similarity search function
 create or replace function match_paper_chunks(
