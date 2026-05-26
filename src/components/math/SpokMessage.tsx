@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import { GraphRenderer, parseGraphSpec } from '@/components/math/GraphRenderer'
+import { DiagramRenderer, parseDiagramSpec } from '@/components/math/DiagramRenderer'
 
 function stripAnimateBlocks(text: string): string {
   return text.replace(/\[ANIMATE\][\s\S]*?\[\/ANIMATE\]/g, '')
@@ -35,14 +36,18 @@ export function SpokMessage({ content, color = '#d1deff' }: Props) {
   const withoutAnimate = stripAnimateBlocks(content)
   const cleaned = stripKeyPointsBlocks(withoutAnimate)
 
-  const GRAPH_RE = /\[GRAPH\]([\s\S]*?)\[\/GRAPH\]/g
-  const segments: Array<{ type: 'text' | 'graph'; content: string }> = []
+  const BLOCK_RE = /\[GRAPH\]([\s\S]*?)\[\/GRAPH\]|\[DIAGRAM\]([\s\S]*?)\[\/DIAGRAM\]/g
+  const segments: Array<{ type: 'text' | 'graph' | 'diagram'; content: string }> = []
   let last = 0
   let match
 
-  while ((match = GRAPH_RE.exec(cleaned)) !== null) {
+  while ((match = BLOCK_RE.exec(cleaned)) !== null) {
     if (match.index > last) segments.push({ type: 'text', content: cleaned.slice(last, match.index) })
-    segments.push({ type: 'graph', content: match[1].trim() })
+    if (match[1] !== undefined) {
+      segments.push({ type: 'graph', content: match[1].trim() })
+    } else if (match[2] !== undefined) {
+      segments.push({ type: 'diagram', content: match[2].trim() })
+    }
     last = match.index + match[0].length
   }
   if (last < cleaned.length) segments.push({ type: 'text', content: cleaned.slice(last) })
@@ -54,6 +59,10 @@ export function SpokMessage({ content, color = '#d1deff' }: Props) {
         if (seg.type === 'graph') {
           const spec = parseGraphSpec(seg.content)
           return spec ? <GraphRenderer key={i} spec={spec} className="mt-2" /> : null
+        }
+        if (seg.type === 'diagram') {
+          const spec = parseDiagramSpec(seg.content)
+          return spec ? <DiagramRenderer key={i} spec={spec} className="mt-2" /> : null
         }
         return seg.content.trim() ? (
           <MarkdownMath key={i} content={seg.content} color={color} />
