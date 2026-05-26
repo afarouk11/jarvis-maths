@@ -9,7 +9,6 @@ import { JarvisAvatar } from '@/components/jarvis/JarvisAvatar'
 
 export default function SignUpPage() {
   const router = useRouter()
-  const supabase = createClient()
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ fullName: '', email: '', password: '' })
@@ -18,7 +17,7 @@ export default function SignUpPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const { error } = await supabase.auth.signUp({
+    const { error } = await createClient().auth.signUp({
       email: form.email,
       password: form.password,
       options: { data: { full_name: form.fullName } },

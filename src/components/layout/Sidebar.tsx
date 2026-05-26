@@ -27,7 +27,6 @@ const NAV = [
 export function Sidebar() {
   const pathname = usePathname()
   const router   = useRouter()
-  const supabase = createClient()
   const [dueCount, setDueCount] = useState(0)
 
   useEffect(() => {
@@ -41,7 +40,7 @@ export function Sidebar() {
   }, [pathname])
 
   async function signOut() {
-    await supabase.auth.signOut()
+    await createClient().auth.signOut()
     router.push('/sign-in')
   }
 
