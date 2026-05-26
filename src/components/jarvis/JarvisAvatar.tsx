@@ -50,7 +50,7 @@ export function JarvisAvatar({ state, size = 56, amplitude = 0 }: Props) {
   // Render the full 3D scene for large avatars
   if (size >= 100) {
     return (
-      <div style={{ width: size, height: size }}>
+      <div style={{ width: size, height: size, position: 'relative' }}>
         <JarvisScene amplitude={amplitude} state={state} />
       </div>
     )
