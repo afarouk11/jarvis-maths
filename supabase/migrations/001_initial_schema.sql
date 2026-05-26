@@ -15,9 +15,15 @@ create table if not exists public.profiles (
 );
 
 alter table public.profiles enable row level security;
-create policy "Users can view own profile" on public.profiles for select using (auth.uid() = id);
-create policy "Users can update own profile" on public.profiles for update using (auth.uid() = id);
-create policy "Users can insert own profile" on public.profiles for insert with check (auth.uid() = id);
+do $$ begin
+  create policy "Users can view own profile" on public.profiles for select using (auth.uid() = id);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "Users can update own profile" on public.profiles for update using (auth.uid() = id);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "Users can insert own profile" on public.profiles for insert with check (auth.uid() = id);
+exception when duplicate_object then null; end $$;
 
 -- Auto-create profile on signup
 create or replace function public.handle_new_user()
@@ -29,12 +35,13 @@ begin
 end;
 $$ language plpgsql security definer;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
 -- Topics
-create table public.topics (
+create table if not exists public.topics (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   slug text unique not null,
@@ -46,10 +53,12 @@ create table public.topics (
 );
 
 alter table public.topics enable row level security;
-create policy "Topics are publicly readable" on public.topics for select using (true);
+do $$ begin
+  create policy "Topics are publicly readable" on public.topics for select using (true);
+exception when duplicate_object then null; end $$;
 
 -- Lessons
-create table public.lessons (
+create table if not exists public.lessons (
   id uuid primary key default gen_random_uuid(),
   topic_id uuid references public.topics(id) on delete cascade not null,
   title text not null,
@@ -60,10 +69,12 @@ create table public.lessons (
 );
 
 alter table public.lessons enable row level security;
-create policy "Lessons are publicly readable" on public.lessons for select using (true);
+do $$ begin
+  create policy "Lessons are publicly readable" on public.lessons for select using (true);
+exception when duplicate_object then null; end $$;
 
 -- Questions
-create table public.questions (
+create table if not exists public.questions (
   id uuid primary key default gen_random_uuid(),
   topic_id uuid references public.topics(id) on delete cascade not null,
   stem text not null,
@@ -76,11 +87,15 @@ create table public.questions (
 );
 
 alter table public.questions enable row level security;
-create policy "Questions are publicly readable" on public.questions for select using (true);
-create policy "Authenticated users can insert questions" on public.questions for insert with check (auth.role() = 'authenticated');
+do $$ begin
+  create policy "Questions are publicly readable" on public.questions for select using (true);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "Authenticated users can insert questions" on public.questions for insert with check (auth.role() = 'authenticated');
+exception when duplicate_object then null; end $$;
 
 -- Student Progress (BKT + SM-2)
-create table public.student_progress (
+create table if not exists public.student_progress (
   id uuid primary key default gen_random_uuid(),
   student_id uuid references public.profiles(id) on delete cascade not null,
   topic_id uuid references public.topics(id) on delete cascade not null,
@@ -99,12 +114,18 @@ create table public.student_progress (
 );
 
 alter table public.student_progress enable row level security;
-create policy "Students can view own progress" on public.student_progress for select using (auth.uid() = student_id);
-create policy "Students can insert own progress" on public.student_progress for insert with check (auth.uid() = student_id);
-create policy "Students can update own progress" on public.student_progress for update using (auth.uid() = student_id);
+do $$ begin
+  create policy "Students can view own progress" on public.student_progress for select using (auth.uid() = student_id);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "Students can insert own progress" on public.student_progress for insert with check (auth.uid() = student_id);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "Students can update own progress" on public.student_progress for update using (auth.uid() = student_id);
+exception when duplicate_object then null; end $$;
 
 -- Question Attempts
-create table public.question_attempts (
+create table if not exists public.question_attempts (
   id uuid primary key default gen_random_uuid(),
   student_id uuid references public.profiles(id) on delete cascade not null,
   question_id uuid references public.questions(id) on delete cascade not null,
@@ -114,11 +135,15 @@ create table public.question_attempts (
 );
 
 alter table public.question_attempts enable row level security;
-create policy "Students can view own attempts" on public.question_attempts for select using (auth.uid() = student_id);
-create policy "Students can insert own attempts" on public.question_attempts for insert with check (auth.uid() = student_id);
+do $$ begin
+  create policy "Students can view own attempts" on public.question_attempts for select using (auth.uid() = student_id);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "Students can insert own attempts" on public.question_attempts for insert with check (auth.uid() = student_id);
+exception when duplicate_object then null; end $$;
 
 -- Chat Sessions
-create table public.chat_sessions (
+create table if not exists public.chat_sessions (
   id uuid primary key default gen_random_uuid(),
   student_id uuid references public.profiles(id) on delete cascade not null,
   topic_id uuid references public.topics(id),
@@ -128,4 +153,6 @@ create table public.chat_sessions (
 );
 
 alter table public.chat_sessions enable row level security;
-create policy "Students can manage own chat sessions" on public.chat_sessions for all using (auth.uid() = student_id);
+do $$ begin
+  create policy "Students can manage own chat sessions" on public.chat_sessions for all using (auth.uid() = student_id);
+exception when duplicate_object then null; end $$;
