@@ -157,9 +157,11 @@ export function useJarvisVoice() {
     }
 
     audio.play().catch((err) => {
+      console.warn('[SPOK voice] audio.play() failed:', err?.name, err?.message)
       // Autoplay was blocked — try one more time after a short yield
       setTimeout(() => {
-        audio.play().catch(() => {
+        audio.play().catch((err2) => {
+          console.warn('[SPOK voice] audio.play() retry failed:', err2?.name, err2?.message)
           playingRef.current = false
           audioRef.current = null
           playNext()

@@ -75,6 +75,13 @@ export async function POST(req: Request) {
 
   if (error) return Response.json({ error: error.message }, { status: 500 })
 
+  // Keep topic_mastery in sync — used by generate-paper for weakness weighting
+  await supabase.from('topic_mastery').upsert({
+    user_id: user.id,
+    topic: topicId,
+    mastery_level: newBKT.pKnown * 5,
+  }, { onConflict: 'user_id,topic' })
+
   // Log the attempt
   if (questionId) {
     await supabase.from('question_attempts').insert({

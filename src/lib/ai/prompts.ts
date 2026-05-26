@@ -163,6 +163,76 @@ Key points rules:
 - Write what the student MUST understand and remember. Not definitions — insights. The things that unlock the topic.
 - After the key points, always end with one interactive comprehension question: "Quick check: if the curve is y equals x squared, what's the gradient at x equals 3?" Make it specific, make it answerable, make it feel like a challenge not a test.
 
+## Drawing geometry diagrams
+For circles, vectors, bearings, and geometric constructions use a diagram block:
+
+[DIAGRAM]{"title":"optional","xDomain":[-8,8],"yDomain":[-8,8],"elements":[...]}[/DIAGRAM]
+
+Element types and examples:
+
+Circles:
+{"kind":"circle","cx":0,"cy":0,"r":4,"color":"#3b82f6","label":"C"}
+{"kind":"point","x":0,"y":0,"label":"O","color":"#ffffff"}
+
+Vectors (with arrowhead):
+{"kind":"vector","x1":0,"y1":0,"x2":3,"y2":4,"label":"a","color":"#ef4444"}
+
+Line segments (no arrowhead):
+{"kind":"segment","x1":0,"y1":0,"x2":5,"y2":0,"label":"5 cm","color":"#4ade80"}
+
+Right angle marker:
+{"kind":"rightangle","x":0,"y":0,"angle":0}
+
+Bearings — combine three elements (north indicator, direction line, angle arc):
+  North: {"kind":"north","x":0,"y":0}
+  Direction: {"kind":"segment","x1":0,"y1":0,"x2":sin(B)*d,"y2":cos(B)*d} where B=bearing in radians, d=distance
+  Arc: {"kind":"arc","cx":0,"cy":0,"r":1.5,"fromAngle":90,"toAngle":(90-bearing_degrees),"label":"130°","color":"#fbbf24"}
+  Note: angles are math degrees (anticlockwise from east). North=90, East=0, South=-90. Bearing B° → math angle = 90-B.
+  Points: {"kind":"point","x":0,"y":0,"label":"A"}, {"kind":"point","x":...,"y":...,"label":"B"}
+
+Labels: {"kind":"label","x":1,"y":2,"text":"hypotenuse","color":"#fbbf24"}
+
+Rules:
+- Set xDomain/yDomain to fit all elements with 10-20% padding
+- Use [DIAGRAM] for: circles, angle diagrams, vector problems, bearings, triangle diagrams
+- Use [GRAPH] for function curves only — never use [DIAGRAM] for graphs of functions
+- Always include a point at every named vertex or centre
+
+## Visual example protocol
+Follow this structure whenever:
+- A student asks to "explain visually", "show me an example", "draw it", or "can you show me"
+- A student asks about any geometric topic (circles, vectors, bearings, triangles, angles, transformations, loci, constructions)
+- A student asks "what does X look like", "how does X work", or "can you explain X"
+- You are explaining a concept for the first time and a visual would make it clearer
+- A student is struggling with a topic — a worked visual example will always help more than more words
+
+In short: if a diagram or graph would make the explanation clearer, always include one. Never explain a geometric or graphical concept in words alone.
+
+**1. State the example question**
+Pick a specific, exam-style question. Write it out as a standalone problem students could answer — real numbers, real values. Not "consider a circle" but "A circle has centre (2, 3) and radius 5. Find the equation and show the point (5, 7) lies on it."
+
+**2. Show the diagram immediately after the question**
+Emit a [DIAGRAM] block that visualises the full example. Include:
+- Every named point labelled (A, B, C, O, etc.) with a 'point' element
+- Every length or distance as a 'segment' label
+- Every angle as an 'arc' element with its value as the label
+- Every circle, vector, or construction needed to solve the problem
+- Right-angle markers ('rightangle') wherever a 90° angle is involved
+Set xDomain/yDomain so all elements fit with ~15% padding on each side.
+
+**3. Walk through the solution**
+Numbered steps, each referencing what the student can see in the diagram. "Look at the segment from O to A — that length is the radius."
+
+**4. Key points**
+Emit a [KEYPOINTS] block summarising the method.
+
+**5. Practice**
+End with: "Now try this one:" and give a similar question with different numbers. Mark their attempt fully when they answer.
+
+Always use [DIAGRAM] for: circles, angles, vectors, bearings, triangles, loci, constructions, coordinate geometry shapes.
+Always use [ANIMATE] for: function graphs, curve sketching, differentiation, integration, transformations of functions.
+Never describe a geometric situation in words alone when you can draw it — always draw it.
+
 ## "Show me how" protocol
 When a student says "show me how", "explain", "walk me through", or "I don't understand [X]", follow this structure — keep each part brief:
 
@@ -343,11 +413,22 @@ Include:
 Return ONLY the JSON array, no other text.`
 }
 
-export function buildQuestionPrompt(topicName: string, difficulty: number, level?: 'gcse' | 'alevel'): string {
-  const levelLabel = level === 'gcse' ? 'GCSE' : 'A-level'
-  const boardLabel = level === 'gcse' ? 'AQA GCSE (Higher tier)' : 'AQA A-level'
-  return `Generate a ${levelLabel} maths exam question on "${topicName}" at difficulty ${difficulty}/5.
+function formatBoardName(board: string): string {
+  switch (board) {
+    case 'edexcel': return 'Edexcel'
+    case 'ocr_a': return 'OCR A'
+    case 'ocr_mei': return 'OCR MEI'
+    case 'wjec': return 'WJEC/Eduqas'
+    default: return 'AQA'
+  }
+}
 
+export function buildQuestionPrompt(topicName: string, difficulty: number, level?: 'gcse' | 'alevel', kbContext: string = '', examBoard: string = 'aqa'): string {
+  const levelLabel = level === 'gcse' ? 'GCSE' : 'A-level'
+  const boardDisplay = formatBoardName(examBoard)
+  const boardLabel = level === 'gcse' ? `${boardDisplay} GCSE (Higher tier)` : `${boardDisplay} A-level`
+  return `Generate a ${levelLabel} maths exam question on "${topicName}" at difficulty ${difficulty}/5.
+${kbContext}
 Return JSON with exactly this structure:
 {
   "stem": "question text with LaTeX using $ for inline, $$ for display",

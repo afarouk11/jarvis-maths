@@ -5,6 +5,16 @@ import { anthropic } from '@ai-sdk/anthropic'
 import { generateText } from 'ai'
 import { isPro } from '@/lib/stripe'
 
+function formatBoardName(board: string): string {
+  switch (board) {
+    case 'edexcel': return 'Edexcel'
+    case 'ocr_a': return 'OCR A'
+    case 'ocr_mei': return 'OCR MEI'
+    case 'wjec': return 'WJEC/Eduqas'
+    default: return 'AQA'
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient()
@@ -13,13 +23,16 @@ export async function POST(req: NextRequest) {
 
     const { data: prof } = await supabase
       .from('profiles')
-      .select('stripe_subscription_status')
+      .select('stripe_subscription_status, level, exam_board')
       .eq('id', user.id)
       .single()
 
     if (!isPro(prof?.stripe_subscription_status)) {
       return NextResponse.json({ error: 'pro_required' }, { status: 403 })
     }
+
+    const levelLabel = prof?.level === 'gcse' ? 'GCSE' : 'A-level'
+    const boardLabel = formatBoardName(prof?.exam_board ?? 'aqa')
 
     const { slug } = await req.json()
     if (!slug) return NextResponse.json({ error: 'slug required' }, { status: 400 })
@@ -32,9 +45,32 @@ export async function POST(req: NextRequest) {
 
     if (!topic) return NextResponse.json({ error: 'Topic not found — run /api/seed-topics first' }, { status: 404 })
 
+    let kbContext = ''
+    if (process.env.OPENAI_API_KEY) {
+      try {
+        const { embedText } = await import('@/lib/ai/embeddings')
+        const embedding = await embedText(topic.name)
+        const { data: knowledge } = await supabase.rpc('match_knowledge', {
+          query_embedding: embedding,
+          match_count: 4,
+          min_similarity: 0.35,
+        })
+        if (knowledge && knowledge.length > 0) {
+          kbContext = '\n\nCURATED KNOWLEDGE BASE — use these as the basis for your worked examples and concept explanations:\n'
+          kbContext += (knowledge as Array<{ type: string; title: string; content: string }>)
+            .map(k => `[${k.type.replace('_', ' ')} — ${k.title}]\n${k.content}`)
+            .join('\n\n')
+          kbContext += '\n'
+        }
+      } catch {
+        // Non-fatal — continue without KB
+      }
+    }
+
     const { text } = await generateText({
       model: anthropic('claude-opus-4-7'),
-      prompt: `Generate an interactive A-level Maths lesson on "${topic.name}" for AQA.
+      prompt: `Generate an interactive ${levelLabel} Maths lesson on "${topic.name}" for ${boardLabel}.
+${kbContext}
 
 Return ONLY valid JSON (no markdown fences) with this exact shape:
 

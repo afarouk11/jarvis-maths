@@ -1,8 +1,9 @@
 import { anthropic } from '@ai-sdk/anthropic'
 import { generateText } from 'ai'
 import { createClient } from '@/lib/supabase/server'
-import { buildStudentProfile } from '@/lib/ai/student-profile'
 import { getTopics, getLevelLabel, type Level } from '@/lib/curriculum/index'
+
+export const maxDuration = 60
 
 export async function POST(req: Request) {
   try {
@@ -17,11 +18,9 @@ export async function POST(req: Request) {
     const [
       { data: profile },
       { data: progress },
-      studentProfileText,
     ] = await Promise.all([
       supabase.from('profiles').select('exam_date, target_grade, full_name, level').eq('id', user.id).single(),
       supabase.from('student_progress').select().eq('student_id', user.id),
-      buildStudentProfile(user.id),
     ])
 
     const progressList = progress ?? []
@@ -62,27 +61,28 @@ export async function POST(req: Request) {
       .filter(t => !progressList.find(p => p.topic_id === t.slug))
       .map(t => t.name)
 
-    const allTopicSlugs = TOPICS.map(t => `${t.slug} → "${t.name}"`).join('\n')
+    // Only include slugs for topics that will appear in the plan (weak + not-started + strong)
+    const relevantSlugs = TOPICS
+      .filter(t => {
+        const p = progressList.find(pr => pr.topic_id === t.slug)
+        return !p || p.p_known < 0.8
+      })
+      .slice(0, 20)
+      .map(t => `${t.slug} → "${t.name}"`)
+      .join('\n')
 
-    const prompt = `You are a study planner for ${levelLabel} students. Generate a 7-day study timetable for the following student.
+    const prompt = `You are a study planner for ${levelLabel} students. Generate a 7-day study timetable.
 
-STUDENT PROFILE:
-${studentProfileText}
-
-ADDITIONAL DETAILS:
-- Today's date: ${today}
-- Exam date: ${examDate ?? 'Unknown'}
-- Days until exam: ${examCountdown !== null ? examCountdown : 'Unknown'}
-- Target grade: ${targetGrade}
-- Available study time per day: ${hoursPerDay} hours (${hoursPerDay * 60} minutes)
+STUDENT: ${fullName} | Target: ${targetGrade} | Exam: ${examDate ?? 'Unknown'} (${examCountdown !== null ? examCountdown + ' days' : 'unknown'})
+Today: ${today} | Study time: ${hoursPerDay}h/day (${hoursPerDay * 60} min)
 
 TOPIC MASTERY:
-- Weak topics (p_known < 50%, prioritise these): ${weakTopics.length > 0 ? weakTopics.join(', ') : 'None'}
-- Strong topics (p_known > 70%, use for review/confidence): ${strongTopics.length > 0 ? strongTopics.join(', ') : 'None'}
-- Not yet started: ${notStartedTopics.length > 0 ? notStartedTopics.slice(0, 8).join(', ') : 'None'}
+- Weak (prioritise): ${weakTopics.length > 0 ? weakTopics.join(', ') : 'None'}
+- Strong (review): ${strongTopics.length > 0 ? strongTopics.join(', ') : 'None'}
+- Not started: ${notStartedTopics.length > 0 ? notStartedTopics.slice(0, 6).join(', ') : 'None'}
 
-VALID TOPIC SLUGS (use ONLY these for topicSlug):
-${allTopicSlugs}
+VALID TOPIC SLUGS (use ONLY these):
+${relevantSlugs}
 
 INSTRUCTIONS:
 1. Create a 7-day plan starting from the coming Monday (calculate from today: ${today}) for 7 consecutive days.
@@ -114,9 +114,9 @@ INSTRUCTIONS:
 }`
 
     const { text } = await generateText({
-      model: anthropic('claude-sonnet-4-6'),
+      model: anthropic('claude-haiku-4-5-20251001'),
       prompt,
-      maxOutputTokens: 4000,
+      maxOutputTokens: 1800,
     })
 
     // Strip markdown fences if present
