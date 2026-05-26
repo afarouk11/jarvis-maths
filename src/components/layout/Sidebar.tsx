@@ -253,11 +253,12 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
 }
 
 const MOBILE_NAV = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Home' },
-  { href: '/practice',  icon: Zap,             label: 'Practice' },
-  { href: '/jarvis',    icon: Bot,             label: 'SPOK' },
-  { href: '/topics',    icon: BookOpen,        label: 'Topics' },
-  { href: '/profile',   icon: User,            label: 'Profile' },
+  { href: '/dashboard',   icon: LayoutDashboard, label: 'Home' },
+  { href: '/practice',    icon: Zap,             label: 'Practice' },
+  { href: '/jarvis',      icon: Bot,             label: 'SPOK' },
+  { href: '/leaderboard', icon: Trophy,          label: 'Ranks' },
+  { href: '/topics',      icon: BookOpen,        label: 'Topics' },
+  { href: '/profile',     icon: User,            label: 'Profile' },
 ]
 
 export function MobileNav() {
@@ -278,7 +279,7 @@ export function MobileNav() {
           <Link
             key={href}
             href={href}
-            className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl"
+            className="flex flex-col items-center gap-1 px-2 py-1.5 rounded-xl"
           >
             <Icon size={20} style={{ color: active ? '#3b82f6' : '#3a4a5c' }} />
             <span

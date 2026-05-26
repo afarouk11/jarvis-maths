@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { JarvisAvatar } from '@/components/jarvis/JarvisAvatar'
 import { useState, useEffect, useRef } from 'react'
 import { JarvisState } from '@/types'
-import { Check, X, Star, ChevronDown } from 'lucide-react'
+import { Check, X, Star, ChevronDown, Menu } from 'lucide-react'
 
 const ABOUT_LINKS = [
   { href: '/about',              label: 'Our Mission' },
@@ -59,12 +59,16 @@ function GradientCard({ children, className = '', style = {} }: { children: Reac
 export function LandingPage() {
   const [jarvisState, setJarvisState] = useState<JarvisState>('idle')
   const [examDays, setExamDays]       = useState<number>(0)
-  const [aboutOpen, setAboutOpen]     = useState(false)
+  const [aboutOpen,  setAboutOpen]  = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const aboutRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const examDate = new Date('2027-06-10')
-    const diff = examDate.getTime() - Date.now()
+    // Always point at the next upcoming June exam season
+    const now = new Date()
+    const year = now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear()
+    const examDate = new Date(`${year}-06-10`)
+    const diff = examDate.getTime() - now.getTime()
     setExamDays(Math.max(0, Math.ceil(diff / 86400000)))
   }, [])
 
@@ -112,8 +116,9 @@ export function LandingPage() {
       )}
 
       {/* ── Nav ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-5"
+      <nav className="fixed top-0 left-0 right-0 z-50"
         style={{ background: 'rgba(8,12,24,0.88)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(59,130,246,0.1)' }}>
+        <div className="flex items-center justify-between px-6 md:px-8 py-4 md:py-5">
         <div className="flex items-center gap-2.5">
           <div style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.4) 0%, rgba(99,102,241,0.2) 100%)', padding: 1, borderRadius: 10 }}>
             <div className="w-8 h-8 rounded-[9px] flex items-center justify-center text-sm font-bold text-white"
@@ -123,7 +128,8 @@ export function LandingPage() {
           </div>
           <span className="font-semibold text-white" style={{ fontFamily: 'var(--font-space-grotesk)' }}>StudiQ</span>
         </div>
-        <div className="flex items-center gap-2">
+        {/* Desktop links */}
+        <div className="hidden md:flex items-center gap-2">
           <Link href="/how-it-works" className="px-4 py-2 rounded-lg text-sm transition-colors hover:text-white" style={{ color: '#6b8cba' }}>How it works</Link>
           <Link href="/pricing" className="px-4 py-2 rounded-lg text-sm transition-colors hover:text-white" style={{ color: '#6b8cba' }}>Pricing</Link>
 
@@ -177,6 +183,44 @@ export function LandingPage() {
             </motion.button>
           </Link>
         </div>
+        {/* Mobile: CTA + hamburger */}
+        <div className="flex md:hidden items-center gap-3">
+          <Link href="/sign-up">
+            <motion.button whileTap={{ scale: 0.96 }}
+              className="px-4 py-2 rounded-lg text-sm font-medium text-white"
+              style={{ background: 'linear-gradient(135deg,#1d4ed8,#3b82f6)' }}>
+              Get started
+            </motion.button>
+          </Link>
+          <button onClick={() => setMobileOpen(o => !o)} style={{ color: '#6b8cba' }}>
+            <Menu size={22} />
+          </button>
+        </div>
+        </div>
+        {/* Mobile dropdown menu */}
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden overflow-hidden px-6 pb-4 space-y-1"
+              style={{ borderTop: '1px solid rgba(59,130,246,0.1)' }}>
+              {[
+                { href: '/how-it-works', label: 'How it works' },
+                { href: '/pricing',      label: 'Pricing' },
+                { href: '/about',        label: 'About' },
+                { href: '/sign-in',      label: 'Sign in' },
+              ].map(l => (
+                <Link key={l.href} href={l.href} onClick={() => setMobileOpen(false)}
+                  className="block py-2.5 text-sm transition-colors hover:text-white"
+                  style={{ color: '#6b8cba' }}>
+                  {l.label}
+                </Link>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
 
       {/* ── Hero ── */}
@@ -287,7 +331,7 @@ export function LandingPage() {
           </h2>
           <p style={{ color: '#5a7aaa', fontSize: 15 }}>Three steps from signup to A*</p>
         </motion.div>
-        <div className="grid grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {STEPS.map((step, i) => (
             <motion.div key={step.num} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
               <GradientCard style={{ background: `linear-gradient(135deg, ${step.color}55 0%, ${step.color}18 50%, rgba(59,130,246,0.06) 100%)` }}>
@@ -310,7 +354,7 @@ export function LandingPage() {
           style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 38, fontWeight: 700, letterSpacing: '-0.02em' }}>
           Everything you need to get an A*
         </motion.h2>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {FEATURES.map((f, i) => (
             <motion.div key={f.title} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
               whileHover={{ scale: 1.02, y: -2 }}>
@@ -338,7 +382,7 @@ export function LandingPage() {
           </h2>
           <p style={{ color: '#5a7aaa', fontSize: 15 }}>Real results from real A-level students</p>
         </motion.div>
-        <div className="grid grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {TESTIMONIALS.map((t, i) => (
             <motion.div key={t.name} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
               <GradientCard style={{ height: '100%' }}>
@@ -406,7 +450,7 @@ export function LandingPage() {
               {/* Glow behind card */}
               <div style={{ position: 'absolute', inset: 0, borderRadius: 17, background: 'radial-gradient(ellipse at 50% 0%, rgba(99,102,241,0.15) 0%, transparent 60%)', pointerEvents: 'none' }} />
               <div style={{ position: 'relative' }}>
-                <JarvisAvatar state="idle" size={72} />
+                <JarvisAvatar state="idle" size={72} transparent />
                 <h2 className="text-white mt-7 mb-3"
                   style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 36, fontWeight: 700, letterSpacing: '-0.02em' }}>
                   Your exam won't wait.
