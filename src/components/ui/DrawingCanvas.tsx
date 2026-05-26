@@ -14,6 +14,7 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
   const [tool, setTool]         = useState<'pen' | 'eraser'>('pen')
   const [isDrawing, setIsDrawing] = useState(false)
   const lastPos = useRef<{ x: number; y: number } | null>(null)
+  const lastMid = useRef<{ x: number; y: number } | null>(null)
   const height = Math.max(140, marks * 38)
 
   const initCanvas = useCallback(() => {
@@ -47,6 +48,7 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
     e.currentTarget.setPointerCapture(e.pointerId)
     const pos = getPos(e)
     lastPos.current = pos
+    lastMid.current = null
     setIsDrawing(true)
     const ctx  = canvasRef.current!.getContext('2d')!
     const size = tool === 'eraser' ? 18 : Math.max(1.5, (e.pressure || 1) * 2.5)
@@ -62,19 +64,34 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
     const ctx    = canvas.getContext('2d')!
     const pos    = getPos(e)
     const last   = lastPos.current!
-    ctx.beginPath()
-    ctx.moveTo(last.x, last.y)
-    ctx.lineTo(pos.x,  pos.y)
+
     ctx.strokeStyle = tool === 'eraser' ? '#ffffff' : '#111827'
     ctx.lineWidth   = tool === 'eraser' ? 18 : Math.max(1.5, (e.pressure || 1) * 2.5)
     ctx.lineCap     = 'round'
     ctx.lineJoin    = 'round'
+    ctx.beginPath()
+
+    if (tool === 'eraser') {
+      ctx.moveTo(last.x, last.y)
+      ctx.lineTo(pos.x, pos.y)
+    } else {
+      const mid = { x: (last.x + pos.x) / 2, y: (last.y + pos.y) / 2 }
+      if (lastMid.current) {
+        ctx.moveTo(lastMid.current.x, lastMid.current.y)
+        ctx.quadraticCurveTo(last.x, last.y, mid.x, mid.y)
+      } else {
+        ctx.moveTo(last.x, last.y)
+        ctx.lineTo(mid.x, mid.y)
+      }
+      lastMid.current = mid
+    }
+
     ctx.stroke()
     lastPos.current = pos
     notify()
   }
 
-  function onPointerUp() { setIsDrawing(false); lastPos.current = null }
+  function onPointerUp() { setIsDrawing(false); lastPos.current = null; lastMid.current = null }
 
   function notify() {
     const canvas = canvasRef.current!
