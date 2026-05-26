@@ -358,7 +358,7 @@ export default function SpokPage() {
             SPOK Interface
           </p>
           <p className="text-sm mt-0.5" style={{ color: '#5a7aaa' }}>
-            Just A Rather Very Intelligent System
+            Scientific Predictor of Knowledge
           </p>
         </div>
 
