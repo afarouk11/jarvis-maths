@@ -5,6 +5,16 @@ import { anthropic } from '@ai-sdk/anthropic'
 import { generateText } from 'ai'
 import { isPro } from '@/lib/stripe'
 
+function formatBoardName(board: string): string {
+  switch (board) {
+    case 'edexcel': return 'Edexcel'
+    case 'ocr_a': return 'OCR A'
+    case 'ocr_mei': return 'OCR MEI'
+    case 'wjec': return 'WJEC/Eduqas'
+    default: return 'AQA'
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient()
@@ -13,13 +23,16 @@ export async function POST(req: NextRequest) {
 
     const { data: prof } = await supabase
       .from('profiles')
-      .select('stripe_subscription_status')
+      .select('stripe_subscription_status, level, exam_board')
       .eq('id', user.id)
       .single()
 
     if (!isPro(prof?.stripe_subscription_status)) {
       return NextResponse.json({ error: 'pro_required' }, { status: 403 })
     }
+
+    const levelLabel = prof?.level === 'gcse' ? 'GCSE' : 'A-level'
+    const boardLabel = formatBoardName(prof?.exam_board ?? 'aqa')
 
     const { slug } = await req.json()
     if (!slug) return NextResponse.json({ error: 'slug required' }, { status: 400 })
@@ -56,7 +69,7 @@ export async function POST(req: NextRequest) {
 
     const { text } = await generateText({
       model: anthropic('claude-opus-4-7'),
-      prompt: `Generate an interactive A-level Maths lesson on "${topic.name}" for AQA.
+      prompt: `Generate an interactive ${levelLabel} Maths lesson on "${topic.name}" for ${boardLabel}.
 ${kbContext}
 
 Return ONLY valid JSON (no markdown fences) with this exact shape:

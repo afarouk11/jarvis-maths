@@ -343,9 +343,20 @@ Include:
 Return ONLY the JSON array, no other text.`
 }
 
-export function buildQuestionPrompt(topicName: string, difficulty: number, level?: 'gcse' | 'alevel', kbContext: string = ''): string {
+function formatBoardName(board: string): string {
+  switch (board) {
+    case 'edexcel': return 'Edexcel'
+    case 'ocr_a': return 'OCR A'
+    case 'ocr_mei': return 'OCR MEI'
+    case 'wjec': return 'WJEC/Eduqas'
+    default: return 'AQA'
+  }
+}
+
+export function buildQuestionPrompt(topicName: string, difficulty: number, level?: 'gcse' | 'alevel', kbContext: string = '', examBoard: string = 'aqa'): string {
   const levelLabel = level === 'gcse' ? 'GCSE' : 'A-level'
-  const boardLabel = level === 'gcse' ? 'AQA GCSE (Higher tier)' : 'AQA A-level'
+  const boardDisplay = formatBoardName(examBoard)
+  const boardLabel = level === 'gcse' ? `${boardDisplay} GCSE (Higher tier)` : `${boardDisplay} A-level`
   return `Generate a ${levelLabel} maths exam question on "${topicName}" at difficulty ${difficulty}/5.
 ${kbContext}
 Return JSON with exactly this structure:

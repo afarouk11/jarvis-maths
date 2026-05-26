@@ -9,6 +9,12 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { data: prof } = await supabase
+    .from('profiles')
+    .select('level, exam_board')
+    .eq('id', user.id)
+    .single()
+
   const { topicId, topicName, difficulty = 3 } = await req.json()
 
   let kbContext = ''
@@ -36,7 +42,7 @@ export async function POST(req: Request) {
   try {
     const result = await generateText({
       model: anthropic('claude-haiku-4-5-20251001'),
-      prompt: buildQuestionPrompt(topicName, difficulty, undefined, kbContext),
+      prompt: buildQuestionPrompt(topicName, difficulty, prof?.level ?? undefined, kbContext, prof?.exam_board ?? 'aqa'),
     })
     text = result.text
   } catch (err: unknown) {
