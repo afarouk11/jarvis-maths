@@ -1,5 +1,7 @@
 'use client'
 
+import { useState, useRef, useCallback } from 'react'
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type DiagramElement =
@@ -578,12 +580,68 @@ function renderDefs(elements: DiagramElement[]) {
   return <defs>{markers}</defs>
 }
 
+// ─── Tooltip ─────────────────────────────────────────────────────────────────
+
+interface TooltipState {
+  svgX: number
+  svgY: number
+  lines: string[]
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function DiagramRenderer({ spec, className }: { spec: DiagramSpec; className?: string }): React.JSX.Element {
   const xDomain: [number, number] = spec.xDomain ?? [-8, 8]
   const yDomain: [number, number] = spec.yDomain ?? [-8, 8]
   const c = makeCoords(xDomain, yDomain)
+
+  // ── Zoom / pan state ──
+  const [zoom, setZoom] = useState(1)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const dragRef = useRef<{ startX: number; startY: number; panX: number; panY: number } | null>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
+
+  // ── Tooltip state ──
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null)
+
+  const onWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault()
+    const delta = e.deltaY > 0 ? 0.85 : 1.18
+    setZoom(z => Math.max(0.4, Math.min(6, z * delta)))
+  }, [])
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return
+    dragRef.current = { startX: e.clientX, startY: e.clientY, panX: pan.x, panY: pan.y }
+  }, [pan])
+
+  const onMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!dragRef.current) return
+    const dx = e.clientX - dragRef.current.startX
+    const dy = e.clientY - dragRef.current.startY
+    setPan({ x: dragRef.current.panX + dx, y: dragRef.current.panY + dy })
+  }, [])
+
+  const onMouseUp = useCallback(() => { dragRef.current = null }, [])
+
+  const resetView = () => { setZoom(1); setPan({ x: 0, y: 0 }) }
+
+  // Build hover targets from point elements
+  const hoverTargets = spec.elements
+    .filter((el): el is Extract<DiagramElement, { kind: 'point' }> => el.kind === 'point')
+    .map(el => ({
+      svgX: c.mx(el.x),
+      svgY: c.my(el.y),
+      lines: [
+        el.label ? `${el.label}` : '',
+        `(${el.x}, ${el.y})`,
+      ].filter(Boolean),
+      mathX: el.x,
+      mathY: el.y,
+    }))
+
+  const transform = `translate(${pan.x}, ${pan.y}) scale(${zoom})`
+  const transformOrigin = `${W / 2} ${H / 2}`
 
   return (
     <div className={className}>
@@ -592,48 +650,110 @@ export function DiagramRenderer({ spec, className }: { spec: DiagramSpec; classN
           {spec.title}
         </p>
       )}
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        width="100%"
-        height="auto"
-        style={{
-          background: 'rgba(8,13,28,0.85)',
-          borderRadius: 12,
-          border: '1px solid rgba(59,130,246,0.12)',
-          display: 'block',
-        }}
-        aria-label={spec.title ?? 'Geometry diagram'}
-        role="img"
-      >
-        {renderDefs(spec.elements)}
 
-        {/* Grid and axes */}
-        {renderGrid(c)}
+      <div style={{ position: 'relative' }}>
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${W} ${H}`}
+          width="100%"
+          height="auto"
+          style={{
+            background: 'rgba(8,13,28,0.85)',
+            borderRadius: 12,
+            border: '1px solid rgba(59,130,246,0.12)',
+            display: 'block',
+            cursor: dragRef.current ? 'grabbing' : 'grab',
+            userSelect: 'none',
+          }}
+          aria-label={spec.title ?? 'Geometry diagram'}
+          role="img"
+          onWheel={onWheel}
+          onMouseDown={onMouseDown}
+          onMouseMove={onMouseMove}
+          onMouseUp={onMouseUp}
+          onMouseLeave={() => { onMouseUp(); setTooltip(null) }}
+        >
+          {renderDefs(spec.elements)}
 
-        {/* Elements */}
-        {spec.elements.map((el, i) => {
-          switch (el.kind) {
-            case 'circle':
-              return renderCircle(el, c, i)
-            case 'point':
-              return renderPoint(el, c, i)
-            case 'vector':
-              return renderVector(el, c, i)
-            case 'segment':
-              return renderSegment(el, c, i)
-            case 'north':
-              return renderNorth(el, c, i)
-            case 'arc':
-              return renderArc(el, c, i)
-            case 'rightangle':
-              return renderRightAngle(el, c, i)
-            case 'label':
-              return renderLabel(el, c, i)
-            default:
-              return null
-          }
-        })}
-      </svg>
+          <g transform={transform} style={{ transformOrigin }}>
+            {renderGrid(c)}
+
+            {spec.elements.map((el, i) => {
+              switch (el.kind) {
+                case 'circle':     return renderCircle(el, c, i)
+                case 'point':      return renderPoint(el, c, i)
+                case 'vector':     return renderVector(el, c, i)
+                case 'segment':    return renderSegment(el, c, i)
+                case 'north':      return renderNorth(el, c, i)
+                case 'arc':        return renderArc(el, c, i)
+                case 'rightangle': return renderRightAngle(el, c, i)
+                case 'label':      return renderLabel(el, c, i)
+                default:           return null
+              }
+            })}
+
+            {/* Invisible hover hit areas for points */}
+            {hoverTargets.map((pt, i) => (
+              <circle
+                key={`hit-${i}`}
+                cx={pt.svgX}
+                cy={pt.svgY}
+                r={14}
+                fill="transparent"
+                style={{ cursor: 'crosshair' }}
+                onMouseEnter={() => setTooltip({ svgX: pt.svgX, svgY: pt.svgY, lines: pt.lines })}
+                onMouseLeave={() => setTooltip(null)}
+              />
+            ))}
+
+            {/* Tooltip rendered inside the zoom group so it moves with the diagram */}
+            {tooltip && (() => {
+              const ttW = Math.max(...tooltip.lines.map(l => l.length)) * 7 + 16
+              const ttH = tooltip.lines.length * 14 + 8
+              const ttX = tooltip.svgX + 10
+              const ttY = tooltip.svgY - ttH - 6
+              return (
+                <g style={{ pointerEvents: 'none' }}>
+                  <rect x={ttX} y={ttY} width={ttW} height={ttH} rx={5}
+                    fill="rgba(8,13,28,0.95)" stroke="rgba(245,158,11,0.5)" strokeWidth={0.8} />
+                  {tooltip.lines.map((line, j) => (
+                    <text key={j} x={ttX + 8} y={ttY + 12 + j * 14}
+                      fontSize={10} fontFamily="system-ui,sans-serif"
+                      fill={j === 0 ? '#fbbf24' : '#e2e8f0'} fontWeight={j === 0 ? 700 : 400}>
+                      {line}
+                    </text>
+                  ))}
+                </g>
+              )
+            })()}
+          </g>
+        </svg>
+
+        {/* Controls */}
+        <div style={{ position: 'absolute', bottom: 8, right: 10, display: 'flex', gap: 4 }}>
+          {[
+            { label: '+', action: () => setZoom(z => Math.min(6, z * 1.3)) },
+            { label: '−', action: () => setZoom(z => Math.max(0.4, z / 1.3)) },
+            { label: '⊙', action: resetView },
+          ].map(({ label, action }) => (
+            <button key={label} onClick={action}
+              style={{
+                width: 22, height: 22, borderRadius: 5, fontSize: 13, lineHeight: 1,
+                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+                color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Hint */}
+        <p style={{ position: 'absolute', bottom: 10, left: 10, fontSize: 9,
+          color: 'rgba(255,255,255,0.2)', pointerEvents: 'none' }}>
+          scroll to zoom · drag to pan
+        </p>
+      </div>
     </div>
   )
 }
