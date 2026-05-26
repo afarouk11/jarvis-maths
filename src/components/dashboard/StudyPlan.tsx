@@ -40,7 +40,7 @@ export function StudyPlan() {
     try {
       const res  = await fetch('/api/study-plan')
       const data = await res.json()
-      setPlan(data)
+      if (data?.sessions) setPlan(data)
     } catch {}
     setLoading(false)
   }

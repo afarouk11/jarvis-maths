@@ -11,16 +11,18 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const [{ data: profile }, { data: progress }] = await Promise.all([
+  const [{ data: profile }, { data: progress }, { data: topicRows }] = await Promise.all([
     supabase.from('profiles').select('exam_date, target_grade, exam_board').eq('id', user.id).single(),
     supabase.from('student_progress').select('topic_id, p_known').eq('student_id', user.id),
+    supabase.from('topics').select('id, slug'),
   ])
 
   const daysToExam = profile?.exam_date
     ? Math.max(0, Math.ceil((new Date(profile.exam_date).getTime() - Date.now()) / 86400000))
     : null
 
-  const progressMap = new Map((progress ?? []).map(p => [p.topic_id, p.p_known]))
+  const slugById    = new Map((topicRows ?? []).map((t: any) => [t.id, t.slug]))
+  const progressMap = new Map((progress ?? []).map(p => [slugById.get(p.topic_id) ?? p.topic_id, p.p_known]))
   const weakTopics  = AQA_TOPICS
     .map(t => ({ name: t.name, pKnown: progressMap.get(t.slug) ?? 0.3 }))
     .sort((a, b) => a.pKnown - b.pKnown)
