@@ -48,9 +48,11 @@ function convertListsToSpeech(text: string): string {
 
 function cleanForTTS(text: string): string {
   return convertListsToSpeech(text)
-    // Strip [GRAPH], [ANIMATE], [KEYPOINTS] blocks entirely — never speak JSON
+    // Strip all diagram/graph blocks — never speak JSON
     .replace(/\[GRAPH\][\s\S]*?\[\/GRAPH\]/g, '')
     .replace(/\[ANIMATE\][\s\S]*?\[\/ANIMATE\]/g, '')
+    .replace(/\[DIAGRAM\][\s\S]*?\[\/DIAGRAM\]/g, '')
+    .replace(/\[ADIAGRAM\][\s\S]*?\[\/ADIAGRAM\]/g, '')
     .replace(/\[KEYPOINTS\][\s\S]*?\[\/KEYPOINTS\]/g, '')
     // [TOPIC:slug|Name] → just say the topic name
     .replace(/\[TOPIC:[^\]|]+\|([^\]]+)\]/g, '$1')

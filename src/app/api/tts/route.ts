@@ -155,9 +155,11 @@ function stripLatex(text: string): string {
     .replace(/^\s*[-*+]\s+/gm, '')
     .replace(/^\s*\d+\.\s+/gm, '')
 
-  // Step 6: Strip special blocks entirely
+  // Step 6: Strip special blocks entirely — never read JSON or diagram markup aloud
   text = text.replace(/\[GRAPH\][\s\S]*?\[\/GRAPH\]/g, '')
   text = text.replace(/\[ANIMATE\][\s\S]*?\[\/ANIMATE\]/g, '')
+  text = text.replace(/\[DIAGRAM\][\s\S]*?\[\/DIAGRAM\]/g, '')
+  text = text.replace(/\[ADIAGRAM\][\s\S]*?\[\/ADIAGRAM\]/g, '')
   text = text.replace(/\[KEYPOINTS\][\s\S]*?\[\/KEYPOINTS\]/g, '')
   // [TOPIC:slug|Name] → just the display name for speech
   text = text.replace(/\[TOPIC:[^\]|]+\|([^\]]+)\]/g, '$1')
@@ -200,6 +202,10 @@ function stripLatex(text: string): string {
     // Slash in common word pairs → "or" / "and"
     .replace(/\band\/or\b/gi, 'and or')
     .replace(/(\w)\/(\w)/g, '$1 or $2')
+    // Coordinate pairs: (3, 4) or (-2, 5.5) → "3 comma 4" — must run BEFORE generic parenthetical
+    .replace(/\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/g, '$1 comma $2')
+    // 3D coordinates: (1, 2, 3) → "1 comma 2 comma 3"
+    .replace(/\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/g, '$1 comma $2 comma $3')
     // Parenthetical remarks → spoken naturally with commas
     .replace(/\s*\(([^)]{1,80})\)\s*/g, ', $1, ')
     // Remove any remaining brackets/braces
