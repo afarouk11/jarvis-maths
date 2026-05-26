@@ -135,7 +135,7 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
   }
 
   return (
-    <div>
+    <div style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
       <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
         {(['pen', 'eraser'] as const).map(t => (
           <button key={t} onClick={() => setTool(t)} disabled={disabled} style={{
