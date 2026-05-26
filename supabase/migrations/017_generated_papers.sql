@@ -14,6 +14,6 @@ create index if not exists generated_papers_student_created
 
 alter table public.generated_papers enable row level security;
 
-create policy "Students can view own papers"
-  on public.generated_papers for select
-  using (auth.uid() = student_id);
+do $$ begin
+  create policy "Students can view own papers" on public.generated_papers for select using (auth.uid() = student_id);
+exception when duplicate_object then null; end $$;

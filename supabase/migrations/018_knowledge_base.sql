@@ -15,9 +15,9 @@ create index if not exists knowledge_base_embedding_idx
 
 alter table public.knowledge_base enable row level security;
 
-create policy "Authenticated users can read knowledge"
-  on public.knowledge_base for select
-  using (auth.role() = 'authenticated');
+do $$ begin
+  create policy "Authenticated users can read knowledge" on public.knowledge_base for select using (auth.role() = 'authenticated');
+exception when duplicate_object then null; end $$;
 
 drop function if exists match_knowledge(vector, integer, double precision);
 

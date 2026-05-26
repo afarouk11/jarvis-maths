@@ -13,11 +13,12 @@ create index if not exists topic_mastery_user_idx
 
 alter table public.topic_mastery enable row level security;
 
-create policy "Users can read own mastery"
-  on public.topic_mastery for select using (auth.uid() = user_id);
-
-create policy "Users can insert own mastery"
-  on public.topic_mastery for insert with check (auth.uid() = user_id);
-
-create policy "Users can update own mastery"
-  on public.topic_mastery for update using (auth.uid() = user_id);
+do $$ begin
+  create policy "Users can read own mastery" on public.topic_mastery for select using (auth.uid() = user_id);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "Users can insert own mastery" on public.topic_mastery for insert with check (auth.uid() = user_id);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "Users can update own mastery" on public.topic_mastery for update using (auth.uid() = user_id);
+exception when duplicate_object then null; end $$;
