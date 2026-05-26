@@ -2,7 +2,7 @@
 create extension if not exists "uuid-ossp";
 
 -- Profiles (extends auth.users)
-create table public.profiles (
+create table if not exists public.profiles (
   id uuid references auth.users on delete cascade primary key,
   full_name text,
   exam_board text not null default 'AQA' check (exam_board in ('AQA', 'Edexcel', 'OCR')),

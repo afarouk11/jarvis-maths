@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useRef, useState, useEffect, useCallback, type CSSProperties } from 'react'
 import { Pen, Eraser, Trash2, Undo2 } from 'lucide-react'
 
 interface Props {
@@ -129,7 +129,7 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
 
   function clear() { initCanvas(); onChange('') }
 
-  const btnBase: React.CSSProperties = {
+  const btnBase: CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 4,
     padding: '3px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer',
   }
