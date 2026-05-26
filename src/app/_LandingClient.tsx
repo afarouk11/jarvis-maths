@@ -213,7 +213,7 @@ export function LandingPage() {
           }}>
             <div style={{ position: 'absolute', bottom: -4, right: '20%', width: 7, height: 7, borderRadius: '50%', background: '#6366f1', boxShadow: '0 0 8px #6366f1' }} />
           </div>
-          <JarvisAvatar state={jarvisState} size={120} />
+          <JarvisAvatar state={jarvisState} size={120} transparent />
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="max-w-3xl mx-auto" style={{ position: 'relative' }}>

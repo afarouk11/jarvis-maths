@@ -466,9 +466,10 @@ interface Props {
   state: JarvisState
   className?: string
   onClick?: () => void
+  transparent?: boolean
 }
 
-export function JarvisScene({ amplitude, state, className, onClick }: Props) {
+export function JarvisScene({ amplitude, state, className, onClick, transparent = false }: Props) {
   const canvas = (
     <Canvas
       camera={{ position: [0, 0, 24], fov: 19 }}
@@ -480,9 +481,13 @@ export function JarvisScene({ amplitude, state, className, onClick }: Props) {
         powerPreference: 'low-power',
         failIfMajorPerformanceCaveat: false,
       }}
-      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: '#080d19' }}
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: transparent ? 'transparent' : '#080d19' }}
       onCreated={({ gl }) => {
-        gl.setClearColor(0x080d19, 1)
+        if (transparent) {
+          gl.setClearColor(0x000000, 0)
+        } else {
+          gl.setClearColor(0x080d19, 1)
+        }
         const ctx = gl.getContext()
         if (!ctx) return
         ctx.canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault() }, false)

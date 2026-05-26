@@ -13,6 +13,7 @@ interface Props {
   state: JarvisState
   size?: number
   amplitude?: number   // 0-1 live audio level — drives scale + glow pulsation
+  transparent?: boolean
 }
 
 // Pre-defined neural network node positions (normalized 0-1)
@@ -46,12 +47,12 @@ const EDGES = [
   [1,2],[2,3],[3,4],[4,5],[5,6],[6,1],
 ]
 
-export function JarvisAvatar({ state, size = 56, amplitude = 0 }: Props) {
+export function JarvisAvatar({ state, size = 56, amplitude = 0, transparent = false }: Props) {
   // Render the full 3D scene for large avatars
   if (size >= 100) {
     return (
       <div style={{ width: size, height: size, position: 'relative' }}>
-        <JarvisScene amplitude={amplitude} state={state} />
+        <JarvisScene amplitude={amplitude} state={state} transparent={transparent} />
       </div>
     )
   }
