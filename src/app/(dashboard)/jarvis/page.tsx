@@ -13,6 +13,7 @@ import { CHAT_SKILL_MODES, type SkillModeId } from '@/lib/spok-skills'
 import { useAccessibility } from '@/hooks/useAccessibility'
 import { SpokMessage } from '@/components/math/SpokMessage'
 import { AnimatedGraphRenderer, parseAnimateSpec, type AnimateSpec } from '@/components/math/GraphRenderer'
+import { DiagramRenderer, parseDiagramSpec, type DiagramSpec } from '@/components/math/DiagramRenderer'
 import { useJarvisVoice, useSpeechToText, createSentenceBuffer } from '@/hooks/useJarvisVoice'
 import type { JarvisState } from '@/types'
 
@@ -31,6 +32,7 @@ export default function SpokPage() {
   const greetingFetchedRef = useRef(false)
   const [animateSpec, setAnimateSpec] = useState<AnimateSpec | null>(null)
   const [animateStep, setAnimateStep] = useState(0)
+  const [diagramSpec, setDiagramSpec] = useState<DiagramSpec | null>(null)
   const prevSentenceRef = useRef('')
   const [limitReached, setLimitReached] = useState(false)
   const [upgradeLoading, setUpgradeLoading] = useState(false)
@@ -140,13 +142,23 @@ export default function SpokPage() {
         || (lastMsg.parts as any[]).filter((p: any) => p.type === 'text').map((p: any) => p.text ?? '').join(''))
       : (lastMsg as any).content ?? ''
 
-    const match = fullText.match(/\[ANIMATE\]([\s\S]*?)\[\/ANIMATE\]/)
-    if (match) {
-      const parsed = parseAnimateSpec(match[1].trim())
+    const animMatch = fullText.match(/\[ANIMATE\]([\s\S]*?)\[\/ANIMATE\]/)
+    if (animMatch) {
+      const parsed = parseAnimateSpec(animMatch[1].trim())
       if (parsed) {
         setAnimateSpec(parsed)
         setAnimateStep(0)
+        setDiagramSpec(null)
         prevSentenceRef.current = ''
+      }
+    } else {
+      const diagMatch = fullText.match(/\[DIAGRAM\]([\s\S]*?)\[\/DIAGRAM\]/)
+      if (diagMatch) {
+        const parsed = parseDiagramSpec(diagMatch[1].trim())
+        if (parsed) {
+          setDiagramSpec(parsed)
+          setAnimateSpec(null)
+        }
       }
     }
   }, [messages])
@@ -244,6 +256,7 @@ export default function SpokPage() {
     spokenLengthRef.current = 0
     setAnimateSpec(null)
     setAnimateStep(0)
+    setDiagramSpec(null)
     sendMessage({ text: inputValue.trim() })
     setInputValue('')
   }
@@ -637,9 +650,38 @@ export default function SpokPage() {
           )}
         </AnimatePresence>
 
+        {/* Diagram panel — overlaid when active */}
+        <AnimatePresence>
+          {diagramSpec && !animateSpec && (
+            <motion.div
+              key="diagram-panel"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.4 }}
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center px-8 gap-3"
+              style={{ background: 'rgba(8,13,25,0.88)', backdropFilter: 'blur(8px)' }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between w-full mb-1">
+                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#f59e0b' }}>
+                  SPOK · Diagram
+                </p>
+                <button
+                  onClick={() => setDiagramSpec(null)}
+                  className="text-xs px-2 py-1 rounded-lg"
+                  style={{ color: 'rgba(245,158,11,0.4)', border: '1px solid rgba(245,158,11,0.15)' }}>
+                  ✕ dismiss
+                </button>
+              </div>
+              <DiagramRenderer spec={diagramSpec} className="w-full" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Live word display — centre of panel */}
         <AnimatePresence mode="wait">
-          {currentSentence && !animateSpec && (
+          {currentSentence && !animateSpec && !diagramSpec && (
             <motion.div
               key={currentSentence}
               initial={{ opacity: 0, y: 8 }}
@@ -665,7 +707,7 @@ export default function SpokPage() {
 
         {/* Tap to speak hint */}
         <AnimatePresence>
-          {jarvisState === 'idle' && !animateSpec && (
+          {jarvisState === 'idle' && !animateSpec && !diagramSpec && (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
