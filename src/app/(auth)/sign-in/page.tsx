@@ -18,7 +18,6 @@ export default function SignInPage() {
 function SignInForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const supabase = createClient()
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
@@ -28,7 +27,7 @@ function SignInForm() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await createClient().auth.signInWithPassword({ email, password })
     if (error) { setError(error.message); setLoading(false); return }
     router.push(searchParams.get('next') ?? '/dashboard')
   }

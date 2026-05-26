@@ -47,7 +47,6 @@ interface SidebarProps {
 export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
   const pathname = usePathname()
   const router   = useRouter()
-  const supabase = createClient()
   const [dueCount, setDueCount] = useState(0)
 
   useEffect(() => {
@@ -61,7 +60,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
   }, [pathname])
 
   async function signOut() {
-    await supabase.auth.signOut()
+    await createClient().auth.signOut()
     router.push('/sign-in')
   }
 

@@ -10,7 +10,6 @@ import { validateName } from '@/lib/validate-name'
 
 export default function SignUpPage() {
   const router = useRouter()
-  const supabase = createClient()
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ fullName: '', email: '', password: '' })
@@ -21,7 +20,7 @@ export default function SignUpPage() {
     setError('')
     const nameError = validateName(form.fullName)
     if (nameError) { setError(nameError); setLoading(false); return }
-    const { error } = await supabase.auth.signUp({
+    const { error } = await createClient().auth.signUp({
       email: form.email,
       password: form.password,
       options: { data: { full_name: form.fullName } },
