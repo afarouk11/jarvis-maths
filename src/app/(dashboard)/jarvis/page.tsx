@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, isReasoningUIPart, isTextUIPart } from 'ai'
-import { Send, Mic, MicOff, Volume2, VolumeX, RefreshCw, Zap, Check, X, Lock } from 'lucide-react'
+import { Send, Mic, MicOff, Volume2, VolumeX, RefreshCw, Zap, Check, X, Lock, Square } from 'lucide-react'
 import { ThinkingBlock } from '@/components/jarvis/ThinkingBlock'
 import { JarvisAvatar } from '@/components/jarvis/JarvisAvatar'
 import dynamic from 'next/dynamic'
@@ -606,29 +606,42 @@ export default function SpokPage() {
               }}>
               {listening ? <Mic size={14} /> : <MicOff size={14} />}
             </button>
-            {/* Stop speaking / voice toggle */}
+            {/* Voice on/off toggle */}
             <button
               type="button"
-              onClick={() => {
-                if (speaking) {
-                  stopSpeaking()
-                } else {
-                  setVoiceEnabled(v => !v)
-                }
-              }}
-              title={speaking ? 'Stop speaking' : voiceEnabled ? 'Mute voice' : 'Unmute voice'}
+              onClick={() => setVoiceEnabled(v => !v)}
+              title={voiceEnabled ? 'Mute voice' : 'Unmute voice'}
               className="p-2 rounded-xl transition-all"
               style={{
-                background: speaking
-                  ? 'rgba(239,68,68,0.15)'
-                  : voiceEnabled
-                    ? 'rgba(245,158,11,0.1)'
-                    : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${speaking ? 'rgba(239,68,68,0.4)' : voiceEnabled ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                color: speaking ? '#f87171' : voiceEnabled ? '#f59e0b' : '#5a7aaa',
+                background: voiceEnabled ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${voiceEnabled ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                color: voiceEnabled ? '#f59e0b' : '#5a7aaa',
               }}>
-              {speaking ? <VolumeX size={14} /> : voiceEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+              {voiceEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
             </button>
+            {/* Stop button — slides in only when SPOK is speaking */}
+            <AnimatePresence>
+              {speaking && (
+                <motion.button
+                  type="button"
+                  initial={{ scale: 0.6, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.6, opacity: 0 }}
+                  transition={{ type: 'spring', damping: 18, stiffness: 380 }}
+                  onClick={stopSpeaking}
+                  title="Stop SPOK"
+                  className="p-2 rounded-xl transition-colors flex items-center gap-1.5 px-3"
+                  style={{
+                    background: 'rgba(239,68,68,0.18)',
+                    border: '1px solid rgba(239,68,68,0.5)',
+                    color: '#f87171',
+                    boxShadow: '0 0 14px rgba(239,68,68,0.25)',
+                  }}>
+                  <Square size={11} fill="currentColor" />
+                  <span className="text-xs font-semibold" style={{ fontFamily: 'var(--font-space-grotesk)' }}>Stop</span>
+                </motion.button>
+              )}
+            </AnimatePresence>
             {/* Send */}
             <button
               type="submit"
