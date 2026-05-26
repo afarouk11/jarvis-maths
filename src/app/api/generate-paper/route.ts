@@ -120,7 +120,7 @@ async function generateALevelPaper({ body, board, admin, userId, supabase }: any
   let text: string
   try {
     const result = await generateText({
-      model: anthropic('claude-sonnet-4-6'),
+      model: anthropic('claude-haiku-4-5-20251001'),
       temperature: 1,
       system: 'You are an exam paper generator. You respond ONLY with valid JSON — no prose, no markdown fences, no explanation.',
       prompt: buildALevelPrompt(board, cfg, selected, qPH, seed, diff),
@@ -180,7 +180,7 @@ async function generateGcsePaper({ body, board, admin, userId, supabase }: any) 
   let text: string
   try {
     const result = await generateText({
-      model: anthropic('claude-sonnet-4-6'),
+      model: anthropic('claude-haiku-4-5-20251001'),
       temperature: 1,
       system: 'You are a GCSE exam paper generator. You respond ONLY with valid JSON — no prose, no markdown fences, no explanation.',
       prompt: buildGcsePrompt(board, cfg, paperType, selected, qPH, seed, diff),
