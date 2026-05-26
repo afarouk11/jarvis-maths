@@ -106,7 +106,7 @@ export function JarvisChat({ topicContext }: Props) {
 
   useEffect(() => {
     if (listening) setJarvisState('listening')
-    else if (jarvisState === 'listening') setJarvisState('idle')
+    else if (jarvisState === 'listening') setJarvisState('speaking') // brief pulse before thinking
   }, [listening])
 
   useEffect(() => {

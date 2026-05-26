@@ -4,6 +4,7 @@ import { SPOK_SYSTEM_PROMPT, buildAccessibilityPrompt } from '@/lib/ai/prompts'
 import { buildStudentProfile } from '@/lib/ai/student-profile'
 import { embedText } from '@/lib/ai/embeddings'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { isPro, PLANS } from '@/lib/stripe'
 import { CHAT_SKILL_MODES } from '@/lib/spok-skills'
 import type { SkillModeId } from '@/lib/spok-skills'
@@ -42,11 +43,11 @@ export async function POST(req: Request) {
   // Free tier: 10 Spok messages per day
   const { data: prof } = await supabase
     .from('profiles')
-    .select('stripe_subscription_status, chat_messages_today, chat_messages_reset_at')
+    .select('stripe_subscription_status, chat_messages_today, chat_messages_reset_at, is_admin')
     .eq('id', user.id)
     .single()
 
-  if (!isPro(prof?.stripe_subscription_status)) {
+  if (!isPro(prof?.stripe_subscription_status) && !prof?.is_admin) {
     const today = new Date().toISOString().slice(0, 10)
     const resetDate = prof?.chat_messages_reset_at ?? today
     const count = resetDate === today ? (prof?.chat_messages_today ?? 0) : 0
@@ -60,6 +61,25 @@ export async function POST(req: Request) {
       chat_messages_today: resetDate === today ? count + 1 : 1,
       chat_messages_reset_at: today,
     }).eq('id', user.id)
+  }
+
+  // Skill mastery gate — some modes require minimum avg p_known
+  if (skillMode) {
+    const requestedMode = CHAT_SKILL_MODES.find(m => m.id === (skillMode as SkillModeId))
+    if (requestedMode && requestedMode.minMastery > 0) {
+      const { data: progress } = await supabase
+        .from('student_progress')
+        .select('p_known')
+        .eq('student_id', user.id)
+      const rows = progress ?? []
+      const avgPKnown = rows.length > 0 ? rows.reduce((s: number, r: { p_known: number }) => s + r.p_known, 0) / rows.length : 0
+      if (avgPKnown < requestedMode.minMastery) {
+        return Response.json(
+          { error: 'skill_locked', minMastery: requestedMode.minMastery, currentMastery: avgPKnown },
+          { status: 403 }
+        )
+      }
+    }
   }
 
   const profile = await buildStudentProfile(user.id)
@@ -134,6 +154,15 @@ export async function POST(req: Request) {
     historyBlock,
   ].join('')
 
+  // Log user message before streaming
+  const admin = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+  if (lastText) {
+    await admin.from('spok_messages').insert({ user_id: user.id, role: 'user', content: lastText })
+  }
+
   const result = streamText({
     model: anthropic('claude-sonnet-4-6'),
     system,
@@ -141,6 +170,11 @@ export async function POST(req: Request) {
     maxOutputTokens: 16000,
     providerOptions: {
       anthropic: { thinking: { type: 'enabled', budgetTokens: 2000 } },
+    },
+    onFinish: async ({ text }) => {
+      if (text) {
+        await admin.from('spok_messages').insert({ user_id: user.id, role: 'assistant', content: text })
+      }
     },
   })
 

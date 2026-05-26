@@ -9,12 +9,46 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { data: prof } = await supabase
+    .from('profiles')
+    .select('level, exam_board')
+    .eq('id', user.id)
+    .single()
+
   const { topicId, topicName, difficulty = 3 } = await req.json()
 
-  const { text } = await generateText({
-    model: anthropic('claude-haiku-4-5-20251001'),
-    prompt: buildQuestionPrompt(topicName, difficulty),
-  })
+  let kbContext = ''
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      const { embedText } = await import('@/lib/ai/embeddings')
+      const embedding = await embedText(topicName)
+      const { data: knowledge } = await supabase.rpc('match_knowledge', {
+        query_embedding: embedding,
+        match_count: 2,
+        min_similarity: 0.4,
+      })
+      if (knowledge && knowledge.length > 0) {
+        kbContext = '\n\nReference these curated examples when writing the question and worked solution:\n'
+        kbContext += (knowledge as Array<{ type: string; title: string; content: string }>)
+          .map(k => `[${k.type.replace('_', ' ')} — ${k.title}]\n${k.content}`)
+          .join('\n\n')
+      }
+    } catch {
+      // Non-fatal — continue without KB
+    }
+  }
+
+  let text: string
+  try {
+    const result = await generateText({
+      model: anthropic('claude-haiku-4-5-20251001'),
+      prompt: buildQuestionPrompt(topicName, difficulty, prof?.level ?? undefined, kbContext, prof?.exam_board ?? 'aqa'),
+    })
+    text = result.text
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    return Response.json({ error: 'AI generation failed', details: msg }, { status: 500 })
+  }
 
   let question
   try {

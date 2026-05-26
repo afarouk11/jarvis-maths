@@ -5,10 +5,12 @@ import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { StepByStepSolution } from '@/components/math/StepByStepSolution'
 import { MixedMath } from '@/components/math/MathRenderer'
+import { MathKeypad } from '@/components/math/MathKeypad'
 import { Question } from '@/types'
 import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
 import { GCSE_TOPICS } from '@/lib/curriculum/gcse-topics'
-import { CheckCircle, XCircle, Loader2, Zap } from 'lucide-react'
+import { CheckCircle, XCircle, Loader2, Zap, Check, X, Pen, Type } from 'lucide-react'
+import { DrawingCanvas } from '@/components/ui/DrawingCanvas'
 import { Skeleton } from '@/components/ui/skeleton'
 
 interface MarkResult {
@@ -44,6 +46,13 @@ function PracticePageInner() {
   const [startTime, setStartTime] = useState(Date.now())
   const [submitted, setSubmitted] = useState(false)
   const [xpGain,    setXpGain]    = useState<number | null>(null)
+  const [proRequired, setProRequired] = useState(false)
+  const [upgradeLoading, setUpgradeLoading] = useState(false)
+  const [generateError, setGenerateError] = useState<string | null>(null)
+  const [drawMode, setDrawMode] = useState(false)
+  const [drawingImage, setDrawingImage] = useState('')
+
+  const answerTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Study Now mode
   const [studyNowMode, setStudyNowMode] = useState(false)
@@ -98,43 +107,86 @@ function PracticePageInner() {
 
   async function generateQuestionForSlug(slug: string) {
     setLoading(true)
+    setGenerateError(null)
     setRevealed(false)
     setQuestion(null)
     setStudentAnswer('')
+    setDrawingImage('')
     setMarkResult(null)
     setSubmitted(false)
     setStartTime(Date.now())
 
     const topic = allTopics.find(t => t.slug === slug)!
-    const res = await fetch('/api/generate-question', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topicId: slug, topicName: topic.name, difficulty: 3 }),
-    })
-    const data = await res.json()
-    setQuestion(data)
-    setLoading(false)
+    try {
+      const res = await fetch('/api/generate-question', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topicId: slug, topicName: topic.name, difficulty: 3 }),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        let msg = `Server error ${res.status}`
+        try { const p = JSON.parse(text); msg = [p.error, p.details].filter(Boolean).join(' — ') || msg } catch { msg = text.slice(0, 200) }
+        setGenerateError(msg)
+      } else {
+        const data = await res.json()
+        setQuestion(data)
+      }
+    } catch (err: any) {
+      setGenerateError(err?.message ?? 'Network error — please try again')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function generateQuestion() {
     generateQuestionForSlug(selectedSlug)
   }
 
+  async function handleUpgrade() {
+    setUpgradeLoading(true)
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: 'monthly' }),
+      })
+      const data = await res.json()
+      window.location.href = data.url ?? '/pricing'
+    } catch {
+      window.location.href = '/pricing'
+    } finally {
+      setUpgradeLoading(false)
+    }
+  }
+
   async function submitAnswer() {
-    if (!question || !studentAnswer.trim()) return
+    const hasAnswer = drawMode ? !!drawingImage : !!studentAnswer.trim()
+    if (!question || !hasAnswer) return
     setMarking(true)
     setSubmitted(true)
+
+    const body: Record<string, unknown> = {
+      stem: question.stem,
+      correctAnswer: question.answer,
+      workedSolution: question.worked_solution,
+    }
+    if (drawMode) body.studentAnswerImage = drawingImage
+    else body.studentAnswer = studentAnswer
 
     const res = await fetch('/api/mark-answer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        stem: question.stem,
-        correctAnswer: question.answer,
-        studentAnswer,
-        workedSolution: question.worked_solution,
-      }),
+      body: JSON.stringify(body),
     })
+
+    if (res.status === 403) {
+      setMarking(false)
+      setSubmitted(false)
+      setProRequired(true)
+      return
+    }
+
     const result = await res.json()
     setMarkResult(result)
     setMarking(false)
@@ -178,6 +230,78 @@ function PracticePageInner() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
+
+      {/* Pro upgrade modal — shown when AI marking requires Pro */}
+      <AnimatePresence>
+        {proRequired && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center px-6"
+            style={{ background: 'rgba(8,13,28,0.88)', backdropFilter: 'blur(10px)' }}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 24 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 24 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 260 }}
+              className="relative w-full max-w-sm rounded-3xl p-8"
+              style={{ background: 'rgba(12,17,30,0.98)', border: '1px solid rgba(245,158,11,0.25)', boxShadow: '0 0 60px rgba(245,158,11,0.08)' }}>
+              <button
+                onClick={() => setProRequired(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-lg"
+                style={{ color: '#4a6070' }}>
+                <X size={14} />
+              </button>
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5 mx-auto"
+                style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                <Zap size={22} style={{ color: '#f59e0b' }} />
+              </div>
+              <h2 className="text-lg font-bold text-white text-center mb-1"
+                style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                AI marking is Pro
+              </h2>
+              <p className="text-sm text-center mb-5" style={{ color: '#5a7aaa' }}>
+                SPOK analyses your working, awards M/A/B marks, and gives AQA-style feedback. Upgrade to unlock it.
+              </p>
+              <div className="rounded-2xl p-4 mb-5 text-center"
+                style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.15)' }}>
+                <p className="font-bold text-white" style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 32 }}>
+                  £40<span className="text-sm font-normal" style={{ color: '#5a7aaa' }}>/month</span>
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>or £400/year · cancel anytime</p>
+              </div>
+              <ul className="space-y-2 mb-6">
+                {[
+                  'AI marking with M/A/B mark breakdown',
+                  'Unlimited SPOK conversations',
+                  'AI-generated lessons on any topic',
+                  'Past paper AI with citations',
+                ].map(f => (
+                  <li key={f} className="flex items-center gap-2.5 text-sm" style={{ color: '#fde9b8' }}>
+                    <Check size={13} className="shrink-0" style={{ color: '#f59e0b' }} />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={handleUpgrade}
+                disabled={upgradeLoading}
+                className="w-full py-3 rounded-2xl text-sm font-semibold text-white transition-all hover:scale-[1.02] disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', boxShadow: '0 4px 24px rgba(245,158,11,0.25)' }}>
+                {upgradeLoading ? 'Redirecting...' : 'Upgrade to Pro'}
+              </button>
+              <button
+                onClick={() => setProRequired(false)}
+                className="w-full text-center text-xs mt-3 hover:text-white transition-colors"
+                style={{ color: '#4a6070' }}>
+                Maybe later
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {xpGain !== null && (
           <motion.div
@@ -193,8 +317,8 @@ function PracticePageInner() {
 
       <div className="mb-6 flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Practice</h1>
-          <p className="text-sm mt-1" style={{ color: '#5a7aaa' }}>Adaptive questions · Auto-marked by Spok</p>
+          <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-space-grotesk)', letterSpacing: '-0.02em' }}>Practice</h1>
+          <p className="text-sm mt-1" style={{ color: '#5a7aaa' }}>Adaptive questions tailored to your gaps</p>
         </div>
         {studyNowDone && (
           <motion.div
@@ -273,8 +397,8 @@ function PracticePageInner() {
             value={selectedSlug}
             onChange={e => setSelectedSlug(e.target.value)}
             className="px-3 py-2 rounded-lg text-sm outline-none"
-            style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', color: '#e8f0fe' }}>
-            {allTopics.map(t => <option key={t.slug} value={t.slug}>{t.name}</option>)}
+            style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', color: '#e8f0fe', colorScheme: 'dark' }}>
+            {allTopics.map(t => <option key={t.slug} value={t.slug} style={{ background: '#1e3a5f', color: '#e8f0fe' }}>{t.name}</option>)}
           </select>
           <motion.button
             whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
@@ -284,6 +408,19 @@ function PracticePageInner() {
             {loading ? 'Generating...' : question ? 'New question' : 'Start'}
           </motion.button>
         </div>
+      )}
+
+      {/* Error state */}
+      {generateError && !loading && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          className="rounded-2xl p-4 mb-4 flex items-start gap-3"
+          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
+          <XCircle size={16} className="text-red-400 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-red-300">Generation failed</p>
+            <p className="text-xs mt-0.5" style={{ color: '#f87171' }}>{generateError}</p>
+          </div>
+        </motion.div>
       )}
 
       {/* Loading skeleton */}
@@ -326,26 +463,45 @@ function PracticePageInner() {
             {/* Answer input */}
             {!submitted && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-4">
-                <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#5a7aaa' }}>
-                  Your answer
-                </p>
-                <textarea
-                  value={studentAnswer}
-                  onChange={e => setStudentAnswer(e.target.value)}
-                  placeholder="Type your answer here... (you can use plain text, e.g. x = 3 or x^2 + 2x)"
-                  rows={4}
-                  className="w-full rounded-xl p-4 text-sm outline-none resize-none"
-                  style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(59,130,246,0.2)',
-                    color: '#e8f0fe',
-                  }}
-                />
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#5a7aaa' }}>Your answer</p>
+                  <div className="flex items-center gap-2">
+                    {/* Type / Draw toggle */}
+                    <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid rgba(59,130,246,0.2)' }}>
+                      <button onClick={() => setDrawMode(false)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors"
+                        style={{ background: !drawMode ? 'rgba(59,130,246,0.25)' : 'transparent', color: !drawMode ? '#60a5fa' : '#5a7aaa' }}>
+                        <Type size={11} /> Type
+                      </button>
+                      <button onClick={() => setDrawMode(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors"
+                        style={{ background: drawMode ? 'rgba(59,130,246,0.25)' : 'transparent', color: drawMode ? '#60a5fa' : '#5a7aaa' }}>
+                        <Pen size={11} /> Draw
+                      </button>
+                    </div>
+                    {!drawMode && <MathKeypad getTextarea={() => answerTextareaRef.current} setValue={setStudentAnswer} />}
+                  </div>
+                </div>
+
+                {drawMode ? (
+                  <DrawingCanvas marks={question.marks} onChange={setDrawingImage} />
+                ) : (
+                  <textarea
+                    ref={answerTextareaRef}
+                    value={studentAnswer}
+                    onChange={e => setStudentAnswer(e.target.value)}
+                    placeholder="Type your answer here... (you can use plain text, e.g. x = 3 or x^2 + 2x)"
+                    rows={4}
+                    className="w-full rounded-xl p-4 text-sm outline-none resize-none"
+                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(59,130,246,0.2)', color: '#e8f0fe' }}
+                  />
+                )}
+
                 <div className="flex gap-2 mt-2">
                   <motion.button
                     whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                     onClick={submitAnswer}
-                    disabled={!studentAnswer.trim() || marking}
+                    disabled={(drawMode ? !drawingImage : !studentAnswer.trim()) || marking}
                     className="px-5 py-2.5 rounded-xl text-sm font-medium disabled:opacity-40"
                     style={{ background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.35)', color: '#60a5fa' }}>
                     {marking ? (

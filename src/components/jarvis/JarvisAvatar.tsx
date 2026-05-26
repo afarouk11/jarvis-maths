@@ -1,7 +1,13 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { motion, AnimatePresence } from 'framer-motion'
 import { JarvisState } from '@/types'
+
+const JarvisScene = dynamic(
+  () => import('./JarvisScene').then(m => ({ default: m.JarvisScene })),
+  { ssr: false }
+)
 
 interface Props {
   state: JarvisState
@@ -41,32 +47,23 @@ const EDGES = [
 ]
 
 export function JarvisAvatar({ state, size = 56, amplitude = 0 }: Props) {
+  // Render the full 3D scene for large avatars
+  if (size >= 100) {
+    return (
+      <div style={{ width: size, height: size, position: 'relative' }}>
+        <JarvisScene amplitude={amplitude} state={state} />
+      </div>
+    )
+  }
+
   const r = size / 2
   const scale = size / 100
 
-  // Map node coords to SVG space (clipped to circle)
   function nx(node: { x: number; y: number }) { return node.x * size }
   function ny(node: { x: number; y: number }) { return node.y * size }
 
-  const glowColor = state === 'listening'
-    ? 'rgba(34,197,94,0.8)'
-    : state === 'thinking'
-      ? 'rgba(251,191,36,0.9)'
-      : state === 'speaking'
-        ? 'rgba(251,146,60,0.9)'
-        : 'rgba(245,158,11,0.7)'
-
-  const glowShadow = state === 'listening'
-    ? `0 0 ${size * 0.4}px rgba(34,197,94,0.5), 0 0 ${size * 0.8}px rgba(34,197,94,0.2)`
-    : state === 'thinking'
-      ? `0 0 ${size * 0.5}px rgba(251,191,36,0.6), 0 0 ${size}px rgba(251,191,36,0.25)`
-      : state === 'speaking'
-        ? `0 0 ${size * 0.5}px rgba(251,146,60,0.6), 0 0 ${size}px rgba(251,146,60,0.25)`
-        : `0 0 ${size * 0.35}px rgba(245,158,11,0.45), 0 0 ${size * 0.7}px rgba(245,158,11,0.15)`
-
   // Amplitude drives an extra scale boost (1.0 → 1.35 at full volume)
   const ampScale = 1 + amplitude * 0.35
-  // Amplitude also intensifies the glow
   const ampGlowSize = size * (0.35 + amplitude * 0.65)
   const ampGlowOpacity = 0.45 + amplitude * 0.55
 
@@ -98,25 +95,21 @@ export function JarvisAvatar({ state, size = 56, amplitude = 0 }: Props) {
         }}
       >
         <defs>
-          {/* Clip to circle */}
           <clipPath id={`clip-${size}`}>
             <circle cx={r} cy={r} r={r - 1} />
           </clipPath>
 
-          {/* Background radial gradient — deep amber core */}
           <radialGradient id={`bg-grad-${size}`} cx="50%" cy="50%" r="50%">
             <stop offset="0%"   stopColor="#78350f" stopOpacity="0.9" />
             <stop offset="40%"  stopColor="#451a03" stopOpacity="0.95" />
             <stop offset="100%" stopColor="#0c0a00" stopOpacity="1" />
           </radialGradient>
 
-          {/* Node glow gradient */}
           <radialGradient id={`node-grad-${size}`} cx="50%" cy="50%" r="50%">
             <stop offset="0%"  stopColor="#fcd34d" />
             <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
           </radialGradient>
 
-          {/* Outer rim gradient */}
           <radialGradient id={`rim-${size}`} cx="50%" cy="50%" r="50%">
             <stop offset="75%"  stopColor="transparent" />
             <stop offset="100%" stopColor={state === 'listening' ? '#22c55e' : '#f59e0b'} stopOpacity="0.4" />
@@ -131,13 +124,13 @@ export function JarvisAvatar({ state, size = 56, amplitude = 0 }: Props) {
         {/* Background fill */}
         <circle cx={r} cy={r} r={r - 1} fill={`url(#bg-grad-${size})`} />
 
-        {/* Neural network — edges (single CSS animation on the group) */}
+        {/* Neural network edges */}
         <g clipPath={`url(#clip-${size})`} filter={`url(#glow-${size})`} className="jarvis-edges">
           {EDGES.map(([a, b], i) => (
             <line
               key={i}
-              x1={nx(NODES[a])} y1={ny(NODES[a])}
-              x2={nx(NODES[b])} y2={ny(NODES[b])}
+              x1={nx(NODES[a]!)} y1={ny(NODES[a]!)}
+              x2={nx(NODES[b]!)} y2={ny(NODES[b]!)}
               stroke={state === 'listening' ? '#4ade80' : '#f59e0b'}
               strokeWidth={0.6 * scale}
               strokeOpacity={0.5}
@@ -145,7 +138,7 @@ export function JarvisAvatar({ state, size = 56, amplitude = 0 }: Props) {
           ))}
         </g>
 
-        {/* Neural network — nodes (single CSS animation on the group) */}
+        {/* Neural network nodes */}
         <g clipPath={`url(#clip-${size})`} filter={`url(#glow-${size})`} className="jarvis-nodes">
           {NODES.map((node, i) => {
             const nodeSize = i === 0 ? 3 * scale : i < 7 ? 1.8 * scale : 1.2 * scale

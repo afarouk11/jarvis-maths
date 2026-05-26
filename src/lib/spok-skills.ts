@@ -9,6 +9,7 @@ export interface ChatSkillMode {
   color: string
   glowColor: string
   emoji: string
+  minMastery: number
 }
 
 export const CHAT_SKILL_MODES: ChatSkillMode[] = [
@@ -21,6 +22,7 @@ export const CHAT_SKILL_MODES: ChatSkillMode[] = [
     color: '#3b82f6',
     glowColor: 'rgba(59,130,246,0.2)',
     emoji: '📖',
+    minMastery: 0,
   },
   {
     id: 'quiz',
@@ -31,6 +33,7 @@ export const CHAT_SKILL_MODES: ChatSkillMode[] = [
     color: '#f59e0b',
     glowColor: 'rgba(245,158,11,0.2)',
     emoji: '⚡',
+    minMastery: 0,
   },
   {
     id: 'check',
@@ -41,6 +44,7 @@ export const CHAT_SKILL_MODES: ChatSkillMode[] = [
     color: '#10b981',
     glowColor: 'rgba(16,185,129,0.2)',
     emoji: '✅',
+    minMastery: 0,
   },
   {
     id: 'gaps',
@@ -51,6 +55,7 @@ export const CHAT_SKILL_MODES: ChatSkillMode[] = [
     color: '#8b5cf6',
     glowColor: 'rgba(139,92,246,0.2)',
     emoji: '🎯',
+    minMastery: 0.2,
   },
   {
     id: 'paper',
@@ -61,6 +66,7 @@ export const CHAT_SKILL_MODES: ChatSkillMode[] = [
     color: '#60a5fa',
     glowColor: 'rgba(96,165,250,0.2)',
     emoji: '📄',
+    minMastery: 0.4,
   },
   {
     id: 'stepbystep',
@@ -82,5 +88,6 @@ export const CHAT_SKILL_MODES: ChatSkillMode[] = [
     color: '#34d399',
     glowColor: 'rgba(52,211,153,0.2)',
     emoji: '🪜',
+    minMastery: 0,
   },
 ]

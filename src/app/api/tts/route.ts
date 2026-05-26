@@ -222,6 +222,12 @@ export async function POST(req: Request) {
 
   const { text } = await req.json()
 
+  // Detect math density before stripping — slow down TTS proportionally so students can follow
+  // Count distinct math blocks (inline/display/operators) to determine how dense the expression is
+  const mathBlocks = (text.match(/\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]|\\frac\{|\\sqrt\{?|\\int_?|\\sum_?|\\lim/g) ?? []).length
+  const hasMath   = mathBlocks > 0 || /\$|\\[a-zA-Z]+|[_^]\{/.test(text)
+  const ttsSpeed  = mathBlocks >= 3 ? 0.70 : hasMath ? 0.75 : 1.0
+
   const cleanText = stripLatex(text)
 
   const voiceId = process.env.ELEVENLABS_VOICE_ID
@@ -242,7 +248,8 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         text: cleanText,
         model_id: 'eleven_turbo_v2_5',
-        voice_settings: { stability: 0.45, similarity_boost: 0.82, style: 0.35, use_speaker_boost: true },
+        voice_settings: { stability: 0.48, similarity_boost: 0.82, style: 0.35, use_speaker_boost: true },
+        speed: ttsSpeed,
       }),
     }
   )

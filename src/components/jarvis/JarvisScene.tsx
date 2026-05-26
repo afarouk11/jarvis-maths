@@ -3,6 +3,7 @@
 import { useRef, useMemo, useState, Component, type ReactNode } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import type { JarvisState } from '@/types'
 
 // Catches WebGL context-loss crashes and remounts the canvas cleanly
@@ -23,17 +24,16 @@ class CanvasErrorBoundary extends Component<
   }
   render() {
     if (this.state.crashed) return this.props.fallback
-    return <div key={this.state.key}>{this.props.children}</div>
+    return <div key={this.state.key} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>{this.props.children}</div>
   }
 }
 
-const DEG = Math.PI / 180
-const GOLD   = '#f59e0b'
-const GOLD2  = '#fbbf24'
-const GOLD3  = '#fde68a'
-const GREEN  = '#4ade80'
+const DEG  = Math.PI / 180
+const GOLD  = '#f59e0b'
+const GOLD2 = '#fbbf24'
+const GREEN = '#4ade80'
 
-// ── Orbital ring ────────────────────────────────────────────────────────────
+// ── Orbital ring ─────────────────────────────────────────────────────────────
 // A single glowing ring (LineLoop) at a given radius and rotation
 
 function OrbitalRing({
@@ -67,7 +67,7 @@ function OrbitalRing({
   )
 }
 
-// ── Tick marks on a ring ────────────────────────────────────────────────────
+// ── Tick marks on a ring ─────────────────────────────────────────────────────
 
 function RingTicks({
   radius, count = 32, rx = 0, ry = 0, rz = 0, color = GOLD,
@@ -77,7 +77,7 @@ function RingTicks({
   const geo = useMemo(() => {
     const pts: THREE.Vector3[] = []
     for (let i = 0; i < count; i++) {
-      const a    = (i / count) * Math.PI * 2
+      const a     = (i / count) * Math.PI * 2
       const inner = radius - 0.06
       const outer = radius + 0.06
       pts.push(new THREE.Vector3(Math.cos(a) * inner, Math.sin(a) * inner, 0))
@@ -96,7 +96,7 @@ function RingTicks({
   )
 }
 
-// ── Icosahedron wireframe cage ──────────────────────────────────────────────
+// ── Icosahedron wireframe cage ───────────────────────────────────────────────
 
 function WireframeCage({ detail = 2, radius = 1.7, opacity = 0.18, color = GOLD }: {
   detail?: number; radius?: number; opacity?: number; color?: string
@@ -109,7 +109,7 @@ function WireframeCage({ detail = 2, radius = 1.7, opacity = 0.18, color = GOLD 
   )
 }
 
-// ── Neural node particles ───────────────────────────────────────────────────
+// ── Neural node particles ────────────────────────────────────────────────────
 
 function spherePoints(n: number, r: number): THREE.Vector3[] {
   const pts: THREE.Vector3[] = []
@@ -140,8 +140,8 @@ function NeuralNet({ amplitude, color }: { amplitude: number; color: string }) {
     const lineVerts: number[] = []
     for (let i = 0; i < nodes.length; i++) {
       for (let j = i + 1; j < nodes.length; j++) {
-        if (nodes[i].distanceTo(nodes[j]) < 0.72) {
-          lineVerts.push(nodes[i].x, nodes[i].y, nodes[i].z, nodes[j].x, nodes[j].y, nodes[j].z)
+        if (nodes[i]!.distanceTo(nodes[j]!) < 0.72) {
+          lineVerts.push(nodes[i]!.x, nodes[i]!.y, nodes[i]!.z, nodes[j]!.x, nodes[j]!.y, nodes[j]!.z)
         }
       }
     }
@@ -155,7 +155,7 @@ function NeuralNet({ amplitude, color }: { amplitude: number; color: string }) {
     if (pointsRef.current) {
       const mat = pointsRef.current.material as THREE.PointsMaterial
       mat.size    = 0.025 + amplitude * 0.05
-      mat.opacity = 0.7  + amplitude * 0.3
+      mat.opacity = 0.7   + amplitude * 0.3
     }
     if (linesRef.current) {
       const mat = linesRef.current.material as THREE.LineBasicMaterial
@@ -176,7 +176,7 @@ function NeuralNet({ amplitude, color }: { amplitude: number; color: string }) {
   )
 }
 
-// ── Glowing core ────────────────────────────────────────────────────────────
+// ── Glowing core ─────────────────────────────────────────────────────────────
 
 function GlowCore({ amplitude, state }: { amplitude: number; state: JarvisState }) {
   const innerRef = useRef<THREE.Mesh>(null)
@@ -204,7 +204,7 @@ function GlowCore({ amplitude, state }: { amplitude: number; state: JarvisState 
       <mesh ref={innerRef}>
         <icosahedronGeometry args={[0.38, 1]} />
         <meshStandardMaterial
-          color={coreColor} emissive={emissive} emissiveIntensity={2}
+          color={coreColor} emissive={emissive} emissiveIntensity={4}
           transparent opacity={0.9} roughness={0} metalness={1} wireframe />
       </mesh>
 
@@ -219,13 +219,163 @@ function GlowCore({ amplitude, state }: { amplitude: number; state: JarvisState 
   )
 }
 
-// ── Full scene ───────────────────────────────────────────────────────────────
+// ── Corona layer ──────────────────────────────────────────────────────────────
+// Large transparent sphere giving a soft volumetric glow look
+
+function Corona({ state }: { state: JarvisState }) {
+  const ref = useRef<THREE.Mesh>(null)
+
+  const coreColor = state === 'listening' ? '#22c55e' : '#f59e0b'
+  const emissive  = state === 'listening' ? '#15803d' : '#b45309'
+
+  useFrame((clock) => {
+    if (ref.current) {
+      const mat = ref.current.material as THREE.MeshStandardMaterial
+      // Gentle breathe effect on the corona opacity
+      mat.opacity = 0.05 + Math.sin(clock.clock.elapsedTime * 0.8) * 0.02
+    }
+  })
+
+  return (
+    <mesh ref={ref}>
+      <sphereGeometry args={[2.0, 64, 64]} />
+      <meshStandardMaterial
+        color={coreColor}
+        emissive={emissive}
+        emissiveIntensity={0.4}
+        transparent
+        opacity={0.14}
+        depthWrite={false}
+        side={THREE.BackSide}
+      />
+    </mesh>
+  )
+}
+
+// ── Particle dust shell ───────────────────────────────────────────────────────
+// ~250 points in a shell between r=2.2 and r=3.5 slowly rotating
+
+function ParticleDust({ state }: { state: JarvisState }) {
+  const ref = useRef<THREE.Points>(null)
+
+  const geo = useMemo(() => {
+    const COUNT = 250
+    const positions = new Float32Array(COUNT * 3)
+
+    for (let i = 0; i < COUNT; i++) {
+      // Random point in shell r ∈ [2.2, 3.5] using rejection sampling approach
+      // Use uniform distribution over sphere surface then random radius in shell
+      const u     = Math.random()
+      const v     = Math.random()
+      const theta = Math.acos(2 * u - 1)
+      const phi   = 2 * Math.PI * v
+      const r     = 2.2 + Math.random() * 1.3  // [2.2, 3.5]
+
+      positions[i * 3]     = r * Math.sin(theta) * Math.cos(phi)
+      positions[i * 3 + 1] = r * Math.sin(theta) * Math.sin(phi)
+      positions[i * 3 + 2] = r * Math.cos(theta)
+    }
+
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    return geometry
+  }, [])
+
+  useFrame((_, dt) => {
+    if (ref.current) {
+      ref.current.rotation.y += dt * 0.03
+      ref.current.rotation.x += dt * 0.012
+
+      // Update color when state changes
+      const mat = ref.current.material as THREE.PointsMaterial
+      const targetColor = state === 'listening' ? '#4ade80' : '#f59e0b'
+      mat.color.set(targetColor)
+    }
+  })
+
+  const initialColor = state === 'listening' ? '#4ade80' : '#f59e0b'
+
+  return (
+    <points ref={ref} geometry={geo}>
+      <pointsMaterial
+        color={initialColor}
+        size={0.012}
+        sizeAttenuation
+        transparent
+        opacity={0.35}
+        depthWrite={false}
+      />
+    </points>
+  )
+}
+
+// ── State pulse rings ─────────────────────────────────────────────────────────
+// Sonar-style expanding rings: 3 for listening, 2 for speaking
+
+interface PulseRingProps {
+  phaseOffset: number
+  period: number
+  color: string
+  minR: number
+  maxR: number
+}
+
+function PulseRing({ phaseOffset, period, color, minR, maxR }: PulseRingProps) {
+  const ref = useRef<THREE.Mesh>(null)
+
+  useFrame((clock) => {
+    if (!ref.current) return
+    const t    = ((clock.clock.elapsedTime / period + phaseOffset) % 1 + 1) % 1
+    const r    = minR + t * (maxR - minR)
+    const opacity = (1 - t) * 0.6
+
+    ref.current.scale.setScalar(r)
+    const mat = ref.current.material as THREE.MeshBasicMaterial
+    mat.opacity = opacity
+  })
+
+  return (
+    <mesh ref={ref}>
+      <torusGeometry args={[1, 0.008, 8, 96]} />
+      <meshBasicMaterial color={color} transparent opacity={0.6} depthWrite={false} side={THREE.DoubleSide} />
+    </mesh>
+  )
+}
+
+function PulseRings({ state }: { state: JarvisState }) {
+  const isListening = state === 'listening'
+  const isSpeaking  = state === 'speaking'
+  const active = isListening || isSpeaking
+
+  if (!active) return null
+
+  const color  = isListening ? '#4ade80' : '#fbbf24'
+  const period = isSpeaking ? 1.2 : 2.0
+  const count  = isListening ? 3 : 2
+
+  return (
+    <>
+      {Array.from({ length: count }, (_, i) => (
+        <PulseRing
+          key={i}
+          phaseOffset={i / count}
+          period={period}
+          color={color}
+          minR={0.5}
+          maxR={2.5}
+        />
+      ))}
+    </>
+  )
+}
+
+// ── Full scene ────────────────────────────────────────────────────────────────
 
 function Scene({ amplitude, state }: { amplitude: number; state: JarvisState }) {
   const masterRef = useRef<THREE.Group>(null)
   const innerRef  = useRef<THREE.Group>(null)
 
-  const color = state === 'listening' ? GREEN : GOLD
+  const color  = state === 'listening' ? GREEN : GOLD
   const color2 = state === 'listening' ? '#22c55e' : GOLD2
 
   const rotSpeed = state === 'thinking' ? 0.5 : state === 'speaking' ? 0.35 : 0.12
@@ -271,11 +421,19 @@ function Scene({ amplitude, state }: { amplitude: number; state: JarvisState }) 
 
       {/* Glowing core */}
       <GlowCore amplitude={amplitude} state={state} />
+
+      {/* Corona volumetric glow */}
+      <Corona state={state} />
+
+      {/* Particle dust shell */}
+      <ParticleDust state={state} />
+
+      {/* State pulse rings (outside masterRef so they don't scale with amplitude) */}
     </group>
   )
 }
 
-// ── Clickable hit sphere ─────────────────────────────────────────────────────
+// ── Clickable hit sphere ──────────────────────────────────────────────────────
 
 function HitSphere({ onClick }: { onClick?: () => void }) {
   const ref = useRef<THREE.Mesh>(null)
@@ -301,7 +459,7 @@ function HitSphere({ onClick }: { onClick?: () => void }) {
   )
 }
 
-// ── Canvas export ────────────────────────────────────────────────────────────
+// ── Canvas export ─────────────────────────────────────────────────────────────
 
 interface Props {
   amplitude: number
@@ -313,32 +471,42 @@ interface Props {
 export function JarvisScene({ amplitude, state, className, onClick }: Props) {
   const canvas = (
     <Canvas
-      camera={{ position: [0, 0, 6], fov: 42 }}
+      camera={{ position: [0, 0, 24], fov: 19 }}
       dpr={1}
       performance={{ min: 0.5 }}
       gl={{
-        antialias: false,
+        antialias: true,
         alpha: true,
         powerPreference: 'low-power',
         failIfMajorPerformanceCaveat: false,
       }}
-      style={{ background: 'transparent' }}
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: '#080d19' }}
       onCreated={({ gl }) => {
+        gl.setClearColor(0x080d19, 1)
         const ctx = gl.getContext()
         if (!ctx) return
         ctx.canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault() }, false)
       }}>
       <ambientLight intensity={0.05} />
-      <pointLight position={[4,  4,  4]}  color={state === 'listening' ? '#22c55e' : '#f59e0b'} intensity={1.5} />
-      <pointLight position={[-3, -3, -4]} color="#1e3a8a" intensity={0.6} />
+      <pointLight position={[4,  4,  4]}  color={state === 'listening' ? '#22c55e' : '#f59e0b'} intensity={4.0} />
+      <pointLight position={[-3, -3, -4]} color="#1e3a8a" intensity={0.8} />
+      <pointLight position={[0,  0,  3]}  color={state === 'listening' ? '#22c55e' : '#f59e0b'} intensity={2.0} />
       <Scene amplitude={amplitude} state={state} />
+      <PulseRings state={state} />
       <HitSphere onClick={onClick} />
+      <EffectComposer frameBufferType={THREE.HalfFloatType}>
+        <Bloom
+          luminanceThreshold={0.08}
+          luminanceSmoothing={0.85}
+          intensity={4.5}
+        />
+      </EffectComposer>
     </Canvas>
   )
 
   return (
-    <div className={className} style={{ width: '100%', height: '100%' }}>
-      <CanvasErrorBoundary fallback={<div className="w-full h-full" />}>
+    <div className={className} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+      <CanvasErrorBoundary fallback={<div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />}>
         {canvas}
       </CanvasErrorBoundary>
     </div>

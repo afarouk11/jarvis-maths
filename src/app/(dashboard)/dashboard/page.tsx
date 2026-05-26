@@ -2,7 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { predictedGrade, masteryColor } from '@/lib/bkt/bayesian-knowledge-tracing'
 import { computeExamReadiness } from '@/lib/exam-readiness'
-import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
+import { getTopics } from '@/lib/curriculum'
+import type { Level } from '@/lib/curriculum'
 import { isTopicLocked } from '@/lib/curriculum/topic-graph'
 import { getXPLevel } from '@/lib/xp-levels'
 import Link from 'next/link'
@@ -13,6 +14,8 @@ import { SpokRecommendation } from '@/components/dashboard/SpokRecommendation'
 import { ExamReadinessCard } from '@/components/dashboard/ExamReadinessCard'
 import { MasteryHeatMap } from '@/components/dashboard/MasteryHeatMap'
 import { UpgradedBanner } from '@/components/dashboard/UpgradedBanner'
+import { MorningBriefing } from '@/components/dashboard/MorningBriefing'
+import { ShareButton } from '@/components/dashboard/ShareButton'
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ upgraded?: string }> }) {
   const params = await searchParams
@@ -31,13 +34,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     supabase.from('topics').select('id, slug'),
   ])
 
+  const level = ((profile?.level as Level) ?? 'A-Level')
+  const allTopics = getTopics(level)
+
   const slugById   = new Map((topicsRows ?? []).map((t: any) => [t.id,   t.slug]))
-  const topicNames = new Map(AQA_TOPICS.map(t => [t.slug, t.name]))
+  const topicNames = new Map(allTopics.map(t => [t.slug, t.name]))
 
   const progressMap = new Map((progress ?? []).map(p => [p.topic_id, p]))
   const pKnownMap   = new Map((progress ?? []).map(p => [p.topic_id, p.p_known]))
   const dueTopics   = (progress ?? []).filter(p => new Date(p.next_review_at) <= new Date()).slice(0, 4)
-  const avgPKnown   = progress?.length ? progress.reduce((s, p) => s + p.p_known, 0) / progress.length : 0
+  const avgPKnown          = allTopics.length > 0 ? (progress ?? []).reduce((s, p) => s + p.p_known, 0) / allTopics.length : 0
+  const attemptedAvgPKnown = (progress ?? []).length > 0 ? (progress ?? []).reduce((s, p) => s + p.p_known, 0) / (progress ?? []).length : 0
   const grade       = predictedGrade(avgPKnown)
   const name        = profile?.full_name?.split(' ')[0] ?? 'Student'
   const weakTopics  = [...(progress ?? [])].sort((a, b) => a.p_known - b.p_known).slice(0, 3)
@@ -46,7 +53,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // Exam readiness
   const readiness = computeExamReadiness({
     progress: progress ?? [],
-    totalTopics: AQA_TOPICS.length,
+    totalTopics: allTopics.length,
     examDate: profile?.exam_date ?? null,
     targetGrade: profile?.target_grade ?? 'A*',
     slugById,
@@ -72,6 +79,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-7">
       <UpgradedBanner show={justUpgraded} />
+      <MorningBriefing />
       <DueNotification dueCount={dueTopics.length} />
 
       {/* SPOK recommendation bar */}
@@ -84,39 +92,47 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       />
 
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="font-bold text-white"
-            style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 28, letterSpacing: '-0.02em' }}>
-            {greeting}, {name}.
+            style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 26, letterSpacing: '-0.02em' }}>
+            {greeting}, {name}
           </h1>
           <p className="text-sm mt-1" style={{ color: '#5a7aaa' }}>
-            {profile?.exam_board} {profile?.level === 'GCSE' ? 'GCSE' : 'A-level'} Mathematics · Target {profile?.target_grade}
+            {profile?.exam_board} {profile?.level === 'GCSE' ? 'GCSE' : 'A-level'} Maths · Target {profile?.target_grade}
           </p>
         </div>
-        {daysToExam !== null && (
-          <div className="text-right px-4 py-3 rounded-2xl"
-            style={{
-              background: daysToExam < 30 ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.07)',
-              border: `1px solid ${daysToExam < 30 ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.18)'}`,
-            }}>
-            <div className="flex items-center gap-2">
-              <Clock size={14} style={{ color: daysToExam < 30 ? '#f87171' : '#f59e0b' }} />
-              <span className="font-bold" style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 28, color: daysToExam < 30 ? '#f87171' : '#f59e0b' }}>
-                {daysToExam}
-              </span>
+        <div className="flex items-center gap-3">
+          <ShareButton
+            name={name}
+            grade={grade}
+            mastery={Math.round(avgPKnown * 100)}
+            topic={`${profile?.exam_board ?? 'AQA'} ${profile?.level === 'GCSE' ? 'GCSE' : 'A-level'} Maths`}
+          />
+          {daysToExam !== null && (
+            <div className="shrink-0 flex items-center gap-3 px-4 py-3 rounded-xl"
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: `1px solid ${daysToExam < 30 ? 'rgba(239,68,68,0.25)' : 'rgba(255,255,255,0.08)'}`,
+              }}>
+              <Clock size={14} style={{ color: daysToExam < 30 ? '#f87171' : '#5a7aaa' }} />
+              <div>
+                <p className="font-bold leading-none" style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 22, color: daysToExam < 30 ? '#f87171' : '#e8f0fe' }}>
+                  {daysToExam}d
+                </p>
+                <p className="text-[11px] mt-0.5" style={{ color: '#5a7aaa' }}>to exam</p>
+              </div>
             </div>
-            <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>days to exam</p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Key stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon={<Trophy size={16} />} label="Predicted Grade" value={grade} sub={`${Math.round(avgPKnown * 100)}% mastery`} color={gradeColor} />
+        <StatCard icon={<Trophy size={16} />} label="Predicted Grade" value={grade} sub={`${Math.round(avgPKnown * 100)}% across all topics`} sub2={`${Math.round(attemptedAvgPKnown * 100)}% within studied topics`} color={gradeColor} />
         <StatCard icon={<Flame size={16} />}  label="Study Streak"   value={`${profile?.streak_days ?? 0}d`} sub="days in a row" color="#f97316" />
         <XPCard xp={profile?.xp ?? 0} />
-        <StatCard icon={<BookOpen size={16} />} label="Topics Studied" value={`${progress?.length ?? 0}`} sub={`of ${AQA_TOPICS.length} total`} color="#22c55e" />
+        <StatCard icon={<BookOpen size={16} />} label="Topics Studied" value={`${progress?.length ?? 0}`} sub={`of ${allTopics.length} total`} color="#22c55e" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -129,11 +145,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
           {/* Due for review */}
           {dueTopics.length > 0 && (
-            <Section title="Due for Review" accent="#3b82f6" href="/practice" linkLabel="Start practice →">
+            <Section title="Due for Review" href="/practice" linkLabel="Start practice →">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {dueTopics.map(p => {
                   const slug  = slugById.get(p.topic_id) ?? p.topic_id
-                  const topic = AQA_TOPICS.find(t => t.slug === slug)
+                  const topic = allTopics.find(t => t.slug === slug)
                   return (
                     <Link key={p.id} href={`/practice?topic=${slug}`}
                       className="flex items-center gap-3 p-3 rounded-xl transition-all hover:scale-[1.01]"
@@ -156,7 +172,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           )}
 
           {/* Mastery heat map */}
-          <Section title="All Topics" accent="#3b82f6">
+          <Section title="All Topics">
             <MasteryHeatMap topicMastery={topicMastery} />
           </Section>
         </div>
@@ -166,7 +182,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <StudyPlan />
 
           {/* Quick actions */}
-          <Section title="Quick Start" accent="#a78bfa">
+          <Section title="Quick Start">
             <div className="space-y-2">
               {[
                 { href: '/jarvis',   icon: <Bot size={15} />,      label: 'Talk to SPOK',        sub: 'Voice or text',          color: '#f59e0b' },
@@ -191,11 +207,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
           {/* Weak topics */}
           {weakTopics.length > 0 && (
-            <Section title="Needs Work" accent="#ef4444">
+            <Section title="Needs Work">
               <div className="space-y-3">
                 {weakTopics.map(p => {
                   const slug  = slugById.get(p.topic_id) ?? p.topic_id
-                  const topic = AQA_TOPICS.find(t => t.slug === slug)
+                  const topic = allTopics.find(t => t.slug === slug)
                   return (
                     <Link key={p.id} href={`/topics/${slug}`}
                       className="flex items-center gap-3 p-3 rounded-xl transition-all hover:scale-[1.01]"
@@ -214,10 +230,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
           {/* Recent lessons */}
           {recentLessons && recentLessons.length > 0 && (
-            <Section title="Recent Lessons" accent="#22c55e">
+            <Section title="Recent Lessons">
               <div className="space-y-2">
                 {recentLessons.map((l: any) => {
-                  const topic = AQA_TOPICS.find(t => t.slug === l.topic_id)
+                  const topic = allTopics.find(t => t.slug === l.topic_id)
                   return (
                     <div key={l.id} className="p-3 rounded-xl"
                       style={{ background: 'rgba(34,197,94,0.04)', border: '1px solid rgba(34,197,94,0.1)' }}>
@@ -237,66 +253,63 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   )
 }
 
-function StatCard({ icon, label, value, sub, color }: {
-  icon: React.ReactNode; label: string; value: string; sub: string; color: string
+function StatCard({ icon, label, value, sub, sub2, color }: {
+  icon: React.ReactNode; label: string; value: string; sub: string; sub2?: string; color: string
 }) {
   return (
-    <div className="p-5 rounded-2xl relative overflow-hidden"
-      style={{ background: 'rgba(10,14,26,0.8)', border: `1px solid ${color}18` }}>
-      {/* background glow */}
-      <div style={{ position: 'absolute', top: 0, right: 0, width: 80, height: 80, borderRadius: '50%', background: `radial-gradient(circle, ${color}14 0%, transparent 70%)`, pointerEvents: 'none' }} />
-      <div className="flex items-center gap-2 mb-4" style={{ position: 'relative' }}>
-        <div style={{ color: `${color}cc` }}>{icon}</div>
-        <p className="text-xs uppercase tracking-wider font-medium" style={{ color: '#4a6070' }}>{label}</p>
+    <div className="p-4 rounded-xl"
+      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="p-1.5 rounded-lg" style={{ background: `${color}18`, color }}>{icon}</div>
+        <p className="text-xs font-medium" style={{ color: '#5a7aaa' }}>{label}</p>
       </div>
-      <p className="font-bold mb-1" style={{ position: 'relative', color, fontFamily: 'var(--font-space-grotesk)', fontSize: 38, lineHeight: 1, textShadow: `0 0 20px ${color}40` }}>
+      <p className="font-bold mb-0.5" style={{ color, fontFamily: 'var(--font-space-grotesk)', fontSize: 28, lineHeight: 1 }}>
         {value}
       </p>
       <p className="text-xs" style={{ color: '#5a7aaa', position: 'relative' }}>{sub}</p>
+      {sub2 && <p className="text-xs mt-0.5" style={{ color: '#374151', position: 'relative' }}>{sub2}</p>}
     </div>
   )
 }
 
 function XPCard({ xp }: { xp: number }) {
-  const lvl  = getXPLevel(xp)
+  const lvl   = getXPLevel(xp)
   const isMax = lvl.level === 10
 
   return (
-    <div className="p-5 rounded-2xl relative overflow-hidden"
-      style={{ background: 'rgba(10,14,26,0.8)', border: `1px solid ${lvl.color}18` }}>
-      <div style={{ position: 'absolute', top: 0, right: 0, width: 80, height: 80, borderRadius: '50%', background: `radial-gradient(circle, ${lvl.color}14 0%, transparent 70%)`, pointerEvents: 'none' }} />
-      <div className="flex items-center gap-2 mb-4" style={{ position: 'relative' }}>
-        <Zap size={16} style={{ color: `${lvl.color}cc` }} />
-        <p className="text-xs uppercase tracking-wider font-medium" style={{ color: '#4a6070' }}>Level</p>
+    <div className="p-4 rounded-xl"
+      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="p-1.5 rounded-lg" style={{ background: `${lvl.color}18`, color: lvl.color }}>
+          <Zap size={16} />
+        </div>
+        <p className="text-xs font-medium" style={{ color: '#5a7aaa' }}>XP Level</p>
       </div>
-      <div className="flex items-baseline gap-2 mb-2" style={{ position: 'relative' }}>
-        <p className="font-bold" style={{ color: lvl.color, fontFamily: 'var(--font-space-grotesk)', fontSize: 38, lineHeight: 1, textShadow: `0 0 20px ${lvl.color}40` }}>
+      <div className="flex items-baseline gap-1.5 mb-2">
+        <p className="font-bold" style={{ color: lvl.color, fontFamily: 'var(--font-space-grotesk)', fontSize: 28, lineHeight: 1 }}>
           {lvl.level}
         </p>
-        <p className="text-sm font-semibold" style={{ color: lvl.color }}>{lvl.title}</p>
+        <p className="text-sm font-medium" style={{ color: '#5a7aaa' }}>{lvl.title}</p>
       </div>
-      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)', position: 'relative' }}>
+      <div className="h-1 rounded-full overflow-hidden mb-1.5" style={{ background: 'rgba(255,255,255,0.06)' }}>
         <div className="h-full rounded-full transition-all" style={{ width: `${Math.round(lvl.progress * 100)}%`, background: lvl.color }} />
       </div>
-      <p className="text-xs mt-1.5" style={{ color: '#5a7aaa', position: 'relative' }}>
-        {isMax ? `${xp} XP · Max level` : `${xp} XP · ${lvl.xpToNext - lvl.xpIntoLevel} to Lv.${lvl.level + 1}`}
+      <p className="text-xs" style={{ color: '#3a4a5c' }}>
+        {isMax ? `${xp} XP · Max level` : `${lvl.xpToNext - lvl.xpIntoLevel} XP to level ${lvl.level + 1}`}
       </p>
     </div>
   )
 }
 
-function Section({ title, accent, href, linkLabel, children }: {
-  title: string; accent: string; href?: string; linkLabel?: string; children: React.ReactNode
+function Section({ title, href, linkLabel, children }: {
+  title: string; accent?: string; href?: string; linkLabel?: string; children: React.ReactNode
 }) {
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div style={{ width: 3, height: 14, borderRadius: 2, background: accent }} />
-          <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: accent }}>{title}</h2>
-        </div>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-white">{title}</h2>
         {href && linkLabel && (
-          <Link href={href} className="text-xs transition-colors hover:text-blue-300" style={{ color: '#4a6070' }}>
+          <Link href={href} className="text-xs font-medium transition-colors hover:text-blue-400" style={{ color: '#5a7aaa' }}>
             {linkLabel}
           </Link>
         )}

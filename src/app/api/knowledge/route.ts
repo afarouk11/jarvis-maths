@@ -2,13 +2,16 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { embedText } from '@/lib/ai/embeddings'
 
-const ADMIN_EMAIL = 'adamfarouk7@hotmail.com'
+async function isAdmin(supabase: Awaited<ReturnType<typeof createClient>>): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+  const { data } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single()
+  return data?.is_admin === true
+}
 
 export async function POST(req: Request) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user || user.email !== ADMIN_EMAIL) {
+  if (!await isAdmin(supabase)) {
     return new Response('Forbidden', { status: 403 })
   }
 
@@ -34,9 +37,7 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user || user.email !== ADMIN_EMAIL) {
+  if (!await isAdmin(supabase)) {
     return new Response('Forbidden', { status: 403 })
   }
 

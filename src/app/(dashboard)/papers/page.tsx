@@ -31,6 +31,7 @@ export default function PapersPage() {
   const [totalPapers, setTotal]       = useState(0)
   const [paperType, setPaperType]     = useState<PaperType>('pure')
   const [generating, setGenerating]   = useState(false)
+  const [generateError, setGenerateError] = useState<string | null>(null)
   const [mockPaper, setMockPaper]     = useState<MockPaper | null>(null)
   const [focusTopics, setFocus]       = useState<string[]>([])
   const [examOpen, setExamOpen]       = useState(false)
@@ -40,7 +41,7 @@ export default function PapersPage() {
   useEffect(() => {
     // Read student level from profile
     fetch('/api/profile').then(r => r.json()).then(d => {
-      const l = d?.profile?.level ?? 'A-Level'
+      const l = d?.level ?? 'A-Level'
       setLevel(l)
       setPaperType(l === 'GCSE' ? 'non-calc' : 'pure')
     }).catch(() => {})
@@ -76,18 +77,29 @@ export default function PapersPage() {
 
   async function generateMock() {
     setGenerating(true)
-    const res = await fetch('/api/generate-paper', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paperType }),
-    })
-    const json = await res.json()
-    if (res.ok) {
-      setMockPaper(json.paper)
-      setFocus(json.focusTopics)
-      setExamOpen(true)
+    setGenerateError(null)
+    try {
+      const res = await fetch('/api/generate-paper', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paperType }),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        let msg = `Server error ${res.status}`
+        try { const p = JSON.parse(text); msg = [p.error, p.details].filter(Boolean).join(' — ') || msg } catch { msg = text.slice(0, 200) }
+        setGenerateError(msg)
+      } else {
+        const json = await res.json()
+        setMockPaper(json.paper)
+        setFocus(json.focusTopics)
+        setExamOpen(true)
+      }
+    } catch (err: any) {
+      setGenerateError(err?.message ?? 'Network error — please try again')
+    } finally {
+      setGenerating(false)
     }
-    setGenerating(false)
   }
 
   const topicName = (slug: string) => {
@@ -106,9 +118,9 @@ export default function PapersPage() {
       )}
 
       {/* ── My Papers ── */}
-      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(139,92,246,0.2)' }}>
+      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="px-5 py-4 flex items-center justify-between"
-          style={{ background: 'rgba(139,92,246,0.07)', borderBottom: '1px solid rgba(139,92,246,0.14)' }}>
+          style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
           <div>
             <h1 className="text-base font-bold text-white">My Papers</h1>
             <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>
@@ -134,6 +146,17 @@ export default function PapersPage() {
                 <div>
                   <p className="text-sm text-white">Building your {selected.label} paper…</p>
                   <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>Selecting topics · Writing questions · Preparing worked solutions</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+          {generateError && !generating && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+              <div className="px-5 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(239,68,68,0.15)', background: 'rgba(239,68,68,0.06)' }}>
+                <div className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
+                <div>
+                  <p className="text-sm text-red-300">Generation failed — {generateError}</p>
+                  <p className="text-xs mt-0.5" style={{ color: '#f87171' }}>Please try again. If the issue persists, check the API key in Vercel settings.</p>
                 </div>
               </div>
             </motion.div>
@@ -254,7 +277,7 @@ export default function PapersPage() {
                       </div>
                       <span className="text-xs font-mono" style={{ color: '#f59e0b' }}>{item.percent}%</span>
                     </div>
-                    <div className="h-1.5 rounded-full bg-slate-800">
+                    <div className="h-1 rounded-full bg-slate-800">
                       <motion.div className="h-full rounded-full"
                         style={{ background: item.due ? '#ef4444' : i < 3 ? '#f59e0b' : i < 6 ? '#f97316' : '#3b82f6' }}
                         initial={{ width: 0 }} animate={{ width: `${item.percent}%` }}

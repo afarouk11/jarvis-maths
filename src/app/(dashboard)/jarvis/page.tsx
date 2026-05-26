@@ -1,21 +1,20 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import dynamic from 'next/dynamic'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, isReasoningUIPart, isTextUIPart } from 'ai'
-import { Send, Mic, MicOff, Volume2, VolumeX, RefreshCw, Zap, Check, X } from 'lucide-react'
+import { Send, Mic, MicOff, Volume2, VolumeX, RefreshCw, Zap, Check, X, Lock } from 'lucide-react'
 import { ThinkingBlock } from '@/components/jarvis/ThinkingBlock'
+import { JarvisAvatar } from '@/components/jarvis/JarvisAvatar'
+import dynamic from 'next/dynamic'
+const JarvisScene = dynamic(() => import('@/components/jarvis/JarvisScene').then(m => ({ default: m.JarvisScene })), { ssr: false })
 import { CHAT_SKILL_MODES, type SkillModeId } from '@/lib/spok-skills'
 import { useAccessibility } from '@/hooks/useAccessibility'
-
-const JarvisScene = dynamic(
-  () => import('@/components/jarvis/JarvisScene').then(m => m.JarvisScene),
-  { ssr: false, loading: () => <div className="w-full h-full" /> }
-)
 import { SpokMessage } from '@/components/math/SpokMessage'
 import { AnimatedGraphRenderer, parseAnimateSpec, type AnimateSpec } from '@/components/math/GraphRenderer'
+import { DiagramRenderer, parseDiagramSpec, type DiagramSpec } from '@/components/math/DiagramRenderer'
+import { AnimatedDiagramRenderer, parseAnimDiagramSpec, type AnimDiagramSpec } from '@/components/math/AnimatedDiagramRenderer'
 import { useJarvisVoice, useSpeechToText, createSentenceBuffer } from '@/hooks/useJarvisVoice'
 import type { JarvisState } from '@/types'
 
@@ -34,9 +33,15 @@ export default function SpokPage() {
   const greetingFetchedRef = useRef(false)
   const [animateSpec, setAnimateSpec] = useState<AnimateSpec | null>(null)
   const [animateStep, setAnimateStep] = useState(0)
+  const [diagramSpec, setDiagramSpec] = useState<DiagramSpec | null>(null)
+  const [animDiagramSpec, setAnimDiagramSpec] = useState<AnimDiagramSpec | null>(null)
+  const [animDiagramStep, setAnimDiagramStep] = useState(0)
   const prevSentenceRef = useRef('')
   const [limitReached, setLimitReached] = useState(false)
   const [upgradeLoading, setUpgradeLoading] = useState(false)
+  const [messagesUsedToday, setMessagesUsedToday] = useState<number | null>(null)
+  const [avgMastery, setAvgMastery] = useState<number>(0)
+  const FREE_LIMIT = 5
 
   useEffect(() => {
     function tick() {
@@ -45,6 +50,28 @@ export default function SpokPage() {
     tick()
     const id = setInterval(tick, 1000)
     return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/profile')
+      .then(r => r.json())
+      .then((p: { stripe_subscription_status?: string; chat_messages_today?: number; chat_messages_reset_at?: string }) => {
+        const isPro = p.stripe_subscription_status === 'active' || p.stripe_subscription_status === 'trialing'
+        if (!isPro) {
+          const today = new Date().toISOString().slice(0, 10)
+          const count = p.chat_messages_reset_at === today ? (p.chat_messages_today ?? 0) : 0
+          setMessagesUsedToday(count)
+        }
+      })
+      .catch(() => {})
+    fetch('/api/progress')
+      .then(r => r.json())
+      .then((rows: Array<{ p_known: number }>) => {
+        if (Array.isArray(rows) && rows.length > 0) {
+          setAvgMastery(rows.reduce((s, r) => s + (r.p_known ?? 0), 0) / rows.length)
+        }
+      })
+      .catch(() => {})
   }, [])
   const bottomRef  = useRef<HTMLDivElement>(null)
   const inputRef   = useRef<HTMLInputElement>(null)
@@ -90,11 +117,13 @@ export default function SpokPage() {
       }
     },
     onFinish: ({ message }) => {
+      setMessagesUsedToday(prev => prev !== null ? prev + 1 : null)
       const remaining = sentenceBufferRef.current.flush()
       remaining.forEach(s => queueSpeak(s))
 
-      // Fallback: if streaming TTS never triggered, speak the whole message at once
-      if (spokenLengthRef.current === 0) {
+      // Fallback: if streaming TTS never triggered AND flush produced nothing, speak the whole message at once.
+      // Must check remaining.length — speak() calls stopSpeaking() which would kill any queueSpeak() chains.
+      if (spokenLengthRef.current === 0 && remaining.length === 0) {
         const text = message.parts
           ? (message.parts.filter(isTextUIPart).map((p: any) => p.text).join('')
             || (message.parts as any[]).filter((p: any) => p.type === 'text').map((p: any) => p.text ?? '').join(''))
@@ -117,24 +146,53 @@ export default function SpokPage() {
         || (lastMsg.parts as any[]).filter((p: any) => p.type === 'text').map((p: any) => p.text ?? '').join(''))
       : (lastMsg as any).content ?? ''
 
-    const match = fullText.match(/\[ANIMATE\]([\s\S]*?)\[\/ANIMATE\]/)
-    if (match) {
-      const parsed = parseAnimateSpec(match[1].trim())
+    const animMatch = fullText.match(/\[ANIMATE\]([\s\S]*?)\[\/ANIMATE\]/)
+    if (animMatch) {
+      const parsed = parseAnimateSpec(animMatch[1].trim())
       if (parsed) {
         setAnimateSpec(parsed)
         setAnimateStep(0)
+        setDiagramSpec(null)
+        setAnimDiagramSpec(null)
         prevSentenceRef.current = ''
+      }
+    } else {
+      const adiagramMatch = fullText.match(/\[ADIAGRAM\]([\s\S]*?)\[\/ADIAGRAM\]/)
+      if (adiagramMatch) {
+        const parsed = parseAnimDiagramSpec(adiagramMatch[1].trim())
+        if (parsed) {
+          setAnimDiagramSpec(parsed)
+          setAnimDiagramStep(0)
+          setAnimateSpec(null)
+          setDiagramSpec(null)
+        }
+      } else {
+        const diagMatch = fullText.match(/\[DIAGRAM\]([\s\S]*?)\[\/DIAGRAM\]/)
+        if (diagMatch) {
+          const parsed = parseDiagramSpec(diagMatch[1].trim())
+          if (parsed) {
+            setDiagramSpec(parsed)
+            setAnimateSpec(null)
+            setAnimDiagramSpec(null)
+          }
+        }
       }
     }
   }, [messages])
 
   // Advance animate step each time a new sentence starts playing
   useEffect(() => {
-    if (!animateSpec || !currentSentence) return
+    if (!currentSentence) return
     if (currentSentence === prevSentenceRef.current) return
     prevSentenceRef.current = currentSentence
-    setAnimateStep(prev => Math.min(prev + 1, animateSpec.steps.length - 1))
-  }, [currentSentence, animateSpec])
+
+    if (animateSpec) {
+      setAnimateStep(prev => Math.min(prev + 1, animateSpec.steps.length - 1))
+    }
+    if (animDiagramSpec) {
+      setAnimDiagramStep(prev => Math.min(prev + 1, animDiagramSpec.steps.length - 1))
+    }
+  }, [currentSentence, animateSpec, animDiagramSpec])
 
   // Feed streaming text into sentence buffer as it arrives
   useEffect(() => {
@@ -167,6 +225,11 @@ export default function SpokPage() {
     resetReveal()
     sentenceBufferRef.current = createSentenceBuffer()
     spokenLengthRef.current = 0
+    setAnimateSpec(null)
+    setAnimateStep(0)
+    setDiagramSpec(null)
+    setAnimDiagramSpec(null)
+    setAnimDiagramStep(0)
     sendMessage({ text: text.trim() })
   }, [sendMessage, stopSpeaking, unlockAudio, resetReveal, isLoading])
 
@@ -221,6 +284,9 @@ export default function SpokPage() {
     spokenLengthRef.current = 0
     setAnimateSpec(null)
     setAnimateStep(0)
+    setDiagramSpec(null)
+    setAnimDiagramSpec(null)
+    setAnimDiagramStep(0)
     sendMessage({ text: inputValue.trim() })
     setInputValue('')
   }
@@ -234,6 +300,9 @@ export default function SpokPage() {
     spokenLengthRef.current = 0
     setAnimateSpec(null)
     setAnimateStep(0)
+    setDiagramSpec(null)
+    setAnimDiagramSpec(null)
+    setAnimDiagramStep(0)
     sendMessage({ text })
   }
 
@@ -243,6 +312,11 @@ export default function SpokPage() {
     listening: 'Listening',
     idle:      'Ready',
   }[jarvisState]
+
+  const handleElementClick = useCallback((label: string, description: string) => {
+    setInputValue(`Explain ${description} in this diagram`)
+    inputRef.current?.focus()
+  }, [])
 
   return (
     <div className="flex h-[calc(100vh-0px)] overflow-hidden relative" style={{ background: '#080d19' }}>
@@ -281,7 +355,7 @@ export default function SpokPage() {
                 Daily limit reached
               </h2>
               <p className="text-sm text-center mb-5" style={{ color: '#5a7aaa' }}>
-                You&apos;ve used your 10 free SPOK messages today. Upgrade for unlimited access, voice tutor, and more.
+                You&apos;ve used your 5 free SPOK messages today. Upgrade for unlimited access, voice tutor, and more.
               </p>
 
               {/* Price */}
@@ -335,7 +409,7 @@ export default function SpokPage() {
             SPOK Interface
           </p>
           <p className="text-sm mt-0.5" style={{ color: '#5a7aaa' }}>
-            Just A Rather Very Intelligent System
+            Scientific Predictor of Knowledge
           </p>
         </div>
 
@@ -442,26 +516,60 @@ export default function SpokPage() {
           <div ref={bottomRef} />
         </div>
 
+        {/* Free tier message counter */}
+        {messagesUsedToday !== null && (
+          <div className="px-6 pt-2 pb-0 shrink-0 flex items-center justify-between"
+            style={{ borderTop: '1px solid rgba(59,130,246,0.08)' }}>
+            <div className="flex items-center gap-2">
+              {Array.from({ length: FREE_LIMIT }, (_, i) => (
+                <div key={i} className="w-2 h-2 rounded-full transition-all"
+                  style={{ background: i < messagesUsedToday ? 'rgba(245,158,11,0.8)' : 'rgba(255,255,255,0.1)' }} />
+              ))}
+              <span className="text-xs ml-1" style={{ color: messagesUsedToday >= FREE_LIMIT - 1 ? '#f59e0b' : '#4a6070' }}>
+                {Math.max(0, FREE_LIMIT - messagesUsedToday)} free {Math.max(0, FREE_LIMIT - messagesUsedToday) === 1 ? 'message' : 'messages'} left today
+              </span>
+            </div>
+            <button
+              onClick={() => window.location.href = '/pricing'}
+              className="text-xs px-2.5 py-1 rounded-lg font-medium transition-colors"
+              style={{ color: '#f59e0b', border: '1px solid rgba(245,158,11,0.2)', background: 'rgba(245,158,11,0.05)' }}>
+              Upgrade
+            </button>
+          </div>
+        )}
+
         {/* Skill mode chips */}
         <div className="px-6 pt-3 pb-0 shrink-0 flex items-center gap-2 flex-wrap"
-          style={{ borderTop: '1px solid rgba(59,130,246,0.08)' }}>
+          style={{ borderTop: messagesUsedToday !== null ? 'none' : '1px solid rgba(59,130,246,0.08)' }}>
           {CHAT_SKILL_MODES.map(mode => {
             const isActive = activeMode === mode.id
+            const isLocked = mode.minMastery > 0 && avgMastery < mode.minMastery
+            const pct = Math.round(mode.minMastery * 100)
             return (
-              <button
-                key={mode.id}
-                type="button"
-                onClick={() => setActiveMode(isActive ? null : mode.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
-                style={{
-                  background: isActive ? `${mode.color}22` : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${isActive ? mode.color + '55' : 'rgba(255,255,255,0.07)'}`,
-                  color: isActive ? mode.color : '#4a6070',
-                  boxShadow: isActive ? `0 0 12px ${mode.glowColor}` : 'none',
-                }}>
-                <span>{mode.emoji}</span>
-                {mode.shortLabel}
-              </button>
+              <div key={mode.id} className="relative group">
+                <button
+                  type="button"
+                  onClick={() => !isLocked && setActiveMode(isActive ? null : mode.id)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                  style={{
+                    background: isLocked ? 'rgba(255,255,255,0.02)' : isActive ? `${mode.color}22` : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${isLocked ? 'rgba(255,255,255,0.05)' : isActive ? mode.color + '55' : 'rgba(255,255,255,0.07)'}`,
+                    color: isLocked ? '#2a3a4a' : isActive ? mode.color : '#4a6070',
+                    boxShadow: isActive && !isLocked ? `0 0 12px ${mode.glowColor}` : 'none',
+                    cursor: isLocked ? 'not-allowed' : 'pointer',
+                  }}>
+                  {isLocked ? <Lock size={10} /> : <span>{mode.emoji}</span>}
+                  {mode.shortLabel}
+                </button>
+                {isLocked && (
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    style={{ background: 'rgba(12,17,30,0.95)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8' }}>
+                    Unlocks at {pct}% avg mastery
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent"
+                      style={{ borderTopColor: 'rgba(12,17,30,0.95)' }} />
+                  </div>
+                )}
+              </div>
             )
           })}
           {activeMode && (
@@ -533,46 +641,28 @@ export default function SpokPage() {
         </form>
       </div>
 
-      {/* ── RIGHT — Spok visual ────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden">
+      {/* ── RIGHT — Full-panel Three.js canvas with overlaid UI ─────── */}
+      <div className="flex-1 relative overflow-hidden" style={{ background: '#080d19' }}>
 
-        {/* Background HUD grid */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: 'linear-gradient(rgba(245,158,11,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(245,158,11,0.5) 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
-        }} />
+        {/* Three.js canvas fills the entire panel */}
+        <div className="absolute inset-0" onClick={() => listening ? stopListening() : startListening()} style={{ cursor: 'pointer' }}>
+          <JarvisScene amplitude={amplitude} state={jarvisState} />
+        </div>
 
-        {/* Corner HUD brackets */}
-        {[
-          'top-4 left-4 border-t border-l',
-          'top-4 right-4 border-t border-r',
-          'bottom-4 left-4 border-b border-l',
-          'bottom-4 right-4 border-b border-r',
-        ].map((cls, i) => (
-          <div key={i} className={`absolute w-8 h-8 ${cls}`}
-            style={{ borderColor: 'rgba(245,158,11,0.3)' }} />
-        ))}
-
-        {/* Scan line animation */}
-        <motion.div
-          className="absolute left-0 right-0 h-px pointer-events-none"
-          style={{ background: 'linear-gradient(90deg, transparent, rgba(245,158,11,0.3), transparent)' }}
-          animate={{ top: ['0%', '100%'] }}
-          transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-        />
-
-        <AnimatePresence mode="wait">
-          {animateSpec ? (
-            /* ── Animated graph teaching panel ── */
+        {/* Graph teaching panel — overlaid when active */}
+        <AnimatePresence>
+          {animateSpec && (
             <motion.div
               key="graph-panel"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.4 }}
-              className="relative z-10 w-full px-8 flex flex-col gap-3"
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center px-8 gap-3"
+              style={{ background: 'rgba(8,13,25,0.85)', backdropFilter: 'blur(8px)' }}
+              onClick={e => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between w-full mb-1">
                 <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#f59e0b' }}>
                   SPOK · Drawing
                 </p>
@@ -583,12 +673,7 @@ export default function SpokPage() {
                   ✕ dismiss
                 </button>
               </div>
-              <AnimatedGraphRenderer
-                spec={animateSpec}
-                currentStep={animateStep}
-                className="w-full"
-              />
-              {/* Step progress dots */}
+              <AnimatedGraphRenderer spec={animateSpec} currentStep={animateStep} className="w-full" />
               <div className="flex items-center gap-1.5 justify-center mt-1">
                 {animateSpec.steps.map((_, i) => (
                   <div key={i} className="rounded-full transition-all duration-300"
@@ -600,99 +685,131 @@ export default function SpokPage() {
                 ))}
               </div>
             </motion.div>
-          ) : (
-            /* ── Default sphere + word display ── */
+          )}
+        </AnimatePresence>
+
+        {/* Diagram panel — overlaid when active */}
+        <AnimatePresence>
+          {diagramSpec && !animateSpec && (
             <motion.div
-              key="sphere-panel"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex flex-col items-center"
+              key="diagram-panel"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.4 }}
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center px-8 gap-3"
+              style={{ background: 'rgba(8,13,25,0.88)', backdropFilter: 'blur(8px)' }}
+              onClick={e => e.stopPropagation()}
             >
-              {/* Outer orbit ring */}
-              <motion.div
-                className="absolute rounded-full border"
-                style={{ width: 420, height: 420, borderColor: 'rgba(245,158,11,0.08)' }}
-                animate={{ rotate: 360 }}
-                transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-              >
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full"
-                  style={{ background: '#f59e0b' }} />
-              </motion.div>
-
-              {/* Inner orbit ring */}
-              <motion.div
-                className="absolute rounded-full border"
-                style={{ width: 340, height: 340, borderColor: 'rgba(245,158,11,0.06)' }}
-                animate={{ rotate: -360 }}
-                transition={{ duration: 14, repeat: Infinity, ease: 'linear' }}
-              >
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-1 h-1 rounded-full"
-                  style={{ background: 'rgba(245,158,11,0.6)' }} />
-              </motion.div>
-
-              {/* Three.js neural sphere — click to talk */}
-              <div className="relative z-10 w-80 h-80">
-                <JarvisScene
-                  state={jarvisState}
-                  amplitude={amplitude}
-                  className="w-full h-full"
-                  onClick={() => listening ? stopListening() : startListening()}
-                />
+              <div className="flex items-center justify-between w-full mb-1">
+                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#f59e0b' }}>
+                  SPOK · Diagram
+                </p>
+                <button
+                  onClick={() => setDiagramSpec(null)}
+                  className="text-xs px-2 py-1 rounded-lg"
+                  style={{ color: 'rgba(245,158,11,0.4)', border: '1px solid rgba(245,158,11,0.15)' }}>
+                  ✕ dismiss
+                </button>
               </div>
-
-              {/* Click hint */}
-              <AnimatePresence>
-                {jarvisState === 'idle' && (
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute bottom-28 text-xs font-mono"
-                    style={{ color: 'rgba(245,158,11,0.35)' }}>
-                    tap to speak
-                  </motion.p>
-                )}
-              </AnimatePresence>
-
-              {/* Live word display */}
-              <AnimatePresence mode="wait">
-                {currentSentence && (
-                  <motion.div
-                    key={currentSentence}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="relative z-10 mt-6 px-6 max-w-sm text-center leading-relaxed"
-                    style={{ minHeight: 48 }}>
-                    {currentSentence.trim().split(/\s+/).map((word, i) => (
-                      <span
-                        key={i}
-                        className="inline-block mr-1 transition-all duration-100"
-                        style={{
-                          color: i < spokenWordCount ? '#f59e0b' : 'rgba(245,158,11,0.18)',
-                          fontWeight: i < spokenWordCount ? 600 : 400,
-                          fontSize: 15,
-                        }}>
-                        {word}
-                      </span>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <DiagramRenderer spec={diagramSpec} className="w-full" onElementClick={handleElementClick} />
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Status + waveform bars below */}
-        <div className="relative z-10 mt-4 flex flex-col items-center gap-3">
-          {/* Live waveform bars — amplitude driven */}
+        {/* Animated diagram panel — overlaid when active */}
+        <AnimatePresence>
+          {animDiagramSpec && !animateSpec && !diagramSpec && (
+            <motion.div
+              key="adiagram-panel"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.4 }}
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center px-8 gap-3"
+              style={{ background: 'rgba(8,13,25,0.88)', backdropFilter: 'blur(8px)' }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between w-full mb-1">
+                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#f59e0b' }}>
+                  SPOK · Drawing
+                </p>
+                <button
+                  onClick={() => { setAnimDiagramSpec(null); setAnimDiagramStep(0) }}
+                  className="text-xs px-2 py-1 rounded-lg"
+                  style={{ color: 'rgba(245,158,11,0.4)', border: '1px solid rgba(245,158,11,0.15)' }}>
+                  ✕ dismiss
+                </button>
+              </div>
+              <AnimatedDiagramRenderer
+                spec={animDiagramSpec}
+                currentStep={animDiagramStep}
+                className="w-full"
+                onElementClick={handleElementClick}
+              />
+              <div className="flex items-center gap-1.5 justify-center mt-1">
+                {animDiagramSpec.steps.map((_, i) => (
+                  <div key={i} className="rounded-full transition-all duration-300"
+                    style={{
+                      width: i <= animDiagramStep ? 6 : 4,
+                      height: i <= animDiagramStep ? 6 : 4,
+                      background: i <= animDiagramStep ? '#f59e0b' : 'rgba(245,158,11,0.2)',
+                    }} />
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Live word display — centre of panel */}
+        <AnimatePresence mode="wait">
+          {currentSentence && !animateSpec && !diagramSpec && !animDiagramSpec && (
+            <motion.div
+              key={currentSentence}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="absolute left-0 right-0 bottom-40 z-10 px-8 text-center leading-relaxed pointer-events-none"
+            >
+              {currentSentence.trim().split(/\s+/).map((word, i) => (
+                <span
+                  key={i}
+                  className="inline-block mr-1 transition-all duration-100"
+                  style={{
+                    color: i < spokenWordCount ? '#f59e0b' : 'rgba(245,158,11,0.18)',
+                    fontWeight: i < spokenWordCount ? 600 : 400,
+                    fontSize: 15,
+                  }}>
+                  {word}
+                </span>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Tap to speak hint */}
+        <AnimatePresence>
+          {jarvisState === 'idle' && !animateSpec && !diagramSpec && !animDiagramSpec && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute bottom-24 left-0 right-0 text-center text-xs font-mono z-10 pointer-events-none"
+              style={{ color: 'rgba(245,158,11,0.35)' }}>
+              tap to speak
+            </motion.p>
+          )}
+        </AnimatePresence>
+
+        {/* Status + waveform — bottom of panel */}
+        <div className="absolute bottom-6 left-0 right-0 z-10 flex flex-col items-center gap-2 pointer-events-none">
+          {/* Live waveform bars */}
           <div className="flex items-end gap-1 h-8">
             {Array.from({ length: 20 }, (_, i) => {
               const phase = Math.sin((i / 20) * Math.PI)
               const barH  = speaking ? `${8 + phase * amplitude * 80}%` : '15%'
               return (
-                <motion.div
+                <div
                   key={i}
                   className="w-1 rounded-full"
                   style={{
@@ -706,7 +823,6 @@ export default function SpokPage() {
             })}
           </div>
 
-          {/* Status label */}
           <motion.p
             key={jarvisState}
             initial={{ opacity: 0, y: 4 }}
@@ -716,7 +832,6 @@ export default function SpokPage() {
             {statusLabel}
           </motion.p>
 
-          {/* HUD readout line */}
           <p className="text-xs font-mono" style={{ color: 'rgba(245,158,11,0.3)' }}>
             AMP {(amplitude * 100).toFixed(0).padStart(3, '0')} · {clock}
           </p>

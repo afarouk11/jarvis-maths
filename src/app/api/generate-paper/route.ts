@@ -18,9 +18,9 @@ const ALEVEL_CONFIG: Record<ALevelType, {
   timeMinutes: number
   boardLabel: string
 }> = {
-  pure:      { categoryKey: 'Pure Mathematics', sectionName: 'Pure Mathematics', questionCount: 8,  totalMarks: 60, timeMinutes: 75, boardLabel: 'Paper 1 / Paper 2' },
-  stats:     { categoryKey: 'Statistics',       sectionName: 'Statistics',       questionCount: 6,  totalMarks: 45, timeMinutes: 55, boardLabel: 'Paper 3 — Statistics' },
-  mechanics: { categoryKey: 'Mechanics',        sectionName: 'Mechanics',        questionCount: 5,  totalMarks: 40, timeMinutes: 50, boardLabel: 'Paper 3 — Mechanics' },
+  pure:      { categoryKey: 'Pure Mathematics', sectionName: 'Pure Mathematics', questionCount: 12, totalMarks: 100, timeMinutes: 120, boardLabel: 'Paper 1 / Paper 2' },
+  stats:     { categoryKey: 'Statistics',       sectionName: 'Statistics',       questionCount: 8,  totalMarks: 50,  timeMinutes: 60,  boardLabel: 'Paper 3 — Statistics' },
+  mechanics: { categoryKey: 'Mechanics',        sectionName: 'Mechanics',        questionCount: 7,  totalMarks: 50,  timeMinutes: 60,  boardLabel: 'Paper 3 — Mechanics' },
 }
 
 // ── GCSE config ───────────────────────────────────────────────────────────────
@@ -114,19 +114,25 @@ async function generateALevelPaper({ body, board, admin, userId, supabase }: any
   const diff     = ['straightforward', 'moderate', 'challenging'][Math.floor(Math.random() * 3)]
   const qPH      = selected.map((t, i) => ({
     number: i + 1, topic: t.name,
-    marks: Math.floor(cfg.totalMarks / selected.length) + (i < cfg.totalMarks % selected.length ? 1 : 0),
+    marks: distributeMarks(cfg.totalMarks, selected.length)[i],
   }))
 
-  const { text } = await generateText({
-    model: anthropic('claude-haiku-4-5-20251001'),
-    temperature: 1,
-    system: 'You are an exam paper generator. You respond ONLY with valid JSON — no prose, no markdown fences, no explanation.',
-    prompt: buildALevelPrompt(board, cfg, selected, qPH, seed, diff),
-  })
+  let text: string
+  try {
+    const result = await generateText({
+      model: anthropic('claude-sonnet-4-6'),
+      temperature: 1,
+      system: 'You are an exam paper generator. You respond ONLY with valid JSON — no prose, no markdown fences, no explanation.',
+      prompt: buildALevelPrompt(board, cfg, selected, qPH, seed, diff),
+    })
+    text = result.text
+  } catch (err: any) {
+    return NextResponse.json({ error: 'AI generation failed', details: String(err?.message ?? err) }, { status: 500 })
+  }
 
   const paper = parseJson(text)
   if (!paper) return NextResponse.json({ error: 'Failed to parse paper JSON' }, { status: 500 })
-  return NextResponse.json({ paper, focusTopics: selected.map(t => t.name) })
+  return NextResponse.json({ paper: { ...paper, examBoard: board }, focusTopics: selected.map(t => t.name) })
 }
 
 // ── GCSE generator ────────────────────────────────────────────────────────────
@@ -168,19 +174,25 @@ async function generateGcsePaper({ body, board, admin, userId, supabase }: any) 
   const diff     = ['accessible', 'moderate', 'challenging'][Math.floor(Math.random() * 3)]
   const qPH      = selected.map((t, i) => ({
     number: i + 1, topic: t.name,
-    marks: Math.floor(cfg.totalMarks / selected.length) + (i < cfg.totalMarks % selected.length ? 1 : 0),
+    marks: distributeMarks(cfg.totalMarks, selected.length)[i],
   }))
 
-  const { text } = await generateText({
-    model: anthropic('claude-haiku-4-5-20251001'),
-    temperature: 1,
-    system: 'You are a GCSE exam paper generator. You respond ONLY with valid JSON — no prose, no markdown fences, no explanation.',
-    prompt: buildGcsePrompt(board, cfg, paperType, selected, qPH, seed, diff),
-  })
+  let text: string
+  try {
+    const result = await generateText({
+      model: anthropic('claude-sonnet-4-6'),
+      temperature: 1,
+      system: 'You are a GCSE exam paper generator. You respond ONLY with valid JSON — no prose, no markdown fences, no explanation.',
+      prompt: buildGcsePrompt(board, cfg, paperType, selected, qPH, seed, diff),
+    })
+    text = result.text
+  } catch (err: any) {
+    return NextResponse.json({ error: 'AI generation failed', details: String(err?.message ?? err) }, { status: 500 })
+  }
 
   const paper = parseJson(text)
   if (!paper) return NextResponse.json({ error: 'Failed to parse paper JSON' }, { status: 500 })
-  return NextResponse.json({ paper, focusTopics: selected.map(t => t.name) })
+  return NextResponse.json({ paper: { ...paper, examBoard: board }, focusTopics: selected.map(t => t.name) })
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -227,6 +239,19 @@ function weightedSample(scored: { slug: string; name: string; score: number }[],
   return selected
 }
 
+// Distributes marks across questions in ascending order (easier questions first, harder last)
+function distributeMarks(total: number, count: number): number[] {
+  if (count <= 0) return []
+  const wSum = (count * (count + 1)) / 2
+  let remaining = total
+  return Array.from({ length: count }, (_, i) => {
+    if (i === count - 1) return Math.max(2, remaining)
+    const m = Math.max(2, Math.round(((i + 1) / wSum) * total))
+    remaining -= m
+    return m
+  })
+}
+
 function parseJson(text: string) {
   try {
     return JSON.parse(text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim())
@@ -236,28 +261,45 @@ function parseJson(text: string) {
 function buildALevelPrompt(board: string, cfg: any, selected: any[], qPH: any[], seed: number, diff: string) {
   return `Generate a UNIQUE mock A-level ${board} Maths ${cfg.boardLabel} exam paper. Seed: ${seed}. Difficulty: ${diff}.
 
-Topics to cover (one question each):
-${selected.map((t, i) => `${i + 1}. ${t.name} (${qPH[i].marks} marks)`).join('\n')}
+This paper must closely mirror a real ${board} A-Level Mathematics exam. Follow these requirements precisely:
+- Questions progress from straightforward to demanding — Q1 is the easiest, the final question is the hardest
+- For questions worth 5 or more marks, split into labelled parts within the stem field: "(a) Find... [3 marks]\n(b) Hence show that... [4 marks]" — include individual mark allocations in square brackets
+- Use precise, formal mathematical language identical to real ${board} exam papers
+- Include at least one "Show that" or "Prove that" question
+- Use "Hence" to connect parts of multi-part questions where appropriate
+- Use realistic contexts: "A particle moves...", "Given that f(x) = ...", "The curve C has equation...", "A geometric series has..."
+- In worked_solution steps, use real mark scheme notation: M1 (method mark), A1 (accuracy mark), B1 (independent mark) — each step should state what mark it earns
 
-Each question may have an optional "diagram" field with a complete SVG string. Include diagrams for geometric/graphical questions.
+Topics and mark allocations (questions must appear in this order, easiest first):
+${qPH.map(q => `Q${q.number}. ${q.topic} — ${q.marks} marks`).join('\n')}
 
-Respond with this exact JSON (LaTeX using \\(...\\) inline and \\[...\\] display):
-{"title":"SPOK Mock — ${board} ${cfg.sectionName}","totalMarks":${cfg.totalMarks},"timeMinutes":${cfg.timeMinutes},"sections":[{"name":"${cfg.sectionName}","questions":[${qPH.map(q => `{"number":${q.number},"topic":"${q.topic}","marks":${q.marks},"stem":"STEM","answer":"ANSWER","worked_solution":[{"label":"Step 1","content":"WORKING"}]}`).join(',')}]}]}`
+Each question may have an optional "diagram" field with a complete SVG string. Include diagrams for geometric, graphical, or vector questions.
+
+Respond with ONLY this exact JSON structure (use LaTeX: \\(...\\) for inline, \\[...\\] for display math):
+{"title":"SPOK Mock — ${board} ${cfg.sectionName}","totalMarks":${cfg.totalMarks},"timeMinutes":${cfg.timeMinutes},"sections":[{"name":"${cfg.sectionName}","questions":[${qPH.map(q => `{"number":${q.number},"topic":"${q.topic}","marks":${q.marks},"stem":"FULL QUESTION STEM WITH PARTS IF APPLICABLE","answer":"FULL ANSWER COVERING ALL PARTS","worked_solution":[{"label":"Step 1 [M1]","content":"WORKING"}]}`).join(',')}]}]}`
 }
 
 function buildGcsePrompt(board: string, cfg: any, paperType: GcseType, selected: any[], qPH: any[], seed: number, diff: string) {
   const calcNote = paperType === 'non-calc'
-    ? 'This is a NON-CALCULATOR paper. Do not write questions that require a calculator.'
-    : 'This is a CALCULATOR paper. Questions may involve decimal calculations.'
+    ? 'NON-CALCULATOR paper — do NOT include questions requiring a calculator. All arithmetic must be doable by hand.'
+    : 'CALCULATOR paper — questions may involve decimals, standard form, and calculations requiring a calculator.'
 
-  return `Generate a UNIQUE mock ${board} GCSE Maths ${cfg.boardLabel} exam paper. Seed: ${seed}. Difficulty: ${diff}.
+  return `Generate a UNIQUE mock ${board} GCSE Higher Maths ${cfg.boardLabel} exam paper. Seed: ${seed}. Difficulty: ${diff}.
 ${calcNote}
 
-Topics to cover (one question each — use GCSE-appropriate language and difficulty):
-${selected.map((t, i) => `${i + 1}. ${t.name} (${qPH[i].marks} marks)`).join('\n')}
+This paper must closely mirror a real ${board} GCSE Higher Mathematics exam. Follow these requirements precisely:
+- Questions progress from accessible to challenging — Q1 is the easiest, the final question is the hardest
+- For questions worth 4 or more marks, split into labelled parts within the stem field: "(a) Work out... [2 marks]\n(b) Explain why... [2 marks]"
+- Use clear, age-appropriate language identical to real ${board} GCSE papers
+- Include real-world contexts: "A shop sells...", "The diagram shows a triangle...", "A car travels..."
+- Mix question types: calculate, show that, estimate, explain, sketch
+- In worked_solution steps, use mark scheme notation: M1 (method mark), A1 (accuracy mark), B1 (independent mark)
 
-Questions should be at GCSE Higher tier level. Each may have an optional "diagram" SVG field.
+Topics and mark allocations (questions must appear in this order, easiest first):
+${qPH.map(q => `Q${q.number}. ${q.topic} — ${q.marks} marks`).join('\n')}
 
-Respond with this exact JSON (LaTeX using \\(...\\) inline and \\[...\\] display):
-{"title":"SPOK Mock — ${board} GCSE ${cfg.sectionName}","totalMarks":${cfg.totalMarks},"timeMinutes":${cfg.timeMinutes},"sections":[{"name":"${cfg.sectionName}","questions":[${qPH.map(q => `{"number":${q.number},"topic":"${q.topic}","marks":${q.marks},"stem":"STEM","answer":"ANSWER","worked_solution":[{"label":"Step 1","content":"WORKING"}]}`).join(',')}]}]}`
+Each question may have an optional "diagram" field with a complete SVG string. Include diagrams for geometry and graph questions.
+
+Respond with ONLY this exact JSON structure (use LaTeX: \\(...\\) for inline, \\[...\\] for display math):
+{"title":"SPOK Mock — ${board} GCSE ${cfg.sectionName}","totalMarks":${cfg.totalMarks},"timeMinutes":${cfg.timeMinutes},"sections":[{"name":"${cfg.sectionName}","questions":[${qPH.map(q => `{"number":${q.number},"topic":"${q.topic}","marks":${q.marks},"stem":"FULL QUESTION STEM WITH PARTS IF APPLICABLE","answer":"FULL ANSWER COVERING ALL PARTS","worked_solution":[{"label":"Step 1 [M1]","content":"WORKING"}]}`).join(',')}]}]}`
 }

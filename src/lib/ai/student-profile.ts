@@ -1,6 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
+import { GCSE_TOPICS } from '@/lib/curriculum/gcse-topics'
 import { masteryLabel, predictedGrade } from '@/lib/bkt/bayesian-knowledge-tracing'
+
+const ALL_TOPICS = [...AQA_TOPICS, ...GCSE_TOPICS]
 
 export async function buildStudentProfile(userId: string): Promise<string> {
   const supabase = await createClient()
@@ -34,7 +37,7 @@ export async function buildStudentProfile(userId: string): Promise<string> {
     .sort((a, b) => b.questions_attempted - a.questions_attempted)
     .slice(0, 3)
     .map(p => {
-      const topic = AQA_TOPICS.find(t => t.slug === p.topic_id)
+      const topic = ALL_TOPICS.find(t => t.slug === p.topic_id)
       return topic ? `${topic.name} (${Math.round(p.p_known * 100)}%)` : null
     })
     .filter(Boolean)
@@ -45,7 +48,7 @@ export async function buildStudentProfile(userId: string): Promise<string> {
     .sort((a, b) => b.p_known - a.p_known)
     .slice(0, 3)
     .map(p => {
-      const topic = AQA_TOPICS.find(t => t.slug === p.topic_id)
+      const topic = ALL_TOPICS.find(t => t.slug === p.topic_id)
       return topic ? `${topic.name} (${Math.round(p.p_known * 100)}%)` : null
     })
     .filter(Boolean)

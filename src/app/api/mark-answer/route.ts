@@ -1,28 +1,26 @@
 import { anthropic } from '@ai-sdk/anthropic'
 import { generateText } from 'ai'
 import { createClient } from '@/lib/supabase/server'
+import { isPro } from '@/lib/stripe'
 
 export async function POST(req: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { stem, correctAnswer, studentAnswer, workedSolution } = await req.json()
+  const { data: prof } = await supabase
+    .from('profiles')
+    .select('stripe_subscription_status')
+    .eq('id', user.id)
+    .single()
 
-  const prompt = `You are an AQA A-level Mathematics examiner marking a student's response.
+  if (!isPro(prof?.stripe_subscription_status)) {
+    return Response.json({ error: 'pro_required' }, { status: 403 })
+  }
 
-## Question
-${stem}
+  const { stem, correctAnswer, studentAnswer, studentAnswerImage, workedSolution } = await req.json()
 
-## Mark scheme answer
-${correctAnswer}
-
-${workedSolution ? `## Worked solution (mark scheme)\n${JSON.stringify(workedSolution, null, 2)}\n` : ''}
-
-## Student's answer
-${studentAnswer}
-
-## Marking instructions
+  const instructions = `## Marking instructions
 Apply AQA mark scheme conventions:
 - M marks: method marks — award if the correct method is used, even if arithmetic is wrong
 - A marks: accuracy marks — only award if the value is correct (depends on correct method)
@@ -44,10 +42,39 @@ Quality scale: 0=no correct work, 1=correct start only, 2=correct method wrong a
 
 Return ONLY the JSON.`
 
-  const { text } = await generateText({
-    model: anthropic('claude-haiku-4-5-20251001'),
-    prompt,
-  })
+  const context = `You are an AQA A-level Mathematics examiner marking a student's response.
+
+## Question
+${stem}
+
+## Mark scheme answer
+${correctAnswer}
+
+${workedSolution ? `## Worked solution (mark scheme)\n${JSON.stringify(workedSolution, null, 2)}\n` : ''}`
+
+  let text: string
+
+  if (studentAnswerImage) {
+    // Vision path — student wrote by hand (Apple Pencil / stylus)
+    const result = await generateText({
+      model: anthropic('claude-haiku-4-5-20251001'),
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: `${context}\n\n## Student's answer\nThe student's handwritten answer is shown in the attached image. Read and interpret all working shown.\n\n${instructions}` },
+          { type: 'image', image: `data:image/png;base64,${studentAnswerImage}` as any },
+        ],
+      }],
+    })
+    text = result.text
+  } else {
+    // Text path — student typed their answer
+    const result = await generateText({
+      model: anthropic('claude-haiku-4-5-20251001'),
+      prompt: `${context}\n\n## Student's answer\n${studentAnswer}\n\n${instructions}`,
+    })
+    text = result.text
+  }
 
   try {
     const cleaned = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim()

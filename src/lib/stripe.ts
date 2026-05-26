@@ -23,7 +23,7 @@ export const PLANS = {
   free: {
     name: 'Free',
     price: 0,
-    chatMessagesPerDay: 10,
+    chatMessagesPerDay: 5,
   },
   pro: {
     name: 'Pro',
