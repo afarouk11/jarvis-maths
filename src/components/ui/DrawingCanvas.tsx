@@ -42,6 +42,7 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
 
   function onPointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
     if (disabled) return
+    if (e.pointerType === 'touch') return
     e.preventDefault()
     e.currentTarget.setPointerCapture(e.pointerId)
     const pos = getPos(e)
@@ -55,7 +56,7 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
   }
 
   function onPointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
-    if (!isDrawing || disabled) return
+    if (!isDrawing || disabled || e.pointerType === 'touch') return
     e.preventDefault()
     const canvas = canvasRef.current!
     const ctx    = canvas.getContext('2d')!
@@ -126,7 +127,7 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
         }}
       />
       <p style={{ fontSize: 11, color: '#4a6070', marginTop: 5 }}>
-        Apple Pencil, stylus, or finger — write your working in the space above
+        Apple Pencil or stylus only — finger touch is ignored to prevent palm marks
       </p>
     </div>
   )
