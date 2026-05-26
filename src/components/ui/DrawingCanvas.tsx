@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, useEffect, useCallback } from 'react'
-import { Pen, Eraser, Trash2 } from 'lucide-react'
+import { Pen, Eraser, Trash2, Undo2 } from 'lucide-react'
 
 interface Props {
   onChange: (base64: string) => void
@@ -10,12 +10,14 @@ interface Props {
 }
 
 export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
-  const canvasRef   = useRef<HTMLCanvasElement>(null)
-  const [tool, setTool]         = useState<'pen' | 'eraser'>('pen')
+  const canvasRef  = useRef<HTMLCanvasElement>(null)
+  const [tool, setTool]       = useState<'pen' | 'eraser'>('pen')
   const [isDrawing, setIsDrawing] = useState(false)
-  const lastPos = useRef<{ x: number; y: number } | null>(null)
-  const lastMid = useRef<{ x: number; y: number } | null>(null)
-  const height = Math.max(140, marks * 38)
+  const [canUndo, setCanUndo] = useState(false)
+  const lastPos   = useRef<{ x: number; y: number } | null>(null)
+  const lastMid   = useRef<{ x: number; y: number } | null>(null)
+  const history   = useRef<ImageData[]>([])
+  const height    = Math.max(140, marks * 38)
 
   const initCanvas = useCallback(() => {
     const canvas = canvasRef.current
@@ -28,9 +30,20 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
     for (let y = 32; y < canvas.height; y += 32) {
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke()
     }
+    history.current = [ctx.getImageData(0, 0, canvas.width, canvas.height)]
+    setCanUndo(false)
   }, [])
 
   useEffect(() => { initCanvas() }, [initCanvas])
+
+  function saveSnapshot() {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    const snap = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    history.current = [...history.current, snap].slice(-20)
+    setCanUndo(true)
+  }
 
   function getPos(e: React.PointerEvent<HTMLCanvasElement>) {
     const canvas = canvasRef.current!
@@ -91,7 +104,23 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
     notify()
   }
 
-  function onPointerUp() { setIsDrawing(false); lastPos.current = null; lastMid.current = null }
+  function onPointerUp() {
+    if (!isDrawing) return
+    setIsDrawing(false)
+    lastPos.current = null
+    lastMid.current = null
+    saveSnapshot()
+  }
+
+  function undo() {
+    if (history.current.length <= 1) return
+    history.current = history.current.slice(0, -1)
+    const canvas = canvasRef.current!
+    const ctx    = canvas.getContext('2d')!
+    ctx.putImageData(history.current[history.current.length - 1], 0, 0)
+    setCanUndo(history.current.length > 1)
+    notify()
+  }
 
   function notify() {
     const canvas = canvasRef.current!
@@ -100,28 +129,38 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
 
   function clear() { initCanvas(); onChange('') }
 
+  const btnBase: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: 4,
+    padding: '3px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer',
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
         {(['pen', 'eraser'] as const).map(t => (
-          <button key={t} onClick={() => setTool(t)} disabled={disabled}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 4,
-              padding: '3px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer',
-              background: tool === t ? 'rgba(59,130,246,0.18)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${tool === t ? 'rgba(59,130,246,0.4)' : 'rgba(255,255,255,0.1)'}`,
-              color: tool === t ? '#60a5fa' : '#6b7280',
-            }}>
+          <button key={t} onClick={() => setTool(t)} disabled={disabled} style={{
+            ...btnBase,
+            background: tool === t ? 'rgba(59,130,246,0.18)' : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${tool === t ? 'rgba(59,130,246,0.4)' : 'rgba(255,255,255,0.1)'}`,
+            color: tool === t ? '#60a5fa' : '#6b7280',
+          }}>
             {t === 'pen' ? <Pen size={11} /> : <Eraser size={11} />}
             {t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
-        <button onClick={clear} disabled={disabled}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 4,
-            padding: '3px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer',
-            background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171',
-          }}>
+        <button onClick={undo} disabled={disabled || !canUndo} style={{
+          ...btnBase,
+          background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+          color: canUndo ? '#94a3b8' : '#374151',
+          cursor: canUndo ? 'pointer' : 'not-allowed',
+          opacity: canUndo ? 1 : 0.4,
+        }}>
+          <Undo2 size={11} /> Undo
+        </button>
+        <button onClick={clear} disabled={disabled} style={{
+          ...btnBase,
+          background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171',
+        }}>
           <Trash2 size={11} /> Clear
         </button>
       </div>
