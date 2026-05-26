@@ -225,6 +225,11 @@ export default function SpokPage() {
     resetReveal()
     sentenceBufferRef.current = createSentenceBuffer()
     spokenLengthRef.current = 0
+    setAnimateSpec(null)
+    setAnimateStep(0)
+    setDiagramSpec(null)
+    setAnimDiagramSpec(null)
+    setAnimDiagramStep(0)
     sendMessage({ text: text.trim() })
   }, [sendMessage, stopSpeaking, unlockAudio, resetReveal, isLoading])
 

@@ -798,18 +798,17 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
     return { mathX, mathY }
   }, [xDomain, yDomain])
 
-  // Convert client coords to viewBox coords
+  // Convert client coords to viewBox coords (undoing the translate+scale transform on <g>)
   const clientToViewBox = useCallback((clientX: number, clientY: number) => {
     const svg = svgRef.current
     if (!svg) return null
     const rect = svg.getBoundingClientRect()
     const svgX = ((clientX - rect.left) / rect.width) * W
     const svgY = ((clientY - rect.top) / rect.height) * H
-    // Undo pan/zoom
-    const centreX = W / 2
-    const centreY = H / 2
-    const unzoomedX = (svgX - pan.x - centreX) / zoom + centreX
-    const unzoomedY = (svgY - pan.y - centreY) / zoom + centreY
+    // The <g> transform is translate(pan.x, pan.y) scale(zoom) from origin (0,0)
+    // so to undo: subtract pan first, then divide by zoom
+    const unzoomedX = (svgX - pan.x) / zoom
+    const unzoomedY = (svgY - pan.y) / zoom
     return { svgX: unzoomedX, svgY: unzoomedY }
   }, [zoom, pan])
 
