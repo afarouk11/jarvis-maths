@@ -3,10 +3,10 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { Check, Zap } from 'lucide-react'
+import { Check, Zap, Lock, Building2 } from 'lucide-react'
 
 const FREE_FEATURES = [
-  '10 SPOK chat messages per day',
+  '5 SPOK chat messages per day',
   'All 28 A-level topics & lessons',
   'Unlimited practice questions',
   'Spaced repetition scheduling',
@@ -20,11 +20,26 @@ const PRO_FEATURES = [
   'Extended AI thinking mode',
   'Past paper AI — cite real papers',
   'Mock exam generator',
+  'Priority support',
   'All free features included',
 ]
 
+const SCHOOLS_FEATURES = [
+  'Everything in Pro, per student',
+  'Bulk student management',
+  'Teacher progress dashboard',
+  'Class & cohort analytics',
+  'Custom exam board config',
+  'Dedicated account manager',
+  'Invoiced billing',
+]
+
+// 2 lessons/week × £20 × 52 weeks ÷ 12 months
+const TUTOR_MONTHLY = Math.round((2 * 20 * 52) / 12)   // £173
+const PRO_PRICE     = 18.99
+const SAVING        = Math.round(TUTOR_MONTHLY - PRO_PRICE) // £154
+
 export default function PricingPage() {
-  const [billing, setBilling] = useState<'monthly' | 'annual'>('annual')
   const [loading, setLoading] = useState(false)
 
   async function checkout() {
@@ -33,7 +48,7 @@ export default function PricingPage() {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: billing }),
+        body: JSON.stringify({ plan: 'monthly' }),
       })
       if (res.status === 401) {
         window.location.href = '/sign-in?next=/pricing'
@@ -46,8 +61,6 @@ export default function PricingPage() {
       setLoading(false)
     }
   }
-
-  const isAnnual = billing === 'annual'
 
   return (
     <div className="min-h-screen notebook-bg flex flex-col items-center justify-center px-6 py-24 relative"
@@ -69,57 +82,30 @@ export default function PricingPage() {
       </Link>
 
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12" style={{ position: 'relative' }}>
+      <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-14" style={{ position: 'relative' }}>
         <h1 className="text-white mb-4"
           style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 52, fontWeight: 700, letterSpacing: '-0.025em', lineHeight: 1.05 }}>
           Less than one tutoring session.
         </h1>
-        <p className="text-base mb-8" style={{ color: '#5a7aaa' }}>
-          Start free. Upgrade when you want everything SPOK can do.
+        <p className="text-base" style={{ color: '#5a7aaa' }}>
+          Two private lessons a week costs £{TUTOR_MONTHLY}/month. SPOK is £{PRO_PRICE}.
         </p>
-
-        {/* Billing toggle */}
-        <div className="inline-flex items-center rounded-xl p-1 gap-1"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <button onClick={() => setBilling('monthly')}
-            className="px-5 py-2 rounded-lg text-sm font-medium transition-all"
-            style={{
-              background: !isAnnual ? 'rgba(59,130,246,0.18)' : 'transparent',
-              color: !isAnnual ? '#60a5fa' : '#4a6070',
-              border: !isAnnual ? '1px solid rgba(59,130,246,0.3)' : '1px solid transparent',
-            }}>
-            Monthly
-          </button>
-          <button onClick={() => setBilling('annual')}
-            className="px-5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2"
-            style={{
-              background: isAnnual ? 'rgba(59,130,246,0.18)' : 'transparent',
-              color: isAnnual ? '#60a5fa' : '#4a6070',
-              border: isAnnual ? '1px solid rgba(59,130,246,0.3)' : '1px solid transparent',
-            }}>
-            Annual
-            <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold"
-              style={{ background: 'rgba(34,197,94,0.12)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.25)' }}>
-              Save £80
-            </span>
-          </button>
-        </div>
       </motion.div>
 
       {/* Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 w-full max-w-3xl" style={{ position: 'relative' }}>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full max-w-5xl" style={{ position: 'relative' }}>
 
-        {/* Free */}
-        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <div style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%)', padding: 1, borderRadius: 20 }}>
-            <div className="p-8 rounded-[19px]" style={{ background: 'rgba(10,14,26,0.9)' }}>
+        {/* ── Free ── */}
+        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
+          <div style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.04) 100%)', padding: 1, borderRadius: 20, height: '100%' }}>
+            <div className="p-8 rounded-[19px] h-full flex flex-col" style={{ background: 'rgba(10,14,26,0.9)' }}>
               <p className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: '#4a6070' }}>Free</p>
               <div className="flex items-end gap-1 mb-1">
-                <span className="font-bold text-white" style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 60, lineHeight: 1 }}>£0</span>
+                <span className="font-bold text-white" style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 56, lineHeight: 1 }}>£0</span>
                 <span className="text-sm mb-3" style={{ color: '#4a6070' }}>/month</span>
               </div>
               <p className="text-xs mb-7" style={{ color: '#374151' }}>No credit card needed</p>
-              <ul className="space-y-3 mb-8">
+              <ul className="space-y-3 mb-8 flex-1">
                 {FREE_FEATURES.map(f => (
                   <li key={f} className="flex items-start gap-3 text-sm" style={{ color: '#6b8cba' }}>
                     <Check size={14} className="mt-0.5 shrink-0" style={{ color: '#3b82f6' }} />
@@ -137,41 +123,46 @@ export default function PricingPage() {
           </div>
         </motion.div>
 
-        {/* Pro */}
-        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+        {/* ── Pro Individual ── */}
+        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.13 }}>
           <div style={{
-            background: 'linear-gradient(135deg, rgba(59,130,246,0.6) 0%, rgba(99,102,241,0.4) 50%, rgba(59,130,246,0.15) 100%)',
-            padding: 1, borderRadius: 20,
-            boxShadow: '0 0 60px rgba(59,130,246,0.12), 0 0 120px rgba(99,102,241,0.06)',
+            background: 'linear-gradient(135deg, rgba(59,130,246,0.65) 0%, rgba(99,102,241,0.45) 50%, rgba(59,130,246,0.18) 100%)',
+            padding: 1, borderRadius: 20, height: '100%',
+            boxShadow: '0 0 70px rgba(59,130,246,0.15), 0 0 130px rgba(99,102,241,0.07)',
           }}>
-            <div className="p-8 rounded-[19px] relative overflow-hidden" style={{ background: 'rgba(10,14,26,0.88)' }}>
+            <div className="p-8 rounded-[19px] relative overflow-hidden h-full flex flex-col" style={{ background: 'rgba(10,14,26,0.88)' }}>
 
-              {/* Inner top glow */}
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 120, background: 'radial-gradient(ellipse at 50% 0%, rgba(99,102,241,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 120, background: 'radial-gradient(ellipse at 50% 0%, rgba(99,102,241,0.14) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-              {/* Badge */}
+              {/* Most popular badge */}
               <div className="absolute top-5 right-5 px-3 py-1 rounded-full text-xs font-semibold"
                 style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.28)', color: '#f59e0b' }}>
                 Most popular
               </div>
 
-              <p className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: '#60a5fa', position: 'relative' }}>Pro</p>
+              <p className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: '#60a5fa', position: 'relative' }}>Pro Individual</p>
 
-              <motion.div key={billing} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ position: 'relative' }}>
+              <div style={{ position: 'relative' }}>
                 <div className="flex items-end gap-1 mb-1">
-                  <span className="font-bold text-white" style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 60, lineHeight: 1 }}>
-                    {isAnnual ? '£400' : '£40'}
+                  <span className="font-bold text-white" style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 56, lineHeight: 1 }}>
+                    £{PRO_PRICE}
                   </span>
-                  <span className="text-sm mb-3" style={{ color: '#4a6070' }}>
-                    {isAnnual ? '/year' : '/month'}
+                  <span className="text-sm mb-3" style={{ color: '#4a6070' }}>/month</span>
+                </div>
+
+                {/* Savings callout */}
+                <div className="flex items-center gap-2 mb-7 px-3 py-2 rounded-xl"
+                  style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)' }}>
+                  <span className="text-xs font-semibold" style={{ color: '#4ade80' }}>
+                    Save £{SAVING}/month vs private tutoring
+                  </span>
+                  <span className="text-xs" style={{ color: '#374151' }}>
+                    · 2 sessions/wk at £20 = £{TUTOR_MONTHLY}/mo
                   </span>
                 </div>
-                <p className="text-xs mb-7" style={{ color: isAnnual ? '#4ade80' : '#374151' }}>
-                  {isAnnual ? 'Equivalent to £33.33/month — save £80' : 'Billed monthly · cancel anytime'}
-                </p>
-              </motion.div>
+              </div>
 
-              <ul className="space-y-3 mb-8" style={{ position: 'relative' }}>
+              <ul className="space-y-3 mb-8 flex-1" style={{ position: 'relative' }}>
                 {PRO_FEATURES.map(f => (
                   <li key={f} className="flex items-start gap-3 text-sm text-white">
                     <Check size={14} className="mt-0.5 shrink-0" style={{ color: '#60a5fa' }} />
@@ -186,16 +177,65 @@ export default function PricingPage() {
                 style={{
                   fontFamily: 'var(--font-space-grotesk)',
                   background: 'linear-gradient(135deg, #1d4ed8, #3b82f6, #6366f1)',
-                  boxShadow: '0 0 30px rgba(59,130,246,0.35), 0 0 60px rgba(99,102,241,0.1)',
+                  boxShadow: '0 0 30px rgba(59,130,246,0.35)',
                   position: 'relative',
                 }}>
                 <Zap size={15} />
-                {loading ? 'Redirecting...' : `Get Pro — ${isAnnual ? '£400/year' : '£40/month'}`}
+                {loading ? 'Redirecting...' : `Get Pro — £${PRO_PRICE}/month`}
               </motion.button>
-              <p className="text-center text-xs mt-3" style={{ color: '#4a6070', position: 'relative' }}>Cancel anytime</p>
+              <p className="text-center text-xs mt-3" style={{ color: '#4a6070', position: 'relative' }}>Cancel anytime · billed monthly</p>
             </div>
           </div>
         </motion.div>
+
+        {/* ── Schools / Annual — Coming Soon ── */}
+        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
+          <div style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 100%)', padding: 1, borderRadius: 20, height: '100%' }}>
+            <div className="p-8 rounded-[19px] relative overflow-hidden h-full flex flex-col" style={{ background: 'rgba(10,14,26,0.85)' }}>
+
+              {/* Lock overlay */}
+              <div className="absolute inset-0 rounded-[19px] z-10 flex flex-col items-center justify-center gap-3"
+                style={{ background: 'rgba(8,12,24,0.72)', backdropFilter: 'blur(2px)' }}>
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                  style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)' }}>
+                  <Lock size={22} style={{ color: '#818cf8' }} />
+                </div>
+                <p className="font-bold text-white text-lg" style={{ fontFamily: 'var(--font-space-grotesk)' }}>Coming Soon</p>
+                <p className="text-xs text-center px-4" style={{ color: '#5a7aaa' }}>
+                  Annual plans for schools and tuition centres are on the way.
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <Building2 size={13} style={{ color: '#6366f1' }} />
+                  <span className="text-xs font-semibold" style={{ color: '#818cf8' }}>Schools & Tuition Centres</span>
+                </div>
+                <a href="mailto:admin@studiq.org"
+                  className="mt-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-[1.03]"
+                  style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', color: '#a5b4fc' }}>
+                  Get notified
+                </a>
+              </div>
+
+              {/* Background card content (blurred behind overlay) */}
+              <p className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: '#4a6070' }}>Annual / Schools</p>
+              <div className="flex items-end gap-1 mb-7">
+                <span className="font-bold text-white" style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 56, lineHeight: 1 }}>£—</span>
+              </div>
+              <ul className="space-y-3 mb-8 flex-1">
+                {SCHOOLS_FEATURES.map(f => (
+                  <li key={f} className="flex items-start gap-3 text-sm" style={{ color: '#3a4a5c' }}>
+                    <Check size={14} className="mt-0.5 shrink-0" style={{ color: '#3a4a5c' }} />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <div className="w-full py-3.5 rounded-xl text-sm font-medium text-center"
+                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', color: '#2d3a4a' }}>
+                Contact us
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
       </div>
 
       {/* Footer note */}
