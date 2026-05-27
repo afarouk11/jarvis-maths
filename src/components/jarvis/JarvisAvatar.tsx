@@ -123,7 +123,7 @@ export function JarvisAvatar({ state, size = 56, amplitude = 0, transparent = fa
         </defs>
 
         {/* Background fill */}
-        <circle cx={r} cy={r} r={r - 1} fill={`url(#bg-grad-${size})`} />
+        {!transparent && <circle cx={r} cy={r} r={r - 1} fill={`url(#bg-grad-${size})`} />}
 
         {/* Neural network edges */}
         <g clipPath={`url(#clip-${size})`} filter={`url(#glow-${size})`} className="jarvis-edges">

@@ -37,7 +37,7 @@ const TESTIMONIALS = [
 ]
 
 const COMPARISON = [
-  { label: 'Price',              tutor: '£60/hr',  textbook: '£25 one-time', studiq: 'Free / £33/mo' },
+  { label: 'Price',              tutor: '£60/hr',  textbook: '£25 one-time', studiq: 'Free / £24.99/mo' },
   { label: 'Available 24/7',     tutor: false,     textbook: true,            studiq: true },
   { label: 'Knows your gaps',    tutor: 'Sometimes',textbook: false,          studiq: true },
   { label: 'Voice chat',         tutor: false,     textbook: false,           studiq: true },
