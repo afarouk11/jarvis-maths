@@ -116,25 +116,24 @@ INSTRUCTIONS:
     const { text } = await generateText({
       model: anthropic('claude-haiku-4-5-20251001'),
       prompt,
-      maxOutputTokens: 1800,
     })
 
-    // Strip markdown fences if present
-    const cleaned = text
-      .replace(/^```(?:json)?\s*/m, '')
-      .replace(/\s*```\s*$/m, '')
-      .trim()
+    // Extract JSON — find first { to last }
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    const cleaned = jsonMatch ? jsonMatch[0] : text.trim()
 
     let parsed: unknown
     try {
       parsed = JSON.parse(cleaned)
     } catch {
-      return Response.json({ error: 'Failed to parse timetable from AI response' }, { status: 500 })
+      console.error('Timetable JSON parse failed. Raw response:', text.slice(0, 500))
+      return Response.json({ error: 'AI returned unexpected format — try regenerating' }, { status: 500 })
     }
 
     return Response.json(parsed)
   } catch (err) {
-    console.error('Timetable API error:', err)
-    return Response.json({ error: 'Internal server error' }, { status: 500 })
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('Timetable API error:', msg)
+    return Response.json({ error: msg || 'Internal server error' }, { status: 500 })
   }
 }
