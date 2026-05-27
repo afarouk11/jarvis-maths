@@ -240,24 +240,24 @@ export function LandingPage() {
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', stiffness: 200, damping: 18 }}
           className="mb-10 relative inline-flex items-center justify-center"
-          style={{ width: 160, height: 160 }}>
+          style={{ width: 280, height: 280 }}>
           {/* Outer orbital ring */}
           <div style={{
-            position: 'absolute', inset: -28, borderRadius: '50%',
+            position: 'absolute', inset: -36, borderRadius: '50%',
             border: '1px solid rgba(59,130,246,0.2)',
             animation: 'orbital-spin 14s linear infinite',
           }}>
-            <div style={{ position: 'absolute', top: -5, left: '50%', transform: 'translateX(-50%)', width: 10, height: 10, borderRadius: '50%', background: '#3b82f6', boxShadow: '0 0 10px #3b82f6, 0 0 20px rgba(59,130,246,0.4)' }} />
+            <div style={{ position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%)', width: 12, height: 12, borderRadius: '50%', background: '#3b82f6', boxShadow: '0 0 12px #3b82f6, 0 0 24px rgba(59,130,246,0.4)' }} />
           </div>
           {/* Inner orbital ring */}
           <div style={{
-            position: 'absolute', inset: -14, borderRadius: '50%',
+            position: 'absolute', inset: -18, borderRadius: '50%',
             border: '1px solid rgba(99,102,241,0.15)',
             animation: 'orbital-spin 9s linear infinite reverse',
           }}>
-            <div style={{ position: 'absolute', bottom: -4, right: '20%', width: 7, height: 7, borderRadius: '50%', background: '#6366f1', boxShadow: '0 0 8px #6366f1' }} />
+            <div style={{ position: 'absolute', bottom: -5, right: '20%', width: 9, height: 9, borderRadius: '50%', background: '#6366f1', boxShadow: '0 0 10px #6366f1' }} />
           </div>
-          <JarvisAvatar state={jarvisState} size={120} transparent />
+          <JarvisAvatar state={jarvisState} size={260} transparent />
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="max-w-3xl mx-auto" style={{ position: 'relative' }}>
@@ -450,7 +450,7 @@ export function LandingPage() {
               {/* Glow behind card */}
               <div style={{ position: 'absolute', inset: 0, borderRadius: 17, background: 'radial-gradient(ellipse at 50% 0%, rgba(99,102,241,0.15) 0%, transparent 60%)', pointerEvents: 'none' }} />
               <div style={{ position: 'relative' }}>
-                <JarvisAvatar state="idle" size={72} transparent />
+                <JarvisAvatar state="idle" size={100} transparent />
                 <h2 className="text-white mt-7 mb-3"
                   style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 36, fontWeight: 700, letterSpacing: '-0.02em' }}>
                   Your exam won't wait.
