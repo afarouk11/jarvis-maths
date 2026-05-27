@@ -185,7 +185,7 @@ function GlowCore({ amplitude, state }: { amplitude: number; state: JarvisState 
   useFrame((_, dt) => {
     if (innerRef.current) {
       const mat = innerRef.current.material as THREE.MeshStandardMaterial
-      mat.emissiveIntensity = 8 + amplitude * 20
+      mat.emissiveIntensity = 1.5 + amplitude * 4
       innerRef.current.rotation.y += dt * 0.8
       innerRef.current.rotation.z += dt * 0.4
     }
@@ -204,8 +204,8 @@ function GlowCore({ amplitude, state }: { amplitude: number; state: JarvisState 
       <mesh ref={innerRef}>
         <icosahedronGeometry args={[0.38, 1]} />
         <meshStandardMaterial
-          color={coreColor} emissive={emissive} emissiveIntensity={12}
-          transparent opacity={0.95} roughness={0} metalness={1} wireframe />
+          color={coreColor} emissive={emissive} emissiveIntensity={4}
+          transparent opacity={0.9} roughness={0} metalness={1} wireframe />
       </mesh>
 
       {/* Soft outer glow sphere */}
@@ -232,7 +232,7 @@ function Corona({ state }: { state: JarvisState }) {
     if (ref.current) {
       const mat = ref.current.material as THREE.MeshStandardMaterial
       // Gentle breathe effect on the corona opacity
-      mat.opacity = 0.35 + Math.sin(clock.clock.elapsedTime * 0.8) * 0.12
+      mat.opacity = 0.05 + Math.sin(clock.clock.elapsedTime * 0.8) * 0.02
     }
   })
 
@@ -242,9 +242,9 @@ function Corona({ state }: { state: JarvisState }) {
       <meshStandardMaterial
         color={coreColor}
         emissive={emissive}
-        emissiveIntensity={4}
+        emissiveIntensity={0.4}
         transparent
-        opacity={0.4}
+        opacity={0.14}
         depthWrite={false}
         side={THREE.BackSide}
       />
@@ -493,18 +493,18 @@ export function JarvisScene({ amplitude, state, className, onClick, transparent 
         ctx.canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault() }, false)
       }}>
       <ambientLight intensity={0.05} />
-      <pointLight position={[4,  4,  4]}  color={state === 'listening' ? '#22c55e' : '#f59e0b'} intensity={30} />
-      <pointLight position={[-3, -3, -4]} color="#1e3a8a" intensity={4} />
-      <pointLight position={[0,  0,  3]}  color={state === 'listening' ? '#22c55e' : '#f59e0b'} intensity={20} />
+      <pointLight position={[4,  4,  4]}  color={state === 'listening' ? '#22c55e' : '#f59e0b'} intensity={4.0} />
+      <pointLight position={[-3, -3, -4]} color="#1e3a8a" intensity={0.8} />
+      <pointLight position={[0,  0,  3]}  color={state === 'listening' ? '#22c55e' : '#f59e0b'} intensity={2.0} />
       <Scene amplitude={amplitude} state={state} />
       <PulseRings state={state} />
       <HitSphere onClick={onClick} />
       {!transparent && (
         <EffectComposer frameBufferType={THREE.HalfFloatType}>
           <Bloom
-            luminanceThreshold={0.01}
-            luminanceSmoothing={0.6}
-            intensity={40}
+            luminanceThreshold={0.08}
+            luminanceSmoothing={0.85}
+            intensity={4.5}
           />
         </EffectComposer>
       )}
