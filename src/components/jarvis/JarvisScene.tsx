@@ -499,13 +499,15 @@ export function JarvisScene({ amplitude, state, className, onClick, transparent 
       <Scene amplitude={amplitude} state={state} />
       <PulseRings state={state} />
       <HitSphere onClick={onClick} />
-      <EffectComposer frameBufferType={THREE.HalfFloatType}>
-        <Bloom
-          luminanceThreshold={0.08}
-          luminanceSmoothing={0.85}
-          intensity={4.5}
-        />
-      </EffectComposer>
+      {!transparent && (
+        <EffectComposer frameBufferType={THREE.HalfFloatType}>
+          <Bloom
+            luminanceThreshold={0.08}
+            luminanceSmoothing={0.85}
+            intensity={4.5}
+          />
+        </EffectComposer>
+      )}
     </Canvas>
   )
 
