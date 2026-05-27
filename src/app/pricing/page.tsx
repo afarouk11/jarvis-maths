@@ -3,11 +3,11 @@ import PricingClient from './PricingClient'
 
 export const metadata: Metadata = {
   title: 'Pricing',
-  description: 'Start free. Unlimited AI tutoring for A-Level Maths from £33/month. SPOK is available 24/7 — less than one tutoring session.',
+  description: 'Start free. Unlimited AI tutoring for A-Level Maths from £24.99/month. SPOK is available 24/7 — less than one tutoring session.',
   alternates: { canonical: 'https://studiq.org/pricing' },
   openGraph: {
     title: 'Pricing | StudiQ',
-    description: 'Start free. Unlimited AI A-Level Maths tutoring from £33/month.',
+    description: 'Start free. Unlimited AI A-Level Maths tutoring from £24.99/month.',
     url: 'https://studiq.org/pricing',
     type: 'website',
   },
