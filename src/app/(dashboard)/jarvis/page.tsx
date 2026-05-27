@@ -43,6 +43,17 @@ export default function SpokPage() {
   const [avgMastery, setAvgMastery] = useState<number>(0)
   const FREE_LIMIT = 5
 
+  // Quick reply chips from SPOK's last response
+  const [quickReplies, setQuickReplies]     = useState<string[]>([])
+  // "Try it yourself" interactive problem
+  const [tryItSpec, setTryItSpec]           = useState<{ question: string; hint: string; answer: string; topic: string } | null>(null)
+  const [tryItAnswer, setTryItAnswer]       = useState('')
+  const [tryItHintShown, setTryItHintShown] = useState(false)
+  // Previous session history
+  const [historyMessages, setHistoryMessages] = useState<Array<{ role: string; content: string }>>([])
+  const historyRef        = useRef<string>('')
+  const hasSeededHistory  = useRef(false)
+
   useEffect(() => {
     function tick() {
       setClock(new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
@@ -70,6 +81,18 @@ export default function SpokPage() {
         if (Array.isArray(rows) && rows.length > 0) {
           setAvgMastery(rows.reduce((s, r) => s + (r.p_known ?? 0), 0) / rows.length)
         }
+      })
+      .catch(() => {})
+    // Load last session's messages to seed SPOK's memory
+    fetch('/api/chat-history')
+      .then(r => r.json())
+      .then((d: { messages?: Array<{ role: string; content: string }> }) => {
+        const msgs = d.messages ?? []
+        if (msgs.length === 0) return
+        setHistoryMessages(msgs)
+        historyRef.current = msgs
+          .map(m => `${m.role === 'user' ? 'Student' : 'SPOK'}: ${m.content.slice(0, 300)}`)
+          .join('\n\n')
       })
       .catch(() => {})
   }, [])
@@ -108,7 +131,11 @@ export default function SpokPage() {
   const { messages, sendMessage, status } = useChat({
     transport: useMemo(() => new DefaultChatTransport({
       api: '/api/chat',
-      body: () => ({ skillMode: activeModeRef.current, accessibilityPrefs: accessibilityPrefsRef.current }),
+      body: () => ({
+        skillMode: activeModeRef.current,
+        accessibilityPrefs: accessibilityPrefsRef.current,
+        conversationHistory: !hasSeededHistory.current ? (historyRef.current || undefined) : undefined,
+      }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }), []),
     onError: (err) => {
@@ -137,7 +164,7 @@ export default function SpokPage() {
     },
   })
 
-  // Parse [ANIMATE] blocks from the last assistant message
+  // Parse visual/interactive blocks from the last assistant message
   useEffect(() => {
     const lastMsg = messages[messages.length - 1]
     if (!lastMsg || lastMsg.role !== 'assistant') return
@@ -146,6 +173,7 @@ export default function SpokPage() {
         || (lastMsg.parts as any[]).filter((p: any) => p.type === 'text').map((p: any) => p.text ?? '').join(''))
       : (lastMsg as any).content ?? ''
 
+    // Visual panels — only one active at a time
     const animMatch = fullText.match(/\[ANIMATE\]([\s\S]*?)\[\/ANIMATE\]/)
     if (animMatch) {
       const parsed = parseAnimateSpec(animMatch[1].trim())
@@ -177,6 +205,25 @@ export default function SpokPage() {
           }
         }
       }
+    }
+
+    // Quick reply chips
+    const qrMatch = fullText.match(/\[QUICKREPLIES\]([\s\S]*?)\[\/QUICKREPLIES\]/)
+    if (qrMatch) {
+      try { setQuickReplies(JSON.parse(qrMatch[1].trim())) } catch { setQuickReplies([]) }
+    } else {
+      setQuickReplies([])
+    }
+
+    // "Try it yourself" interactive problem
+    const tryItMatch = fullText.match(/\[TRYIT\]([\s\S]*?)\[\/TRYIT\]/)
+    if (tryItMatch) {
+      try {
+        const spec = JSON.parse(tryItMatch[1].trim())
+        setTryItSpec(spec)
+        setTryItAnswer('')
+        setTryItHintShown(false)
+      } catch {}
     }
   }, [messages])
 
@@ -230,6 +277,8 @@ export default function SpokPage() {
     setDiagramSpec(null)
     setAnimDiagramSpec(null)
     setAnimDiagramStep(0)
+    setQuickReplies([])
+    hasSeededHistory.current = true
     sendMessage({ text: text.trim() })
   }, [sendMessage, stopSpeaking, unlockAudio, resetReveal, isLoading])
 
@@ -287,6 +336,8 @@ export default function SpokPage() {
     setDiagramSpec(null)
     setAnimDiagramSpec(null)
     setAnimDiagramStep(0)
+    setQuickReplies([])
+    hasSeededHistory.current = true
     sendMessage({ text: inputValue.trim() })
     setInputValue('')
   }
@@ -303,7 +354,19 @@ export default function SpokPage() {
     setDiagramSpec(null)
     setAnimDiagramSpec(null)
     setAnimDiagramStep(0)
+    setQuickReplies([])
+    hasSeededHistory.current = true
     sendMessage({ text })
+  }
+
+  function handleTryItSubmit() {
+    if (!tryItSpec || !tryItAnswer.trim()) return
+    const q = tryItSpec.question
+    const a = tryItAnswer.trim()
+    setTryItSpec(null)
+    setTryItAnswer('')
+    setTryItHintShown(false)
+    sendQuick(`[Try it] Question: "${q}" — My answer: "${a}". Please mark this step by step.`)
   }
 
   const statusLabel = {
@@ -415,8 +478,37 @@ export default function SpokPage() {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
+
+          {/* Previous session — shown only before the student sends a new message */}
+          {historyMessages.length > 0 && messages.length === 0 && (
+            <div className="pb-4 mb-2" style={{ borderBottom: '1px solid rgba(59,130,246,0.07)' }}>
+              <p className="text-xs text-center mb-4 font-mono" style={{ color: '#1e2d3d' }}>
+                last session
+              </p>
+              <div className="space-y-3">
+                {historyMessages.slice(-6).map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className="rounded-xl px-3 py-2 text-xs leading-relaxed"
+                      style={{
+                        maxWidth: '80%',
+                        opacity: 0.35,
+                        ...(msg.role === 'user'
+                          ? { background: 'rgba(59,130,246,0.12)', color: '#e8f0fe' }
+                          : { background: 'rgba(245,158,11,0.05)', color: '#fde9b8' }),
+                      }}>
+                      {msg.role === 'assistant' && (
+                        <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#f59e0b' }}>SPOK</p>
+                      )}
+                      <p>{msg.content.replace(/\[[\w]+\][\s\S]*?\[\/[\w]+\]/g, '').trim().slice(0, 180)}{msg.content.length > 180 ? '…' : ''}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {messages.length === 0 && (
-            <div className="mt-12">
+            <div className="mt-6">
               {greetingLoading ? (
                 <div className="flex items-center gap-2 justify-center">
                   <div className="flex gap-1">
@@ -493,18 +585,31 @@ export default function SpokPage() {
                       }
                     </div>
                   )}
-                  {msg.role === 'assistant' && isLastMsg && !isLoading && textContent && (
+                  {msg.role === 'assistant' && isLastMsg && !isLoading && textContent && quickReplies.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                      className="mt-2 flex flex-wrap gap-2">
+                      {quickReplies.map((reply, i) => (
+                        <button
+                          key={i}
+                          onClick={() => sendQuick(reply)}
+                          className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all hover:scale-[1.02] active:scale-[0.98]"
+                          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.09)', color: '#5a7aaa' }}>
+                          {reply}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                  {msg.role === 'assistant' && isLastMsg && !isLoading && textContent && quickReplies.length === 0 && (
                     <motion.button
                       initial={{ opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.4 }}
                       onClick={() => sendQuick('Can you explain that differently? Try a different angle or approach.')}
                       className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all hover:scale-[1.02]"
-                      style={{
-                        background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        color: '#5a7aaa',
-                      }}>
+                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#5a7aaa' }}>
                       <RefreshCw size={11} />
                       Explain differently
                     </motion.button>
@@ -657,8 +762,13 @@ export default function SpokPage() {
       {/* ── RIGHT — Full-panel Three.js canvas with overlaid UI ─────── */}
       <div className="flex-1 relative overflow-hidden" style={{ background: '#080d19' }}>
 
-        {/* Three.js canvas fills the entire panel */}
-        <div className="absolute inset-0" onClick={() => listening ? stopListening() : startListening()} style={{ cursor: 'pointer' }}>
+        {/* Three.js canvas fills the entire panel — tap to speak or interrupt */}
+        <div className="absolute inset-0" style={{ cursor: 'pointer' }}
+          onClick={() => {
+            if (speaking) { stopSpeaking(); startListening() }
+            else if (listening) stopListening()
+            else startListening()
+          }}>
           <JarvisScene amplitude={amplitude} state={jarvisState} />
         </div>
 
@@ -774,9 +884,107 @@ export default function SpokPage() {
           )}
         </AnimatePresence>
 
+        {/* "Try it yourself" interactive problem panel */}
+        <AnimatePresence>
+          {tryItSpec && !animateSpec && !diagramSpec && !animDiagramSpec && (
+            <motion.div
+              key="tryit-panel"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.35 }}
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center px-8 gap-4"
+              style={{ background: 'rgba(8,13,25,0.92)', backdropFilter: 'blur(8px)' }}
+              onClick={e => e.stopPropagation()}>
+              <div className="w-full max-w-sm space-y-4">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4ade80' }}>
+                    Your turn · {tryItSpec.topic}
+                  </p>
+                  <button
+                    onClick={() => { setTryItSpec(null); setTryItAnswer(''); setTryItHintShown(false) }}
+                    className="text-xs px-2 py-1 rounded-lg transition-opacity hover:opacity-80"
+                    style={{ color: 'rgba(74,222,128,0.5)', border: '1px solid rgba(74,222,128,0.2)' }}>
+                    ✕ skip
+                  </button>
+                </div>
+                {/* Question */}
+                <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(74,222,128,0.18)' }}>
+                  <p className="text-sm font-medium leading-relaxed" style={{ color: '#e8f0fe' }}>{tryItSpec.question}</p>
+                </div>
+                {/* Hint */}
+                <AnimatePresence>
+                  {tryItHintShown && (
+                    <motion.p
+                      initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                      className="text-xs px-4 py-3 rounded-xl leading-relaxed"
+                      style={{ color: '#94a3b8', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                      Hint: {tryItSpec.hint}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+                {/* Input */}
+                <input
+                  value={tryItAnswer}
+                  onChange={e => setTryItAnswer(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && tryItAnswer.trim() && handleTryItSubmit()}
+                  placeholder="Type your answer here…"
+                  autoFocus
+                  className="w-full bg-transparent text-sm outline-none px-4 py-3 rounded-xl"
+                  style={{ color: '#e8f0fe', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(59,130,246,0.25)' }}
+                />
+                {/* Actions */}
+                <div className="flex gap-2">
+                  {!tryItHintShown && (
+                    <button
+                      onClick={() => setTryItHintShown(true)}
+                      className="flex-1 py-2.5 rounded-xl text-xs font-medium transition-all"
+                      style={{ color: '#5a7aaa', border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.02)' }}>
+                      Show hint
+                    </button>
+                  )}
+                  <button
+                    onClick={handleTryItSubmit}
+                    disabled={!tryItAnswer.trim()}
+                    className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white transition-all disabled:opacity-30 hover:scale-[1.02] active:scale-[0.98]"
+                    style={{ background: 'rgba(74,222,128,0.18)', border: '1px solid rgba(74,222,128,0.35)' }}>
+                    Check answer →
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Idle panel — overall mastery when no visual is active */}
+        <AnimatePresence>
+          {jarvisState === 'idle' && !animateSpec && !diagramSpec && !animDiagramSpec && !tryItSpec && avgMastery > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.6 }}
+              className="absolute top-7 left-0 right-0 z-10 flex flex-col items-center gap-2 pointer-events-none">
+              <p className="text-xs font-mono uppercase tracking-widest" style={{ color: 'rgba(245,158,11,0.25)' }}>
+                Overall mastery
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="rounded-full overflow-hidden" style={{ width: 96, height: 4, background: 'rgba(255,255,255,0.05)' }}>
+                  <div className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${Math.round(avgMastery * 100)}%`, background: 'rgba(245,158,11,0.45)' }} />
+                </div>
+                <span className="text-xs font-mono" style={{ color: 'rgba(245,158,11,0.3)' }}>
+                  {Math.round(avgMastery * 100)}%
+                </span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Live word display — centre of panel */}
         <AnimatePresence mode="wait">
-          {currentSentence && !animateSpec && !diagramSpec && !animDiagramSpec && (
+          {currentSentence && !animateSpec && !diagramSpec && !animDiagramSpec && !tryItSpec && (
             <motion.div
               key={currentSentence}
               initial={{ opacity: 0, y: 8 }}
@@ -802,14 +1010,14 @@ export default function SpokPage() {
 
         {/* Tap to speak hint */}
         <AnimatePresence>
-          {jarvisState === 'idle' && !animateSpec && !diagramSpec && !animDiagramSpec && (
+          {jarvisState === 'idle' && !animateSpec && !diagramSpec && !animDiagramSpec && !tryItSpec && (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="absolute bottom-24 left-0 right-0 text-center text-xs font-mono z-10 pointer-events-none"
               style={{ color: 'rgba(245,158,11,0.35)' }}>
-              tap to speak
+              tap to speak · or interrupt
             </motion.p>
           )}
         </AnimatePresence>

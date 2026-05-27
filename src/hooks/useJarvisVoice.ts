@@ -48,12 +48,14 @@ function convertListsToSpeech(text: string): string {
 
 function cleanForTTS(text: string): string {
   return convertListsToSpeech(text)
-    // Strip all diagram/graph blocks — never speak JSON
+    // Strip all visual/interactive blocks — never speak JSON
     .replace(/\[GRAPH\][\s\S]*?\[\/GRAPH\]/g, '')
     .replace(/\[ANIMATE\][\s\S]*?\[\/ANIMATE\]/g, '')
     .replace(/\[DIAGRAM\][\s\S]*?\[\/DIAGRAM\]/g, '')
     .replace(/\[ADIAGRAM\][\s\S]*?\[\/ADIAGRAM\]/g, '')
     .replace(/\[KEYPOINTS\][\s\S]*?\[\/KEYPOINTS\]/g, '')
+    .replace(/\[QUICKREPLIES\][\s\S]*?\[\/QUICKREPLIES\]/g, '')
+    .replace(/\[TRYIT\][\s\S]*?\[\/TRYIT\]/g, '')
     // [TOPIC:slug|Name] → just say the topic name
     .replace(/\[TOPIC:[^\]|]+\|([^\]]+)\]/g, '$1')
     // Markdown cleanup — leave LaTeX intact for the API route's stripLatex
@@ -244,7 +246,7 @@ export function useJarvisVoice() {
 export function createSentenceBuffer() {
   let buffer = ''
 
-  const BOUNDARY = /([.!?]+\s+|[.!?]+$|\n\n)/
+  const BOUNDARY = /([.!?]+\s+|[.!?]+$|\n)/
 
   function feedText(chunk: string): string[] {
     buffer += chunk
