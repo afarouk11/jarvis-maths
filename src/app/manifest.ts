@@ -4,14 +4,16 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'StudiQ — AI A-Level Maths Tutor',
     short_name: 'StudiQ',
-    description: 'SPOK knows exactly what you don\'t know — and fixes it. AI-powered A-Level Maths tutoring.',
-    start_url: '/',
+    description: "SPOK knows exactly what you don't know — and fixes it. AI-powered A-Level Maths tutoring.",
+    start_url: '/dashboard',
     display: 'standalone',
     background_color: '#0F1724',
     theme_color: '#0F1724',
     orientation: 'portrait',
     categories: ['education'],
     lang: 'en-GB',
+    // @ts-ignore — not yet in MetadataRoute.Manifest type
+    prefer_related_applications: false,
     icons: [
       {
         src: '/api/pwa-icon/192',
@@ -28,6 +30,30 @@ export default function manifest(): MetadataRoute.Manifest {
         sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable',
+      },
+    ],
+    // @ts-ignore — shortcuts not yet in MetadataRoute.Manifest type
+    shortcuts: [
+      {
+        name: 'Practice',
+        short_name: 'Practice',
+        description: 'Start a spaced repetition session',
+        url: '/practice',
+        icons: [{ src: '/api/pwa-icon/192', sizes: '192x192' }],
+      },
+      {
+        name: 'Ask SPOK',
+        short_name: 'SPOK',
+        description: 'Chat with your AI maths tutor',
+        url: '/jarvis',
+        icons: [{ src: '/api/pwa-icon/192', sizes: '192x192' }],
+      },
+      {
+        name: 'Topics',
+        short_name: 'Topics',
+        description: 'Browse all maths topics',
+        url: '/topics',
+        icons: [{ src: '/api/pwa-icon/192', sizes: '192x192' }],
       },
     ],
     screenshots: [
