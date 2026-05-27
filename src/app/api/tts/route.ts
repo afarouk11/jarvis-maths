@@ -116,22 +116,34 @@ function stripLatex(text: string): string {
     .replace(/\\omega/g, ' omega ')
     .replace(/\\rho/g, ' rho ')
 
-  // Calculus & functions
+  // Calculus & functions — specific patterns first
   text = text
-    .replace(/\\int/g, ' the integral of ')
-    .replace(/\\sum/g, ' the sum of ')
-    .replace(/\\lim/g, ' the limit of ')
-    .replace(/\\log/g, ' log ')
-    .replace(/\\ln/g, ' ln ')
-    .replace(/\\sin/g, ' sine ')
-    .replace(/\\cos/g, ' cosine ')
-    .replace(/\\tan/g, ' tangent ')
-    .replace(/\\sec/g, ' sec ')
-    .replace(/\\csc/g, ' cosec ')
-    .replace(/\\cot/g, ' cot ')
-    .replace(/\\mathrm\{d\}/g, ' d')
-    .replace(/\\frac\{d\}\{dx\}/g, ' the derivative with respect to x of ')
-    .replace(/\\frac\{dy\}\{dx\}/g, ' dy by dx ')
+    .replace(/\\frac\{d\}\{dx\}/g, 'the derivative with respect to x of ')
+    .replace(/\\frac\{dy\}\{dx\}/g, 'dy by dx ')
+    .replace(/\\frac\{d([a-zA-Z])\}\{d([a-zA-Z])\}/g, 'd$1 by d$2 ')
+    .replace(/\\frac\{d\^2([a-zA-Z])\}\{d([a-zA-Z])\^2\}/g, 'the second derivative of $1 with respect to $2 ')
+    .replace(/\\int_\{([^}]*)\}\^\{([^}]*)\}/g, 'the integral from $1 to $2 of ')
+    .replace(/\\int/g, 'the integral of ')
+    .replace(/\\sum_\{([^}]*)\}\^\{([^}]*)\}/g, 'the sum from $1 to $2 of ')
+    .replace(/\\sum/g, 'the sum of ')
+    .replace(/\\lim_\{([^}]*)\}/g, 'the limit as $1 of ')
+    .replace(/\\lim/g, 'the limit of ')
+    .replace(/\\log_\{([^}]*)\}/g, 'log base $1 of ')
+    .replace(/\\log/g, 'log ')
+    .replace(/\\ln/g, 'ln ')
+    .replace(/\\arcsin/g, 'arc sine ')
+    .replace(/\\arccos/g, 'arc cosine ')
+    .replace(/\\arctan/g, 'arc tangent ')
+    .replace(/\\sin/g, 'sine ')
+    .replace(/\\cos/g, 'cosine ')
+    .replace(/\\tan/g, 'tangent ')
+    .replace(/\\sec/g, 'sec ')
+    .replace(/\\csc/g, 'cosec ')
+    .replace(/\\cot/g, 'cot ')
+    .replace(/\\mathrm\{d\}/g, 'd')
+    // Plain text bare operators after LaTeX strip
+    .replace(/dy\/dx/g, 'dy by dx ')
+    .replace(/d([a-z])\/d([a-z])/g, 'd$1 by d$2 ')
 
   // Step 3: Strip math delimiters but KEEP their (now-converted) content
   text = text
@@ -254,7 +266,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         text: cleanText,
         model_id: 'eleven_turbo_v2_5',
-        voice_settings: { stability: 0.48, similarity_boost: 0.82, style: 0.35, use_speaker_boost: true },
+        voice_settings: { stability: 0.38, similarity_boost: 0.75, style: 0.60, use_speaker_boost: true },
         speed: ttsSpeed,
       }),
     }
