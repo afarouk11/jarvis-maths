@@ -86,6 +86,7 @@ export async function POST(req: Request) {
 
   // RAG: embed the latest user message and find relevant past paper chunks
   let ragContext = ''
+  let graphImageUrls: string[] = []
   const lastUserMsg = [...messages].reverse().find((m: any) => m.role === 'user')
   const lastText = lastUserMsg?.parts?.find((p: any) => p.type === 'text')?.text
     ?? lastUserMsg?.content ?? ''
@@ -118,7 +119,7 @@ export async function POST(req: Request) {
         ragContext += '\n---'
       }
 
-      // Knowledge base: curated worked examples and concepts
+      // Knowledge base: curated worked examples, concepts, and graph references
       const { data: knowledge } = await supabase.rpc('match_knowledge', {
         query_embedding: embedding,
         match_count:     3,
@@ -127,10 +128,17 @@ export async function POST(req: Request) {
 
       if (knowledge && knowledge.length > 0) {
         ragContext += '\n\n---\nCurated knowledge base (prioritise these worked examples and concepts in your answer):\n'
-        ragContext += knowledge.map((k: any) =>
-          `[${k.type.replace('_', ' ')} — ${k.title}]\n${k.content}`
-        ).join('\n\n')
+        ragContext += knowledge.map((k: any) => {
+          const imageNote = k.image_url ? ' [Reference graph image injected as vision context above]' : ''
+          return `[${k.type.replace('_', ' ')} — ${k.title}]${imageNote}\n${k.content}`
+        }).join('\n\n')
         ragContext += '\n---'
+
+        // Collect image URLs from graph reference entries for vision injection.
+        // URL is embedded as "IMAGE_URL: <url>" on the first line of content.
+        graphImageUrls = (knowledge as any[])
+          .map(k => (k.content as string).match(/^IMAGE_URL:\s*(.+)$/m)?.[1]?.trim() ?? '')
+          .filter(Boolean)
       }
     } catch {
       // RAG failure is non-fatal — continue without it
@@ -165,10 +173,25 @@ export async function POST(req: Request) {
     await admin.from('spok_messages').insert({ user_id: user.id, role: 'user', content: lastText })
   }
 
+  const modelMessages = await convertToModelMessages(messages)
+
+  // If KB returned graph reference images, inject them before the last user message
+  // so Claude can see the example graph style when generating [GRAPH] blocks.
+  if (graphImageUrls.length > 0) {
+    const imageMessage = {
+      role: 'user' as const,
+      content: [
+        ...graphImageUrls.map(url => ({ type: 'image' as const, image: new URL(url) })),
+        { type: 'text' as const, text: 'These are reference graph images from the knowledge base for this topic. Use them as style and format references when generating [GRAPH] blocks — match the axis labels, annotation style, and visual structure.' },
+      ],
+    }
+    modelMessages.splice(modelMessages.length - 1, 0, imageMessage)
+  }
+
   const result = streamText({
     model: anthropic('claude-sonnet-4-6'),
     system,
-    messages: await convertToModelMessages(messages),
+    messages: modelMessages,
     maxOutputTokens: 16000,
     providerOptions: {
       anthropic: { thinking: { type: 'enabled', budgetTokens: 2000 } },
