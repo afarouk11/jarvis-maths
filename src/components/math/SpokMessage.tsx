@@ -4,15 +4,38 @@ import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import { GraphRenderer, parseGraphSpec } from '@/components/math/GraphRenderer'
-import { DiagramRenderer, parseDiagramSpec } from '@/components/math/DiagramRenderer'
-import { AnimatedDiagramRenderer, parseAnimDiagramSpec } from '@/components/math/AnimatedDiagramRenderer'
 
-function stripAnimateBlocks(text: string): string {
-  return text.replace(/\[ANIMATE\][\s\S]*?\[\/ANIMATE\]/g, '')
+// Blocks rendered elsewhere (right panel, chips, interactive) — strip from chat display
+const STRIP_BLOCKS = ['ANIMATE', 'ADIAGRAM', 'DIAGRAM', 'TRYIT', 'QUICKREPLIES']
+// Blocks rendered inline by SpokMessage — hide if incomplete during streaming
+const INLINE_BLOCKS = ['GRAPH', 'KEYPOINTS']
+
+function stripAllNonInline(text: string): string {
+  let result = text
+  for (const name of STRIP_BLOCKS) {
+    // Strip complete blocks
+    result = result.replace(new RegExp(`\\[${name}\\][\\s\\S]*?\\[\\/${name}\\]`, 'g'), '')
+    // Strip incomplete blocks that started but haven't closed yet (streaming)
+    const openIdx = result.lastIndexOf(`[${name}]`)
+    const closeIdx = result.lastIndexOf(`[/${name}]`)
+    if (openIdx !== -1 && openIdx > closeIdx) {
+      result = result.slice(0, openIdx)
+    }
+  }
+  return result
 }
 
-function stripAnimDiagramBlocks(text: string): string {
-  return text.replace(/\[ADIAGRAM\][\s\S]*?\[\/ADIAGRAM\]/g, '')
+function hideIncompleteInlineBlocks(text: string): string {
+  let result = text
+  for (const name of INLINE_BLOCKS) {
+    // If an opening tag exists without a matching closing tag, hide from opening to end
+    const openIdx = result.lastIndexOf(`[${name}]`)
+    const closeIdx = result.lastIndexOf(`[/${name}]`)
+    if (openIdx !== -1 && openIdx > closeIdx) {
+      result = result.slice(0, openIdx)
+    }
+  }
+  return result
 }
 
 function parseKeyPoints(text: string): string[] | null {
@@ -38,32 +61,23 @@ interface Props {
 
 export function SpokMessage({ content, color = '#d1deff' }: Props) {
   const keyPoints = parseKeyPoints(content)
-  const withoutAnimate = stripAnimateBlocks(content)
-  const withoutAnimDiagram = stripAnimDiagramBlocks(withoutAnimate)
-  const cleaned = stripKeyPointsBlocks(withoutAnimDiagram)
 
-  // Also parse [ADIAGRAM] blocks directly for in-chat rendering
-  const adiagramSegments: Array<{ index: number; content: string }> = []
-  const ADIAGRAM_RE = /\[ADIAGRAM\]([\s\S]*?)\[\/ADIAGRAM\]/g
-  let adiagramMatch
-  while ((adiagramMatch = ADIAGRAM_RE.exec(content)) !== null) {
-    if (adiagramMatch[1] !== undefined) {
-      adiagramSegments.push({ index: adiagramMatch.index, content: adiagramMatch[1].trim() })
-    }
-  }
+  // Strip right-panel blocks and any that are still mid-stream (no closing tag yet)
+  const withoutNonInline = stripAllNonInline(content)
+  // Strip complete [KEYPOINTS] so we render it as the styled box below
+  const withoutKeyPoints = stripKeyPointsBlocks(withoutNonInline)
+  // Hide any [GRAPH]/[KEYPOINTS] block that started streaming but isn't complete yet
+  const cleaned = hideIncompleteInlineBlocks(withoutKeyPoints)
 
-  const BLOCK_RE = /\[GRAPH\]([\s\S]*?)\[\/GRAPH\]|\[DIAGRAM\]([\s\S]*?)\[\/DIAGRAM\]/g
-  const segments: Array<{ type: 'text' | 'graph' | 'diagram'; content: string }> = []
+  // Split on [GRAPH] blocks only — [DIAGRAM]/[ADIAGRAM] are right-panel only
+  const BLOCK_RE = /\[GRAPH\]([\s\S]*?)\[\/GRAPH\]/g
+  const segments: Array<{ type: 'text' | 'graph'; content: string }> = []
   let last = 0
   let match
 
   while ((match = BLOCK_RE.exec(cleaned)) !== null) {
     if (match.index > last) segments.push({ type: 'text', content: cleaned.slice(last, match.index) })
-    if (match[1] !== undefined) {
-      segments.push({ type: 'graph', content: match[1].trim() })
-    } else if (match[2] !== undefined) {
-      segments.push({ type: 'diagram', content: match[2].trim() })
-    }
+    if (match[1] !== undefined) segments.push({ type: 'graph', content: match[1].trim() })
     last = match.index + match[0].length
   }
   if (last < cleaned.length) segments.push({ type: 'text', content: cleaned.slice(last) })
@@ -76,26 +90,8 @@ export function SpokMessage({ content, color = '#d1deff' }: Props) {
           const spec = parseGraphSpec(seg.content)
           return spec ? <GraphRenderer key={i} spec={spec} className="mt-2" /> : null
         }
-        if (seg.type === 'diagram') {
-          const spec = parseDiagramSpec(seg.content)
-          return spec ? <DiagramRenderer key={i} spec={spec} className="mt-2" /> : null
-        }
         return seg.content.trim() ? (
           <MarkdownMath key={i} content={seg.content} color={color} />
-        ) : null
-      })}
-
-      {/* Render any [ADIAGRAM] blocks found in the original content */}
-      {adiagramSegments.map((seg, i) => {
-        const spec = parseAnimDiagramSpec(seg.content)
-        // currentStep=999 shows the last step (fully accumulated diagram)
-        return spec ? (
-          <AnimatedDiagramRenderer
-            key={`adiagram-${i}`}
-            spec={spec}
-            currentStep={999}
-            className="mt-2"
-          />
         ) : null
       })}
 
