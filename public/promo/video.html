@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>StudIQ — Introducing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #000; height: 100%; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; color: #fff; }
+  #root { position: absolute; inset: 0; }
+
+  /* Audio prompt overlay */
+  #audio-prompt {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.92);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 9999;
+    cursor: pointer;
+    transition: opacity 0.6s ease;
+  }
+  #audio-prompt.hidden { opacity: 0; pointer-events: none; }
+  #audio-prompt .ring {
+    width: 120px; height: 120px;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 32px;
+    position: relative;
+  }
+  #audio-prompt .ring::before, #audio-prompt .ring::after {
+    content: ''; position: absolute; inset: 0;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 50%;
+    animation: pulseRing 2.4s ease-out infinite;
+  }
+  #audio-prompt .ring::after { animation-delay: 1.2s; }
+  @keyframes pulseRing {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(1.8); opacity: 0; }
+  }
+  #audio-prompt .play {
+    width: 0; height: 0;
+    border-left: 22px solid rgba(255,255,255,0.95);
+    border-top: 14px solid transparent;
+    border-bottom: 14px solid transparent;
+    margin-left: 6px;
+  }
+  #audio-prompt .label {
+    font-size: 13px; letter-spacing: 0.4em; text-transform: uppercase;
+    color: rgba(255,255,255,0.55); font-weight: 500;
+  }
+  #audio-prompt .sub {
+    margin-top: 12px; font-size: 12px; letter-spacing: 0.2em;
+    color: rgba(255,255,255,0.35); font-weight: 400;
+  }
+</style>
+</head>
+<body>
+
+<div id="audio-prompt">
+  <div class="ring"><div class="play"></div></div>
+  <div class="label">Tap to begin</div>
+  <div class="sub">with sound</div>
+</div>
+
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script src="audio.js"></script>
+<script src="narration.js"></script>
+<script type="text/babel" src="animations.jsx"></script>
+<script type="text/babel" src="effects.jsx"></script>
+<script type="text/babel" src="scenes-base.jsx"></script>
+<script type="text/babel" src="scene-1-coldopen.jsx"></script>
+<script type="text/babel" src="scene-2-introducing.jsx"></script>
+<script type="text/babel" src="scene-3-hero.jsx"></script>
+<script type="text/babel" src="scene-4-neuralmap.jsx"></script>
+<script type="text/babel" src="scene-5-papers.jsx"></script>
+<script type="text/babel" src="scene-6-spok.jsx"></script>
+<script type="text/babel" src="scene-7-cascade.jsx"></script>
+<script type="text/babel" src="scene-8-finale.jsx"></script>
+<script type="text/babel" src="main.jsx"></script>
+
+<script>
+  // Sync audio with playhead. Audio starts on first user tap.
+  const prompt = document.getElementById('audio-prompt');
+  prompt.addEventListener('click', () => {
+    prompt.classList.add('hidden');
+    setTimeout(() => prompt.remove(), 700);
+    try {
+      // Reset playhead so audio and visuals start together
+      localStorage.setItem('studiq-promo:t', '0');
+    } catch (e) {}
+    if (window.StudiqAudio) window.StudiqAudio.start();
+    // Force a reload of just the Stage by re-mounting (simpler: dispatch event)
+    window.dispatchEvent(new Event('studiq-start'));
+  }, { once: true });
+</script>
+
+</body>
+</html>

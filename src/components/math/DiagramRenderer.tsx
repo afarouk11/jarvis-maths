@@ -23,11 +23,12 @@ export interface DiagramSpec {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const W = 460
-const H = 300
-const MARGIN = { top: 28, right: 24, bottom: 24, left: 24 }
+const W = 480
+const H = 320
+const MARGIN = { top: 32, right: 28, bottom: 28, left: 28 }
 const INNER_W = W - MARGIN.left - MARGIN.right
 const INNER_H = H - MARGIN.top - MARGIN.bottom
+const FONT = "'Inter', system-ui, sans-serif"
 
 // ─── Coordinate helpers ───────────────────────────────────────────────────────
 
@@ -48,7 +49,6 @@ function makeCoords(xDomain: [number, number], yDomain: [number, number]) {
 // ─── Arrowhead marker ID ──────────────────────────────────────────────────────
 
 function markerId(color: string) {
-  // Strip # and non-alphanumeric so the ID is valid XML
   return `arr-${color.replace(/[^a-zA-Z0-9]/g, '')}`
 }
 
@@ -58,11 +58,46 @@ function perpOffset(x1: number, y1: number, x2: number, y2: number, dist: number
   const dx = x2 - x1
   const dy = y2 - y1
   const len = Math.sqrt(dx * dx + dy * dy) || 1
-  // Perpendicular is (-dy, dx) normalized
   return [(-dy / len) * dist, (dx / len) * dist]
 }
 
-// ─── SVG element renderers ────────────────────────────────────────────────────
+// ─── Label pill helper ────────────────────────────────────────────────────────
+// Returns rect + text props for a centered label pill at (cx, cy).
+function LabelPill({
+  cx, cy, text, color, fontSize = 12,
+}: { cx: number; cy: number; text: string; color: string; fontSize?: number }) {
+  const charW = fontSize * 0.62
+  const pw = text.length * charW + 12
+  const ph = fontSize + 6
+  return (
+    <>
+      <rect
+        x={cx - pw / 2}
+        y={cy - ph / 2}
+        width={pw}
+        height={ph}
+        rx={ph / 2}
+        fill="rgba(8,13,28,0.88)"
+        stroke={`${color}44`}
+        strokeWidth={0.8}
+      />
+      <text
+        x={cx}
+        y={cy}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize={fontSize}
+        fontFamily={FONT}
+        fill={color}
+        fontWeight={700}
+      >
+        {text}
+      </text>
+    </>
+  )
+}
+
+// ─── Coordinate helpers ───────────────────────────────────────────────────────
 
 interface Coords {
   mx: (x: number) => number
@@ -79,6 +114,8 @@ interface RenderOptions {
   onElementClick?: (label: string, description: string) => void
 }
 
+// ─── SVG element renderers ────────────────────────────────────────────────────
+
 function renderCircle(
   el: Extract<DiagramElement, { kind: 'circle' }>,
   c: Coords,
@@ -89,7 +126,7 @@ function renderCircle(
   const cy = c.my(el.cy)
   const r = c.mLen(el.r)
   const color = el.color ?? '#3b82f6'
-  const labelY = cy - r - 8
+  const labelCY = cy - r - 12
   const hitKey = `circle-${key}`
   const isHovered = opts.hoveredKey === hitKey
   const isClickable = Boolean(el.label && opts.onElementClick)
@@ -100,33 +137,13 @@ function renderCircle(
         cx={cx}
         cy={cy}
         r={r}
-        fill={`${color}0d`}
+        fill={`${color}0f`}
         stroke={color}
-        strokeWidth={1.5}
-        strokeDasharray={el.dashed ? '6 3' : undefined}
+        strokeWidth={2}
+        strokeDasharray={el.dashed ? '7 4' : undefined}
       />
       {el.label && (
-        <>
-          <rect
-            x={cx - el.label.length * 3.5 - 3}
-            y={labelY - 11}
-            width={el.label.length * 7 + 6}
-            height={14}
-            rx={3}
-            fill="rgba(8,13,28,0.8)"
-          />
-          <text
-            x={cx}
-            y={labelY}
-            textAnchor="middle"
-            fontSize={10}
-            fontFamily="system-ui,sans-serif"
-            fill={color}
-            fontWeight={600}
-          >
-            {el.label}
-          </text>
-        </>
+        <LabelPill cx={cx} cy={labelCY} text={el.label} color={color} />
       )}
     </g>
   )
@@ -145,64 +162,38 @@ function renderPoint(
   const hitKey = `point-${key}`
   const isHovered = opts.hoveredKey === hitKey
 
-  // Centre of diagram in SVG coords
   const svgCx = c.mx((c.xMin + c.xMax) / 2)
   const svgCy = c.my((c.yMin + c.yMax) / 2)
-
-  // Direction away from diagram centre
   const dx = px - svgCx
   const dy = py - svgCy
   const dist = Math.sqrt(dx * dx + dy * dy) || 1
   const nx = dx / dist
   const ny = dy / dist
 
-  const labelOffsetDist = 14
-  let labelX = px + nx * labelOffsetDist
-  let labelY = py + ny * labelOffsetDist
-
-  // If point is near the diagram centre, place label above-right
-  if (dist < 5) {
-    labelX = px + 10
-    labelY = py - 10
-  }
+  const OFFSET = 16
+  let labelCX = px + nx * OFFSET
+  let labelCY = py + ny * OFFSET
+  if (dist < 5) { labelCX = px + 11; labelCY = py - 11 }
 
   const label = el.label ?? ''
-  const labelW = label.length * 6.5 + 8
   const isClickable = Boolean(label && opts.onElementClick)
 
   return (
     <g key={key} filter={isHovered && isClickable ? 'url(#amber-glow)' : undefined}>
-      <circle cx={px} cy={py} r={4.5} fill={color} />
+      {/* outer ring */}
+      <circle cx={px} cy={py} r={8} fill={`${color}18`} />
+      <circle cx={px} cy={py} r={5} fill={color} />
       {el.draggable && (
-        /* 4-dot drag handle icon */
         <g style={{ pointerEvents: 'none' }}>
-          {[[-3, -3], [3, -3], [-3, 3], [3, 3]].map(([ox, oy], di) => (
-            <circle key={di} cx={px + 10 + (ox ?? 0)} cy={py + (oy ?? 0)} r={1} fill="rgba(245,158,11,0.6)" />
-          ))}
+          {([-3, 3] as number[]).flatMap(ox =>
+            ([-3, 3] as number[]).map((oy, di) => (
+              <circle key={`${ox}-${di}`} cx={px + 11 + ox} cy={py + oy} r={1.2} fill="rgba(245,158,11,0.7)" />
+            ))
+          )}
         </g>
       )}
       {label && (
-        <>
-          <rect
-            x={labelX - labelW / 2 - 2}
-            y={labelY - 10}
-            width={labelW}
-            height={13}
-            rx={3}
-            fill="rgba(8,13,28,0.82)"
-          />
-          <text
-            x={labelX}
-            y={labelY}
-            textAnchor="middle"
-            fontSize={10}
-            fontFamily="system-ui,sans-serif"
-            fill={color}
-            fontWeight={700}
-          >
-            {label}
-          </text>
-        </>
+        <LabelPill cx={labelCX} cy={labelCY} text={label} color={color} />
       )}
     </g>
   )
@@ -222,17 +213,15 @@ function renderVector(
   const color = el.color ?? '#3b82f6'
   const mid = markerId(color)
 
-  // Shorten end by 8px so arrowhead tip lands at (x2,y2)
   const dx = x2 - x1
   const dy = y2 - y1
   const len = Math.sqrt(dx * dx + dy * dy) || 1
-  const ex = x2 - (dx / len) * 8
-  const ey = y2 - (dy / len) * 8
+  const ex = x2 - (dx / len) * 9
+  const ey = y2 - (dy / len) * 9
 
-  // Label at midpoint, offset 10px perpendicular
   const midX = (x1 + x2) / 2
   const midY = (y1 + y2) / 2
-  const [ox, oy] = perpOffset(x1, y1, x2, y2, 12)
+  const [ox, oy] = perpOffset(x1, y1, x2, y2, 15)
 
   const hitKey = `vector-${key}`
   const isHovered = opts.hoveredKey === hitKey
@@ -241,37 +230,15 @@ function renderVector(
   return (
     <g key={key} filter={isHovered && isClickable ? 'url(#amber-glow)' : undefined}>
       <line
-        x1={x1}
-        y1={y1}
-        x2={ex}
-        y2={ey}
+        x1={x1} y1={y1} x2={ex} y2={ey}
         stroke={color}
-        strokeWidth={1.8}
-        strokeDasharray={el.dashed ? '6 3' : undefined}
+        strokeWidth={2.4}
+        strokeDasharray={el.dashed ? '7 4' : undefined}
         markerEnd={`url(#${mid})`}
+        strokeLinecap="round"
       />
       {el.label && (
-        <>
-          <rect
-            x={midX + ox - el.label.length * 3.5 - 3}
-            y={midY + oy - 10}
-            width={el.label.length * 7 + 6}
-            height={13}
-            rx={3}
-            fill="rgba(8,13,28,0.82)"
-          />
-          <text
-            x={midX + ox}
-            y={midY + oy}
-            textAnchor="middle"
-            fontSize={10}
-            fontFamily="system-ui,sans-serif"
-            fill={color}
-            fontWeight={600}
-          >
-            {el.label}
-          </text>
-        </>
+        <LabelPill cx={midX + ox} cy={midY + oy} text={el.label} color={color} />
       )}
     </g>
   )
@@ -292,7 +259,7 @@ function renderSegment(
 
   const midX = (x1 + x2) / 2
   const midY = (y1 + y2) / 2
-  const [ox, oy] = perpOffset(x1, y1, x2, y2, 12)
+  const [ox, oy] = perpOffset(x1, y1, x2, y2, 15)
 
   const hitKey = `segment-${key}`
   const isHovered = opts.hoveredKey === hitKey
@@ -301,36 +268,14 @@ function renderSegment(
   return (
     <g key={key} filter={isHovered && isClickable ? 'url(#amber-glow)' : undefined}>
       <line
-        x1={x1}
-        y1={y1}
-        x2={x2}
-        y2={y2}
+        x1={x1} y1={y1} x2={x2} y2={y2}
         stroke={color}
-        strokeWidth={1.8}
-        strokeDasharray={el.dashed ? '6 3' : undefined}
+        strokeWidth={2.2}
+        strokeDasharray={el.dashed ? '7 4' : undefined}
+        strokeLinecap="round"
       />
       {el.label && (
-        <>
-          <rect
-            x={midX + ox - el.label.length * 3.5 - 3}
-            y={midY + oy - 10}
-            width={el.label.length * 7 + 6}
-            height={13}
-            rx={3}
-            fill="rgba(8,13,28,0.82)"
-          />
-          <text
-            x={midX + ox}
-            y={midY + oy}
-            textAnchor="middle"
-            fontSize={10}
-            fontFamily="system-ui,sans-serif"
-            fill={color}
-            fontWeight={600}
-          >
-            {el.label}
-          </text>
-        </>
+        <LabelPill cx={midX + ox} cy={midY + oy} text={el.label} color={color} />
       )}
     </g>
   )
@@ -344,32 +289,27 @@ function renderNorth(
   const bx = c.mx(el.x)
   const by = c.my(el.y)
   const len = c.mLen(el.len ?? 2.5)
-  const color = 'rgba(255,255,255,0.7)'
+  const color = 'rgba(255,255,255,0.75)'
   const mid = markerId('north-white')
 
-  // Arrow goes straight up in SVG (negative y)
   const tipX = bx
   const tipY = by - len
-  const shaftEndY = tipY + 8 // shorten for arrowhead
+  const shaftEndY = tipY + 9
 
   return (
     <g key={key}>
       <line
-        x1={bx}
-        y1={by}
-        x2={tipX}
-        y2={shaftEndY}
+        x1={bx} y1={by} x2={tipX} y2={shaftEndY}
         stroke={color}
-        strokeWidth={1.5}
+        strokeWidth={1.8}
         markerEnd={`url(#${mid})`}
       />
-      {/* "N" label above arrowhead */}
       <text
-        x={tipX}
-        y={tipY - 4}
+        x={tipX} y={tipY - 6}
         textAnchor="middle"
-        fontSize={10}
-        fontFamily="system-ui,sans-serif"
+        dominantBaseline="central"
+        fontSize={12}
+        fontFamily={FONT}
         fill={color}
         fontWeight={700}
       >
@@ -390,7 +330,6 @@ function renderArc(
   const svgR = c.mLen(el.r)
   const color = el.color ?? '#fbbf24'
 
-  // Math degrees → SVG angle (negate because y is flipped in SVG)
   const svgAngleRad = (mathDeg: number) => (-mathDeg * Math.PI) / 180
 
   const p1x = svgCx + svgR * Math.cos(svgAngleRad(el.fromAngle))
@@ -398,18 +337,15 @@ function renderArc(
   const p2x = svgCx + svgR * Math.cos(svgAngleRad(el.toAngle))
   const p2y = svgCy + svgR * Math.sin(svgAngleRad(el.toAngle))
 
-  // Clockwise span in math space = fromAngle - toAngle (mod 360)
   const span = ((el.fromAngle - el.toAngle) % 360 + 360) % 360
   const largeArcFlag = span > 180 ? 1 : 0
-  // sweepFlag=0 because SVG y-axis is flipped → clockwise in math = anticlockwise in SVG
   const d = `M ${p1x} ${p1y} A ${svgR} ${svgR} 0 ${largeArcFlag} 0 ${p2x} ${p2y}`
 
-  // Label at midpoint angle, offset outward
   const midMathAngle = el.fromAngle - span / 2
   const midSvgAngle = svgAngleRad(midMathAngle)
-  const labelDist = svgR + 14
-  const labelX = svgCx + labelDist * Math.cos(midSvgAngle)
-  const labelY = svgCy + labelDist * Math.sin(midSvgAngle)
+  const labelDist = svgR + 16
+  const labelCX = svgCx + labelDist * Math.cos(midSvgAngle)
+  const labelCY = svgCy + labelDist * Math.sin(midSvgAngle)
 
   const hitKey = `arc-${key}`
   const isHovered = opts.hoveredKey === hitKey
@@ -417,34 +353,9 @@ function renderArc(
 
   return (
     <g key={key} filter={isHovered && isClickable ? 'url(#amber-glow)' : undefined}>
-      <path
-        d={d}
-        fill="none"
-        stroke={color}
-        strokeWidth={1.5}
-      />
+      <path d={d} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" />
       {el.label && (
-        <>
-          <rect
-            x={labelX - el.label.length * 3.5 - 3}
-            y={labelY - 10}
-            width={el.label.length * 7 + 6}
-            height={13}
-            rx={3}
-            fill="rgba(8,13,28,0.82)"
-          />
-          <text
-            x={labelX}
-            y={labelY}
-            textAnchor="middle"
-            fontSize={10}
-            fontFamily="system-ui,sans-serif"
-            fill={color}
-            fontWeight={600}
-          >
-            {el.label}
-          </text>
-        </>
+        <LabelPill cx={labelCX} cy={labelCY} text={el.label} color={color} />
       )}
     </g>
   )
@@ -457,33 +368,23 @@ function renderRightAngle(
 ) {
   const px = c.mx(el.x)
   const py = c.my(el.y)
-  const size = c.mLen(el.size ?? 0.35)
-  const color = 'rgba(255,255,255,0.7)'
+  const size = c.mLen(el.size ?? 0.4)
+  const color = 'rgba(255,255,255,0.65)'
 
-  // angle is math degrees — convert to SVG radians (negate for y-flip)
   const a1 = (-el.angle * Math.PI) / 180
   const a2 = (-(el.angle + 90) * Math.PI) / 180
 
-  // Two points along the two sides
   const ax = px + size * Math.cos(a1)
   const ay = py + size * Math.sin(a1)
   const bx = px + size * Math.cos(a2)
   const by = py + size * Math.sin(a2)
-
-  // Corner of the square
   const cornerX = ax + size * Math.cos(a2)
   const cornerY = ay + size * Math.sin(a2)
 
   const d = `M ${ax} ${ay} L ${cornerX} ${cornerY} L ${bx} ${by}`
 
   return (
-    <path
-      key={key}
-      d={d}
-      fill="none"
-      stroke={color}
-      strokeWidth={1.2}
-    />
+    <path key={key} d={d} fill="none" stroke={color} strokeWidth={1.5} />
   )
 }
 
@@ -494,7 +395,7 @@ function renderLabel(
 ) {
   const lx = c.mx(el.x)
   const ly = c.my(el.y)
-  const color = el.color ?? 'rgba(255,255,255,0.85)'
+  const color = el.color ?? 'rgba(255,255,255,0.9)'
   const anchor = el.anchor ?? 'middle'
 
   return (
@@ -503,9 +404,11 @@ function renderLabel(
       x={lx}
       y={ly}
       textAnchor={anchor}
-      fontSize={10}
-      fontFamily="system-ui,sans-serif"
+      dominantBaseline="central"
+      fontSize={12}
+      fontFamily={FONT}
       fill={color}
+      fontWeight={500}
     >
       {el.text}
     </text>
@@ -518,61 +421,49 @@ function renderGrid(c: Coords) {
   const lines: React.ReactElement[] = []
   const { xMin, xMax, yMin, yMax } = c
 
-  // Vertical grid lines at each integer x
   for (let x = Math.ceil(xMin); x <= Math.floor(xMax); x++) {
     lines.push(
       <line
         key={`gx${x}`}
-        x1={c.mx(x)}
-        y1={MARGIN.top}
-        x2={c.mx(x)}
-        y2={MARGIN.top + INNER_H}
-        stroke="rgba(255,255,255,0.04)"
+        x1={c.mx(x)} y1={MARGIN.top}
+        x2={c.mx(x)} y2={MARGIN.top + INNER_H}
+        stroke="rgba(255,255,255,0.05)"
         strokeWidth={1}
       />,
     )
   }
 
-  // Horizontal grid lines at each integer y
   for (let y = Math.ceil(yMin); y <= Math.floor(yMax); y++) {
     lines.push(
       <line
         key={`gy${y}`}
-        x1={MARGIN.left}
-        y1={c.my(y)}
-        x2={MARGIN.left + INNER_W}
-        y2={c.my(y)}
-        stroke="rgba(255,255,255,0.04)"
+        x1={MARGIN.left} y1={c.my(y)}
+        x2={MARGIN.left + INNER_W} y2={c.my(y)}
+        stroke="rgba(255,255,255,0.05)"
         strokeWidth={1}
       />,
     )
   }
 
-  // x-axis (y=0) if in domain
   if (yMin <= 0 && yMax >= 0) {
     lines.push(
       <line
         key="xaxis"
-        x1={MARGIN.left}
-        y1={c.my(0)}
-        x2={MARGIN.left + INNER_W}
-        y2={c.my(0)}
-        stroke="rgba(255,255,255,0.12)"
+        x1={MARGIN.left} y1={c.my(0)}
+        x2={MARGIN.left + INNER_W} y2={c.my(0)}
+        stroke="rgba(255,255,255,0.2)"
         strokeWidth={1}
       />,
     )
   }
 
-  // y-axis (x=0) if in domain
   if (xMin <= 0 && xMax >= 0) {
     lines.push(
       <line
         key="yaxis"
-        x1={c.mx(0)}
-        y1={MARGIN.top}
-        x2={c.mx(0)}
-        y2={MARGIN.top + INNER_H}
-        stroke="rgba(255,255,255,0.12)"
+        x1={c.mx(0)} y1={MARGIN.top}
+        x2={c.mx(0)} y2={MARGIN.top + INNER_H}
+        stroke="rgba(255,255,255,0.2)"
         strokeWidth={1}
       />,
     )
@@ -581,41 +472,34 @@ function renderGrid(c: Coords) {
   return lines
 }
 
-// ─── Defs (arrowhead markers + glow filter) ───────────────────────────────────
+// ─── Defs ─────────────────────────────────────────────────────────────────────
 
 function renderDefs(elements: DiagramElement[]) {
-  // Collect unique colors needed for arrowhead markers
   const arrowColors = new Set<string>()
 
   for (const el of elements) {
-    if (el.kind === 'vector') {
-      arrowColors.add(el.color ?? '#3b82f6')
-    }
-    if (el.kind === 'north') {
-      arrowColors.add('rgba(255,255,255,0.7)')
-    }
+    if (el.kind === 'vector') arrowColors.add(el.color ?? '#3b82f6')
+    if (el.kind === 'north') arrowColors.add('rgba(255,255,255,0.75)')
   }
 
-  // Also ensure north white marker is always available if north elements exist
-  const hasNorth = elements.some(el => el.kind === 'north')
-  if (hasNorth) {
-    arrowColors.add('rgba(255,255,255,0.7)')
+  if (elements.some(el => el.kind === 'north')) {
+    arrowColors.add('rgba(255,255,255,0.75)')
   }
 
   const markers = Array.from(arrowColors).map(color => {
-    const id = markerId(color === 'rgba(255,255,255,0.7)' ? 'north-white' : color)
+    const id = markerId(color === 'rgba(255,255,255,0.75)' ? 'north-white' : color)
     return (
       <marker
         key={id}
         id={id}
-        markerWidth={8}
-        markerHeight={8}
-        refX={6}
-        refY={3}
+        markerWidth={10}
+        markerHeight={10}
+        refX={8}
+        refY={4}
         orient="auto"
         markerUnits="userSpaceOnUse"
       >
-        <path d="M0,0 L0,6 L8,3 z" fill={color} />
+        <path d="M0,0 L0,8 L10,4 z" fill={color} />
       </marker>
     )
   })
@@ -623,8 +507,11 @@ function renderDefs(elements: DiagramElement[]) {
   return (
     <defs>
       {markers}
-      <filter id="amber-glow" x="-20%" y="-20%" width="140%" height="140%">
-        <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#f59e0b" floodOpacity="0.9" />
+      <filter id="amber-glow" x="-25%" y="-25%" width="150%" height="150%">
+        <feDropShadow dx="0" dy="0" stdDeviation="5" floodColor="#f59e0b" floodOpacity="0.95" />
+      </filter>
+      <filter id="line-glow" x="-10%" y="-10%" width="120%" height="120%">
+        <feDropShadow dx="0" dy="0" stdDeviation="2" floodColor="#60a5fa" floodOpacity="0.4" />
       </filter>
     </defs>
   )
@@ -638,16 +525,11 @@ interface TooltipState {
   lines: string[]
 }
 
-// ─── Whiteboard Canvas Component ──────────────────────────────────────────────
+// ─── Whiteboard Canvas ────────────────────────────────────────────────────────
 
 type WhiteboardTool = 'pen' | 'eraser'
 
-interface WhiteboardCanvasProps {
-  width: number
-  height: number
-}
-
-function WhiteboardCanvas({ width, height }: WhiteboardCanvasProps) {
+function WhiteboardCanvas({ width, height }: { width: number; height: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const isDrawing = useRef(false)
   const [tool, setTool] = useState<WhiteboardTool>('pen')
@@ -672,10 +554,10 @@ function WhiteboardCanvas({ width, height }: WhiteboardCanvasProps) {
     if (tool === 'pen') {
       ctx.globalCompositeOperation = 'source-over'
       ctx.strokeStyle = '#f59e0b'
-      ctx.lineWidth = 2
+      ctx.lineWidth = 2.5
     } else {
       ctx.globalCompositeOperation = 'destination-out'
-      ctx.lineWidth = 16
+      ctx.lineWidth = 18
     }
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
@@ -699,10 +581,14 @@ function WhiteboardCanvas({ width, height }: WhiteboardCanvasProps) {
   const clearCanvas = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height)
   }, [])
+
+  const btnBase: React.CSSProperties = {
+    width: 28, height: 28, borderRadius: 6, fontSize: 13,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer',
+  }
 
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 10 }}>
@@ -716,11 +602,7 @@ function WhiteboardCanvas({ width, height }: WhiteboardCanvasProps) {
         onPointerUp={onPointerUp}
         onPointerLeave={onPointerUp}
       />
-      {/* Whiteboard toolbar */}
-      <div style={{
-        position: 'absolute', bottom: 8, left: 10,
-        display: 'flex', gap: 4, zIndex: 11,
-      }}>
+      <div style={{ position: 'absolute', bottom: 10, left: 12, display: 'flex', gap: 5, zIndex: 11 }}>
         {([
           { t: 'pen' as WhiteboardTool, icon: '✏' },
           { t: 'eraser' as WhiteboardTool, icon: '◻' },
@@ -730,11 +612,10 @@ function WhiteboardCanvas({ width, height }: WhiteboardCanvasProps) {
             onClick={() => setTool(t)}
             title={t}
             style={{
-              width: 24, height: 24, borderRadius: 5, fontSize: 12,
+              ...btnBase,
               background: tool === t ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.06)',
-              border: `1px solid ${tool === t ? 'rgba(245,158,11,0.5)' : 'rgba(255,255,255,0.12)'}`,
-              color: tool === t ? '#f59e0b' : 'rgba(255,255,255,0.6)',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: `1px solid ${tool === t ? 'rgba(245,158,11,0.5)' : 'rgba(255,255,255,0.1)'}`,
+              color: tool === t ? '#f59e0b' : 'rgba(255,255,255,0.5)',
             }}>
             {icon}
           </button>
@@ -743,10 +624,10 @@ function WhiteboardCanvas({ width, height }: WhiteboardCanvasProps) {
           onClick={clearCanvas}
           title="Clear"
           style={{
-            width: 24, height: 24, borderRadius: 5, fontSize: 12,
-            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
-            color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
+            ...btnBase,
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            color: 'rgba(255,255,255,0.5)',
           }}>
           ✕
         </button>
@@ -768,28 +649,19 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
   const yDomain: [number, number] = spec.yDomain ?? [-8, 8]
   const c = makeCoords(xDomain, yDomain)
 
-  // ── Zoom / pan state ──
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const dragRef = useRef<{ startX: number; startY: number; panX: number; panY: number } | null>(null)
   const svgRef = useRef<SVGSVGElement>(null)
 
-  // ── Tooltip state ──
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
-
-  // ── Hover state for clickable elements ──
   const [hoveredKey, setHoveredKey] = useState<string | null>(null)
-
-  // ── Whiteboard state ──
   const [whiteboardActive, setWhiteboardActive] = useState(false)
-
-  // ── Draggable points state ──
   const [draggedPositions, setDraggedPositions] = useState<Record<string, { x: number; y: number }>>({})
   const [draggingLabel, setDraggingLabel] = useState<string | null>(null)
   const [dragTooltip, setDragTooltip] = useState<{ label: string; x: number; y: number } | null>(null)
   const activeDragRef = useRef<{ label: string; origX: number; origY: number } | null>(null)
 
-  // Convert SVG pixel coords (in viewBox space) to math coords
   const svgToMath = useCallback((svgX: number, svgY: number) => {
     const [xMin, xMax] = xDomain
     const [yMin, yMax] = yDomain
@@ -798,15 +670,12 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
     return { mathX, mathY }
   }, [xDomain, yDomain])
 
-  // Convert client coords to viewBox coords (undoing the translate+scale transform on <g>)
   const clientToViewBox = useCallback((clientX: number, clientY: number) => {
     const svg = svgRef.current
     if (!svg) return null
     const rect = svg.getBoundingClientRect()
     const svgX = ((clientX - rect.left) / rect.width) * W
     const svgY = ((clientY - rect.top) / rect.height) * H
-    // The <g> transform is translate(pan.x, pan.y) scale(zoom) from origin (0,0)
-    // so to undo: subtract pan first, then divide by zoom
     const unzoomedX = (svgX - pan.x) / zoom
     const unzoomedY = (svgY - pan.y) / zoom
     return { svgX: unzoomedX, svgY: unzoomedY }
@@ -831,10 +700,8 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
   }, [])
 
   const onMouseUp = useCallback(() => { dragRef.current = null }, [])
-
   const resetView = () => { setZoom(1); setPan({ x: 0, y: 0 }) }
 
-  // ── Draggable point handlers ──
   const handleDragPointMove = useCallback((e: MouseEvent) => {
     const active = activeDragRef.current
     if (!active) return
@@ -860,28 +727,8 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
     }
   }, [handleDragPointMove, handleDragPointUp])
 
-  // Build hover targets from point elements
-  const hoverTargets = spec.elements
-    .filter((el): el is Extract<DiagramElement, { kind: 'point' }> => el.kind === 'point')
-    .map(el => {
-      const overridePos = el.label ? draggedPositions[el.label] : undefined
-      return {
-        svgX: c.mx(overridePos?.x ?? el.x),
-        svgY: c.my(overridePos?.y ?? el.y),
-        lines: [
-          el.label ? `${el.label}` : '',
-          `(${el.x}, ${el.y})`,
-        ].filter(Boolean),
-        mathX: el.x,
-        mathY: el.y,
-        label: el.label,
-      }
-    })
-
-  // Build render options
   const opts: RenderOptions = { hoveredKey, onElementClick }
 
-  // Compute overridden segment/vector endpoints
   const getEndpointOverride = useCallback((el: Extract<DiagramElement, { kind: 'segment' | 'vector' }>) => {
     let x1 = el.x1, y1 = el.y1, x2 = el.x2, y2 = el.y2
     let changed = false
@@ -897,45 +744,52 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
   }, [draggedPositions, spec.elements])
 
   const transform = `translate(${pan.x}, ${pan.y}) scale(${zoom})`
-  const transformOrigin = `${W / 2} ${H / 2}`
-
   const isDraggingAPoint = draggingLabel !== null
+
+  const btnCtrl: React.CSSProperties = {
+    width: 26, height: 26, borderRadius: 6, fontSize: 13, lineHeight: 1,
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    color: 'rgba(255,255,255,0.55)',
+    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+  }
 
   return (
     <div className={className}>
       {spec.title && (
-        <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-2">
+        <p style={{
+          fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
+          color: '#fbbf24', textTransform: 'uppercase',
+          marginBottom: 8, fontFamily: FONT,
+          textShadow: '0 0 12px rgba(251,191,36,0.4)',
+        }}>
           {spec.title}
         </p>
       )}
 
       <div style={{ position: 'relative' }}>
-        {/* Whiteboard button (when inactive) */}
         {!whiteboardActive && (
           <button
             onClick={() => setWhiteboardActive(true)}
             title="Open whiteboard"
             style={{
-              position: 'absolute', bottom: 8, left: 10, zIndex: 5,
-              width: 22, height: 22, borderRadius: 5, fontSize: 13,
-              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
-              color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex',
-              alignItems: 'center', justifyContent: 'center',
+              ...btnCtrl,
+              position: 'absolute', bottom: 10, left: 12, zIndex: 5, fontSize: 14,
             }}>
             📝
           </button>
         )}
 
-        {/* Done button (when whiteboard active) */}
         {whiteboardActive && (
           <button
             onClick={() => setWhiteboardActive(false)}
             title="Close whiteboard"
             style={{
-              position: 'absolute', top: 8, right: 10, zIndex: 15,
-              padding: '2px 8px', borderRadius: 5, fontSize: 11,
-              background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)',
-              color: '#f59e0b', cursor: 'pointer',
+              position: 'absolute', top: 10, right: 12, zIndex: 15,
+              padding: '3px 10px', borderRadius: 6, fontSize: 11,
+              background: 'rgba(245,158,11,0.15)',
+              border: '1px solid rgba(245,158,11,0.35)',
+              color: '#f59e0b', cursor: 'pointer', fontFamily: FONT,
             }}>
             Done
           </button>
@@ -947,9 +801,10 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
           width="100%"
           height="auto"
           style={{
-            background: 'rgba(8,13,28,0.85)',
-            borderRadius: 12,
-            border: '1px solid rgba(59,130,246,0.12)',
+            background: 'rgba(6,10,22,0.92)',
+            borderRadius: 14,
+            border: '1px solid rgba(245,158,11,0.18)',
+            boxShadow: '0 0 0 1px rgba(245,158,11,0.06), 0 8px 40px rgba(0,0,0,0.55)',
             display: 'block',
             cursor: isDraggingAPoint ? 'none' : dragRef.current ? 'grabbing' : whiteboardActive ? 'none' : 'grab',
             userSelect: 'none',
@@ -965,7 +820,7 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
         >
           {renderDefs(spec.elements)}
 
-          <g transform={transform} style={{ transformOrigin }}>
+          <g transform={transform}>
             {renderGrid(c)}
 
             {spec.elements.map((el, i) => {
@@ -992,7 +847,7 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
               }
             })}
 
-            {/* Invisible hit areas for all labelled elements */}
+            {/* Hit areas */}
             {spec.elements.map((el, i) => {
               if (el.kind === 'point') {
                 const hitKey = `point-${i}`
@@ -1001,25 +856,19 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
                 const py = c.my(overridePos?.y ?? el.y)
                 const isDraggable = el.draggable === true
                 const isClickable = Boolean(el.label && onElementClick)
-
                 if (!el.label && !isDraggable) return null
-
                 return (
                   <circle
                     key={`hit-${i}`}
-                    cx={px}
-                    cy={py}
-                    r={isDraggable ? 16 : 14}
+                    cx={px} cy={py}
+                    r={isDraggable ? 18 : 16}
                     fill="transparent"
                     style={{ cursor: isDraggable ? 'grab' : isClickable ? 'pointer' : 'crosshair' }}
                     onMouseEnter={() => {
                       setTooltip({ svgX: px, svgY: py, lines: [el.label ?? '', `(${el.x}, ${el.y})`].filter(Boolean) })
                       if (isClickable || isDraggable) setHoveredKey(hitKey)
                     }}
-                    onMouseLeave={() => {
-                      setTooltip(null)
-                      setHoveredKey(null)
-                    }}
+                    onMouseLeave={() => { setTooltip(null); setHoveredKey(null) }}
                     onMouseDown={isDraggable && el.label ? (e) => {
                       e.stopPropagation()
                       activeDragRef.current = { label: el.label!, origX: el.x, origY: el.y }
@@ -1045,17 +894,13 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
                 return (
                   <circle
                     key={`hit-${i}`}
-                    cx={svgCx}
-                    cy={svgCy}
-                    r={svgR + 6}
+                    cx={svgCx} cy={svgCy}
+                    r={svgR + 8}
                     fill="transparent"
                     style={{ cursor: 'pointer' }}
                     onMouseEnter={() => setHoveredKey(hitKey)}
                     onMouseLeave={() => setHoveredKey(null)}
-                    onClick={() => onElementClick(
-                      el.label ?? 'circle',
-                      `circle with centre (${el.cx}, ${el.cy}) and radius ${el.r}`
-                    )}
+                    onClick={() => onElementClick(el.label ?? 'circle', `circle with centre (${el.cx}, ${el.cy}) and radius ${el.r}`)}
                   />
                 )
               }
@@ -1075,11 +920,9 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
                 return (
                   <rect
                     key={`hit-${i}`}
-                    x={midX - 16}
-                    y={midY - 10}
-                    width={32}
-                    height={20}
-                    rx={4}
+                    x={midX - 18} y={midY - 12}
+                    width={36} height={24}
+                    rx={5}
                     fill="transparent"
                     style={{ cursor: 'pointer' }}
                     onMouseEnter={() => setHoveredKey(hitKey)}
@@ -1096,21 +939,19 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
                 const span = ((el.fromAngle - el.toAngle) % 360 + 360) % 360
                 const midMathAngle = el.fromAngle - span / 2
                 const midSvgAngle = (-midMathAngle * Math.PI) / 180
-                const labelDist = c.mLen(el.r) + 14
+                const labelDist = c.mLen(el.r) + 16
                 const labelX = svgCx + labelDist * Math.cos(midSvgAngle)
                 const labelY = svgCy + labelDist * Math.sin(midSvgAngle)
-                const description = `angle of ${el.label} marked here`
                 return (
                   <circle
                     key={`hit-${i}`}
-                    cx={labelX}
-                    cy={labelY}
-                    r={12}
+                    cx={labelX} cy={labelY}
+                    r={14}
                     fill="transparent"
                     style={{ cursor: 'pointer' }}
                     onMouseEnter={() => setHoveredKey(hitKey)}
                     onMouseLeave={() => setHoveredKey(null)}
-                    onClick={() => onElementClick(el.label ?? 'angle', description)}
+                    onClick={() => onElementClick(el.label ?? 'angle', `angle of ${el.label} marked here`)}
                   />
                 )
               }
@@ -1118,20 +959,28 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
               return null
             })}
 
-            {/* Tooltip rendered inside the zoom group so it moves with the diagram */}
+            {/* Hover tooltip */}
             {tooltip && (() => {
-              const ttW = Math.max(...tooltip.lines.map(l => l.length)) * 7 + 16
-              const ttH = tooltip.lines.length * 14 + 8
-              const ttX = tooltip.svgX + 10
-              const ttY = tooltip.svgY - ttH - 6
+              const lineH = 16
+              const ttW = Math.max(...tooltip.lines.map(l => l.length)) * 7.5 + 20
+              const ttH = tooltip.lines.length * lineH + 10
+              const ttX = tooltip.svgX + 12
+              const ttY = tooltip.svgY - ttH - 8
               return (
                 <g style={{ pointerEvents: 'none' }}>
-                  <rect x={ttX} y={ttY} width={ttW} height={ttH} rx={5}
-                    fill="rgba(8,13,28,0.95)" stroke="rgba(245,158,11,0.5)" strokeWidth={0.8} />
+                  <rect x={ttX} y={ttY} width={ttW} height={ttH} rx={6}
+                    fill="rgba(6,10,22,0.96)"
+                    stroke="rgba(245,158,11,0.45)"
+                    strokeWidth={1} />
                   {tooltip.lines.map((line, j) => (
-                    <text key={j} x={ttX + 8} y={ttY + 12 + j * 14}
-                      fontSize={10} fontFamily="system-ui,sans-serif"
-                      fill={j === 0 ? '#fbbf24' : '#e2e8f0'} fontWeight={j === 0 ? 700 : 400}>
+                    <text key={j}
+                      x={ttX + 10}
+                      y={ttY + 9 + j * lineH}
+                      dominantBaseline="central"
+                      fontSize={j === 0 ? 12 : 11}
+                      fontFamily={FONT}
+                      fill={j === 0 ? '#fbbf24' : '#cbd5e1'}
+                      fontWeight={j === 0 ? 700 : 400}>
                       {line}
                     </text>
                   ))}
@@ -1139,21 +988,25 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
               )
             })()}
 
-            {/* Drag position tooltip */}
+            {/* Drag tooltip */}
             {dragTooltip && (() => {
               const pos = draggedPositions[dragTooltip.label]
               if (!pos) return null
               const px = c.mx(pos.x)
               const py = c.my(pos.y)
               const text = `(${pos.x.toFixed(2)}, ${pos.y.toFixed(2)})`
-              const ttW = text.length * 6.5 + 12
+              const ttW = text.length * 7 + 14
               return (
                 <g style={{ pointerEvents: 'none' }}>
-                  <rect x={px + 8} y={py - 20} width={ttW} height={14} rx={3}
-                    fill="rgba(245,158,11,0.9)" />
-                  <text x={px + 8 + ttW / 2} y={py - 10}
-                    textAnchor="middle" fontSize={9} fontFamily="system-ui,sans-serif"
-                    fill="#080d1c" fontWeight={700}>
+                  <rect x={px + 10} y={py - 22} width={ttW} height={16} rx={4}
+                    fill="rgba(245,158,11,0.92)" />
+                  <text x={px + 10 + ttW / 2} y={py - 14}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fontSize={10}
+                    fontFamily={FONT}
+                    fill="#080d1c"
+                    fontWeight={700}>
                     {text}
                   </text>
                 </g>
@@ -1162,33 +1015,28 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
           </g>
         </svg>
 
-        {/* Whiteboard canvas overlay */}
-        {whiteboardActive && (
-          <WhiteboardCanvas width={W} height={H} />
-        )}
+        {whiteboardActive && <WhiteboardCanvas width={W} height={H} />}
 
-        {/* Zoom Controls */}
-        <div style={{ position: 'absolute', bottom: 8, right: 10, display: 'flex', gap: 4 }}>
+        {/* Zoom controls */}
+        <div style={{ position: 'absolute', bottom: 10, right: 12, display: 'flex', gap: 5 }}>
           {[
             { label: '+', action: () => setZoom(z => Math.min(6, z * 1.3)) },
             { label: '−', action: () => setZoom(z => Math.max(0.4, z / 1.3)) },
             { label: '⊙', action: resetView },
           ].map(({ label, action }) => (
-            <button key={label} onClick={action}
-              style={{
-                width: 22, height: 22, borderRadius: 5, fontSize: 13, lineHeight: 1,
-                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
-                color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex',
-                alignItems: 'center', justifyContent: 'center',
-              }}>
+            <button key={label} onClick={action} style={btnCtrl}>
               {label}
             </button>
           ))}
         </div>
 
         {/* Hint */}
-        <p style={{ position: 'absolute', bottom: 10, left: whiteboardActive ? 120 : 38, fontSize: 9,
-          color: 'rgba(255,255,255,0.2)', pointerEvents: 'none' }}>
+        <p style={{
+          position: 'absolute', bottom: 12,
+          left: whiteboardActive ? 130 : 44,
+          fontSize: 10, color: 'rgba(255,255,255,0.18)',
+          pointerEvents: 'none', fontFamily: FONT,
+        }}>
           {whiteboardActive ? 'draw mode' : 'scroll to zoom · drag to pan'}
         </p>
       </div>

@@ -71,11 +71,13 @@ export function AnimatedDiagramRenderer({
       {step.label && (
         <p
           style={{
-            fontSize: 11,
-            color: 'rgba(245,158,11,0.7)',
+            fontSize: 12,
+            color: 'rgba(251,191,36,0.8)',
             textAlign: 'center',
-            marginTop: 6,
-            fontFamily: 'system-ui,sans-serif',
+            marginTop: 8,
+            fontFamily: "'Inter', system-ui, sans-serif",
+            fontWeight: 500,
+            letterSpacing: '0.01em',
           }}
         >
           {step.label}

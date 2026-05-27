@@ -472,7 +472,7 @@ interface Props {
 export function JarvisScene({ amplitude, state, className, onClick, transparent = false }: Props) {
   const canvas = (
     <Canvas
-      camera={{ position: [0, 0, 7], fov: 36 }}
+      camera={{ position: [0, 0, 10], fov: 26 }}
       dpr={1}
       performance={{ min: 0.5 }}
       gl={{
