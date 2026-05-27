@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Check, LogOut } from 'lucide-react'
+import { Check, LogOut, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { validateName } from '@/lib/validate-name'
@@ -30,6 +30,10 @@ export function ProfileSettings({ initialFullName, initialExamBoard, initialTarg
   const [saving,      setSaving]      = useState(false)
   const [saved,       setSaved]       = useState(false)
   const [nameError,   setNameError]   = useState('')
+  const [showDelete,  setShowDelete]  = useState(false)
+  const [deleteInput, setDeleteInput] = useState('')
+  const [deleting,    setDeleting]    = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   // Load accessibility prefs and language from profile
   useState(() => {
@@ -43,6 +47,21 @@ export function ProfileSettings({ initialFullName, initialExamBoard, initialTarg
   async function signOut() {
     await createClient().auth.signOut()
     router.push('/sign-in')
+  }
+
+  async function deleteAccount() {
+    if (deleteInput !== 'DELETE') return
+    setDeleting(true)
+    setDeleteError('')
+    const res = await fetch('/api/profile/delete', { method: 'DELETE' })
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}))
+      setDeleteError(json.error ?? 'Something went wrong.')
+      setDeleting(false)
+      return
+    }
+    await createClient().auth.signOut()
+    router.push('/')
   }
 
   async function save() {
@@ -169,6 +188,55 @@ export function ProfileSettings({ initialFullName, initialExamBoard, initialTarg
         }}>
         {saved ? <><Check size={14} /> Saved</> : saving ? 'Saving...' : 'Save changes'}
       </motion.button>
+
+      {/* Danger zone */}
+      <div className="rounded-xl p-4 mt-2 space-y-3" style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.15)' }}>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold" style={{ color: '#f87171' }}>Delete account</p>
+            <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>Permanently removes your account and all data. Cannot be undone.</p>
+          </div>
+          {!showDelete && (
+            <button
+              onClick={() => setShowDelete(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
+              <Trash2 size={12} /> Delete
+            </button>
+          )}
+        </div>
+
+        {showDelete && (
+          <div className="space-y-3">
+            <p className="text-xs" style={{ color: '#94a3b8' }}>
+              Type <span className="font-mono font-bold text-white">DELETE</span> to confirm.
+            </p>
+            <input
+              value={deleteInput}
+              onChange={e => setDeleteInput(e.target.value)}
+              placeholder="DELETE"
+              className="w-full px-3 py-2 rounded-lg text-sm font-mono outline-none"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(239,68,68,0.3)', color: '#e2e8f0' }}
+            />
+            {deleteError && <p className="text-xs text-red-400">{deleteError}</p>}
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setShowDelete(false); setDeleteInput(''); setDeleteError('') }}
+                className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#94a3b8' }}>
+                Cancel
+              </button>
+              <button
+                onClick={deleteAccount}
+                disabled={deleteInput !== 'DELETE' || deleting}
+                className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all disabled:opacity-30"
+                style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#f87171' }}>
+                {deleting ? 'Deleting...' : 'Confirm delete'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

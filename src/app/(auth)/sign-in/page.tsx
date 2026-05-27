@@ -85,9 +85,14 @@ function SignInForm() {
                   placeholder="you@example.com" />
               </div>
               <div>
-                <label className="block mb-1.5" style={{ fontSize: 11, fontWeight: 600, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                  Password
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    Password
+                  </label>
+                  <Link href="/forgot-password" className="text-xs transition-colors hover:text-blue-300" style={{ color: '#4a6070' }}>
+                    Forgot password?
+                  </Link>
+                </div>
                 <input type="password" required value={password} onChange={e => setPassword(e.target.value)}
                   className="w-full rounded-xl text-sm outline-none transition-all"
                   style={{
