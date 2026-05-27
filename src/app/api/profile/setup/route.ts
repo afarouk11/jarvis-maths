@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { fullName, examBoard, targetGrade, yearGroup, examDate, level, dyslexiaMode, adhdMode } = await req.json()
+  const { fullName, examBoard, targetGrade, yearGroup, examDate, level, dyslexiaMode, adhdMode, language } = await req.json()
 
   if (fullName) {
     const nameError = validateName(fullName)
@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
       exam_date: examDate || null,
       dyslexia_mode: dyslexiaMode ?? false,
       adhd_mode: adhdMode ?? false,
+      language: language ?? 'en',
       onboarding_complete: true,
     }, { onConflict: 'id' })
 

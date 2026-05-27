@@ -6,6 +6,7 @@ import { JarvisAvatar } from '@/components/jarvis/JarvisAvatar'
 import { useState, useEffect, useRef } from 'react'
 import { JarvisState } from '@/types'
 import { Check, X, Star, ChevronDown, Menu } from 'lucide-react'
+import { StudiQLogo } from '@/components/ui/StudiQLogo'
 
 const ABOUT_LINKS = [
   { href: '/about',              label: 'Our Mission' },
@@ -120,12 +121,7 @@ export function LandingPage() {
         style={{ background: 'rgba(8,12,24,0.88)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(59,130,246,0.1)' }}>
         <div className="flex items-center justify-between px-6 md:px-8 py-4 md:py-5">
         <div className="flex items-center gap-2.5">
-          <div style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.4) 0%, rgba(99,102,241,0.2) 100%)', padding: 1, borderRadius: 10 }}>
-            <div className="w-8 h-8 rounded-[9px] flex items-center justify-center text-sm font-bold text-white"
-              style={{ background: 'linear-gradient(135deg, #0d1a3a, #1d4ed8)' }}>
-              S
-            </div>
-          </div>
+          <StudiQLogo size={32} />
           <span className="font-semibold text-white" style={{ fontFamily: 'var(--font-space-grotesk)' }}>StudiQ</span>
         </div>
         {/* Desktop links */}
@@ -485,10 +481,7 @@ export function LandingPage() {
             {/* Brand */}
             <div className="col-span-1">
               <div className="flex items-center gap-2 mb-3">
-                <div style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.35) 0%, rgba(99,102,241,0.2) 100%)', padding: 1, borderRadius: 8 }}>
-                  <div className="w-6 h-6 rounded-[7px] flex items-center justify-center text-xs font-bold text-white"
-                    style={{ background: 'linear-gradient(135deg, #0d1a3a, #1d4ed8)' }}>S</div>
-                </div>
+                <StudiQLogo size={24} />
                 <span className="font-semibold text-sm text-white" style={{ fontFamily: 'var(--font-space-grotesk)' }}>StudiQ</span>
               </div>
               <p className="text-xs leading-relaxed" style={{ color: '#374151' }}>

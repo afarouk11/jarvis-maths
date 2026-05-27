@@ -266,6 +266,14 @@ One short question to check understanding. Wait for their answer.
 
 Never pad responses. If the student understands, move on. The goal is understanding, not thoroughness.`
 
+export function buildLanguagePrompt(lang?: string | null): string {
+  if (!lang || lang === 'en') return ''
+  const names: Record<string, string> = { es: 'Spanish', fr: 'French' }
+  const name = names[lang]
+  if (!name) return ''
+  return `\n\n---\nLANGUAGE: This student prefers to work in ${name}. Respond entirely in ${name} for all explanations, encouragement, and messages. Use standard mathematical notation (LaTeX) regardless of language. UK maths topic names (e.g. "Integration", "Quadratics") may appear in English — use them naturally.\n---`
+}
+
 export function buildAccessibilityPrompt(prefs?: { dyslexia?: boolean; adhd?: boolean; visual?: boolean; slowPace?: boolean; encouragement?: boolean }): string {
   if (!prefs?.dyslexia && !prefs?.adhd && !prefs?.visual && !prefs?.slowPace && !prefs?.encouragement) return ''
 

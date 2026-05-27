@@ -8,6 +8,7 @@ import dynamic from 'next/dynamic'
 import { InstallPrompt } from '@/components/InstallPrompt'
 import { isIOS, isInstalled, hasInstallPrompt } from '@/lib/pwa'
 import { validateName } from '@/lib/validate-name'
+import { LANGUAGES, type Lang } from '@/lib/i18n'
 
 const JarvisScene = dynamic(
   () => import('@/components/jarvis/JarvisScene').then(m => m.JarvisScene),
@@ -30,6 +31,10 @@ const GCSE_YEARS = [
 
 const SPOK_LINES = [
   {
+    heading: 'Pick your language.',
+    body: "I'll explain maths, give feedback, and have every conversation in the language you think best in. You can change this any time from your profile.",
+  },
+  {
     heading: "Let's do this.",
     body: "I'm SPOK — your personal maths tutor. I build a precise map of what you know, find the gaps costing you marks, and close them before your exam. Takes 30 seconds.",
   },
@@ -43,11 +48,12 @@ const SPOK_LINES = [
   },
 ]
 
-const STEPS = ['About you', 'Your course', 'Wrap up']
+const STEPS = ['Language', 'About you', 'Your course', 'Wrap up']
 
 export default function OnboardingPage() {
   const router = useRouter()
   const [step,        setStep]        = useState(0)
+  const [language,    setLanguage]    = useState<Lang>('en')
   const [level,       setLevel]       = useState<'A-Level' | 'GCSE'>('A-Level')
   const [examBoard,   setExamBoard]   = useState('AQA')
   const [targetGrade, setTargetGrade] = useState('A*')
@@ -72,7 +78,7 @@ export default function OnboardingPage() {
       const res = await fetch('/api/profile/setup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName, level, examBoard, targetGrade, yearGroup, examDate, dyslexiaMode: dyslexia, adhdMode: adhd }),
+        body: JSON.stringify({ fullName, level, examBoard, targetGrade, yearGroup, examDate, dyslexiaMode: dyslexia, adhdMode: adhd, language }),
       })
       if (!res.ok) {
         const json = await res.json().catch(() => ({}))
@@ -107,7 +113,7 @@ export default function OnboardingPage() {
   }
 
   function next() {
-    if (step === 0) {
+    if (step === 1) {
       const nameError = validateName(fullName)
       if (nameError) { setError(nameError); return }
       setError('')
@@ -155,8 +161,46 @@ export default function OnboardingPage() {
               transition={{ duration: 0.22 }}
               className="space-y-7">
 
-              {/* ── Step 0 — Name + Level ── */}
+              {/* ── Step 0 — Language ── */}
               {step === 0 && (
+                <div className="space-y-5">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-widest text-amber-400 mb-3">Language</p>
+                    <h1 className="text-3xl font-bold text-white">Which language do you learn best in?</h1>
+                    <p className="text-slate-400 mt-3 leading-relaxed">
+                      SPOK will explain maths and give feedback in the language you think best in.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3">
+                    {LANGUAGES.map(l => (
+                      <button
+                        key={l.value}
+                        onClick={() => setLanguage(l.value)}
+                        className="flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all hover:scale-[1.01]"
+                        style={{
+                          background: language === l.value ? 'rgba(245,158,11,0.12)' : 'rgba(255,255,255,0.03)',
+                          border: `1px solid ${language === l.value ? 'rgba(245,158,11,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                        }}
+                      >
+                        <span className="text-2xl">{l.flag}</span>
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold" style={{ color: language === l.value ? '#f59e0b' : '#e2e8f0' }}>{l.label}</p>
+                          <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>{l.native}</p>
+                        </div>
+                        <div
+                          className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all"
+                          style={{ borderColor: language === l.value ? '#f59e0b' : 'rgba(255,255,255,0.2)', background: language === l.value ? '#f59e0b' : 'transparent' }}
+                        >
+                          {language === l.value && <Check size={10} strokeWidth={3} className="text-black" />}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Step 1 — Name + Level ── */}
+              {step === 1 && (
                 <>
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-widest text-amber-400 mb-3">Welcome</p>
@@ -203,8 +247,8 @@ export default function OnboardingPage() {
                 </>
               )}
 
-              {/* ── Step 1 — Course details ── */}
-              {step === 1 && (
+              {/* ── Step 2 — Course details ── */}
+              {step === 2 && (
                 <>
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-widest text-amber-400 mb-3">Your Course</p>
@@ -282,8 +326,8 @@ export default function OnboardingPage() {
                 </>
               )}
 
-              {/* ── Step 2 — Learning needs + confirmation ── */}
-              {step === 2 && (
+              {/* ── Step 3 — Learning needs + confirmation ── */}
+              {step === 3 && (
                 <div className="space-y-5">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-widest text-amber-400 mb-3">Wrap Up</p>
@@ -321,6 +365,7 @@ export default function OnboardingPage() {
                   {/* Summary */}
                   <div className="space-y-2 rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
                     {[
+                      { label: 'Language',    value: LANGUAGES.find(l => l.value === language)?.label },
                       { label: 'Level',       value: level },
                       { label: 'Exam board',  value: examBoard },
                       { label: 'Target',      value: targetGrade },
@@ -351,7 +396,7 @@ export default function OnboardingPage() {
             </button>
 
             {!isLast ? (
-              <button onClick={next} disabled={step === 0 && !fullName.trim()}
+              <button onClick={next} disabled={step === 1 && !fullName.trim()}
                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-[1.02] disabled:opacity-30"
                 style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.35)', color: '#f59e0b' }}>
                 Continue <ChevronRight size={14} />

@@ -1,0 +1,122 @@
+export type Lang = 'en' | 'es' | 'fr'
+
+export const LANGUAGES: { value: Lang; label: string; flag: string; native: string }[] = [
+  { value: 'en', label: 'English',  flag: '🇬🇧', native: 'English'  },
+  { value: 'es', label: 'Spanish',  flag: '🇪🇸', native: 'Español'  },
+  { value: 'fr', label: 'French',   flag: '🇫🇷', native: 'Français' },
+]
+
+const dict = {
+  en: {
+    // Nav
+    nav_dashboard:   'Dashboard',
+    nav_topics:      'Topics',
+    nav_practice:    'Practice',
+    nav_spok:        'Ask SPOK',
+    nav_brain:       'Brain Map',
+    nav_timetable:   'Timetable',
+    nav_papers:      'Past Papers',
+    nav_progress:    'Progress',
+    nav_leaderboard: 'Leaderboard',
+    nav_profile:     'Profile',
+    nav_admin:       'Knowledge Base',
+    nav_upgrade:     'Upgrade to Pro',
+    nav_signout:     'Sign out',
+    // Dashboard
+    greeting_morning:   'Good morning',
+    greeting_afternoon: 'Good afternoon',
+    greeting_evening:   'Good evening',
+    section_due:        'Due for Review',
+    section_topics:     'All Topics',
+    section_quick:      'Quick Start',
+    section_weak:       'Needs Work',
+    section_lessons:    'Recent Lessons',
+    section_creators:   'Creators',
+    // Actions
+    action_practice:    'Practice',
+    action_due_now:     'Due — Practice Now',
+    action_save:        'Save changes',
+    action_start_free:  'Get started free',
+    // Profile
+    section_settings:   'Settings',
+    section_sub:        'Subscription',
+    label_language:     'Preferred language',
+    label_language_sub: 'SPOK and the UI will respond in your chosen language',
+  },
+  es: {
+    nav_dashboard:   'Panel',
+    nav_topics:      'Temas',
+    nav_practice:    'Práctica',
+    nav_spok:        'Preguntar a SPOK',
+    nav_brain:       'Mapa Mental',
+    nav_timetable:   'Horario',
+    nav_papers:      'Exámenes Anteriores',
+    nav_progress:    'Progreso',
+    nav_leaderboard: 'Clasificación',
+    nav_profile:     'Perfil',
+    nav_admin:       'Base de conocimiento',
+    nav_upgrade:     'Actualizar a Pro',
+    nav_signout:     'Cerrar sesión',
+    greeting_morning:   'Buenos días',
+    greeting_afternoon: 'Buenas tardes',
+    greeting_evening:   'Buenas noches',
+    section_due:        'Para repasar',
+    section_topics:     'Todos los temas',
+    section_quick:      'Inicio rápido',
+    section_weak:       'Necesita trabajo',
+    section_lessons:    'Lecciones recientes',
+    section_creators:   'Creadores',
+    action_practice:    'Practicar',
+    action_due_now:     'Pendiente — Practica ahora',
+    action_save:        'Guardar cambios',
+    action_start_free:  'Empezar gratis',
+    section_settings:   'Configuración',
+    section_sub:        'Suscripción',
+    label_language:     'Idioma preferido',
+    label_language_sub: 'SPOK y la interfaz responderán en tu idioma elegido',
+  },
+  fr: {
+    nav_dashboard:   'Tableau de bord',
+    nav_topics:      'Thèmes',
+    nav_practice:    'Pratique',
+    nav_spok:        'Demander à SPOK',
+    nav_brain:       'Carte mentale',
+    nav_timetable:   'Emploi du temps',
+    nav_papers:      "Sujets d'examen",
+    nav_progress:    'Progrès',
+    nav_leaderboard: 'Classement',
+    nav_profile:     'Profil',
+    nav_admin:       'Base de connaissances',
+    nav_upgrade:     'Passer à Pro',
+    nav_signout:     'Se déconnecter',
+    greeting_morning:   'Bonjour',
+    greeting_afternoon: 'Bon après-midi',
+    greeting_evening:   'Bonsoir',
+    section_due:        'À réviser',
+    section_topics:     'Tous les thèmes',
+    section_quick:      'Démarrage rapide',
+    section_weak:       'À travailler',
+    section_lessons:    'Leçons récentes',
+    section_creators:   'Créateurs',
+    action_practice:    'Pratiquer',
+    action_due_now:     'En retard — Pratiquer',
+    action_save:        'Enregistrer',
+    action_start_free:  'Commencer gratuitement',
+    section_settings:   'Paramètres',
+    section_sub:        'Abonnement',
+    label_language:     'Langue préférée',
+    label_language_sub: 'SPOK et l\'interface répondront dans votre langue choisie',
+  },
+} as const
+
+type DictKey = keyof typeof dict.en
+
+export function t(lang: Lang, key: DictKey): string {
+  return (dict[lang] as Record<string, string>)[key] ?? dict.en[key]
+}
+
+export const SPOK_LANGUAGE_NAMES: Record<Lang, string> = {
+  en: 'English',
+  es: 'Spanish',
+  fr: 'French',
+}

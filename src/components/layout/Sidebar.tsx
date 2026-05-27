@@ -9,6 +9,7 @@ import {
   TrendingUp, Trophy, CalendarDays, Sparkles,
   PanelLeftClose,
 } from 'lucide-react'
+import { StudiQLogo } from '@/components/ui/StudiQLogo'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -77,15 +78,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
       <div className="px-5 py-5 shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white shrink-0"
-              style={{
-                background: 'linear-gradient(135deg, #1d4ed8, #3b82f6)',
-                fontFamily: 'var(--font-space-grotesk)',
-              }}
-            >
-              S
-            </div>
+            <StudiQLogo size={32} />
             <span
               className="text-base font-bold text-white"
               style={{ fontFamily: 'var(--font-space-grotesk)', letterSpacing: '-0.01em' }}

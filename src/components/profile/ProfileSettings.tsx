@@ -6,6 +6,7 @@ import { Check, LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { validateName } from '@/lib/validate-name'
+import { LANGUAGES, type Lang } from '@/lib/i18n'
 
 const EXAM_BOARDS  = ['AQA', 'Edexcel', 'OCR']
 const TARGET_GRADES = ['A*', 'A', 'B', 'C']
@@ -23,17 +24,19 @@ export function ProfileSettings({ initialFullName, initialExamBoard, initialTarg
   const [examBoard,   setExamBoard]   = useState(initialExamBoard)
   const [targetGrade, setTargetGrade] = useState(initialTargetGrade)
   const [examDate,    setExamDate]    = useState(initialExamDate)
+  const [language,    setLanguage]    = useState<Lang>('en')
   const [dyslexia,    setDyslexia]    = useState(false)
   const [adhd,        setAdhd]        = useState(false)
   const [saving,      setSaving]      = useState(false)
   const [saved,       setSaved]       = useState(false)
   const [nameError,   setNameError]   = useState('')
 
-  // Load accessibility prefs from profile
+  // Load accessibility prefs and language from profile
   useState(() => {
-    fetch('/api/profile').then(r => r.json()).then((p: any) => {
+    fetch('/api/profile').then(r => r.json()).then((p: { dyslexia_mode?: boolean; adhd_mode?: boolean; language?: Lang }) => {
       setDyslexia(p.dyslexia_mode ?? false)
       setAdhd(p.adhd_mode ?? false)
+      if (p.language) setLanguage(p.language)
     }).catch(() => {})
   })
 
@@ -50,7 +53,7 @@ export function ProfileSettings({ initialFullName, initialExamBoard, initialTarg
     await fetch('/api/profile/setup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fullName, examBoard, targetGrade, examDate, dyslexiaMode: dyslexia, adhdMode: adhd }),
+      body: JSON.stringify({ fullName, examBoard, targetGrade, examDate, dyslexiaMode: dyslexia, adhdMode: adhd, language }),
     })
     setSaving(false)
     setSaved(true)
@@ -108,6 +111,24 @@ export function ProfileSettings({ initialFullName, initialExamBoard, initialTarg
         <label className="text-xs text-slate-500 mb-1 block">Exam Date</label>
         <input type="date" value={examDate} onChange={e => setExamDate(e.target.value)}
           className={input} style={inputStyle} />
+      </div>
+
+      <div>
+        <label className="text-xs text-slate-500 mb-2 block">Preferred Language</label>
+        <p className="text-xs mb-3" style={{ color: '#5a7aaa' }}>SPOK and the UI will respond in your chosen language</p>
+        <div className="grid grid-cols-3 gap-2">
+          {LANGUAGES.map(l => (
+            <button key={l.value} onClick={() => setLanguage(l.value)}
+              className="flex flex-col items-center gap-1.5 py-3 rounded-xl text-sm transition-all"
+              style={{
+                background: language === l.value ? 'rgba(245,158,11,0.12)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${language === l.value ? 'rgba(245,158,11,0.5)' : 'rgba(255,255,255,0.08)'}`,
+              }}>
+              <span className="text-lg">{l.flag}</span>
+              <span className="text-xs font-semibold" style={{ color: language === l.value ? '#f59e0b' : '#94a3b8' }}>{l.native}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       <div>

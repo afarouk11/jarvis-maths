@@ -1,6 +1,6 @@
 import { anthropic } from '@ai-sdk/anthropic'
 import { streamText, convertToModelMessages } from 'ai'
-import { SPOK_SYSTEM_PROMPT, buildAccessibilityPrompt } from '@/lib/ai/prompts'
+import { SPOK_SYSTEM_PROMPT, buildAccessibilityPrompt, buildLanguagePrompt } from '@/lib/ai/prompts'
 import { buildStudentProfile } from '@/lib/ai/student-profile'
 import { embedText } from '@/lib/ai/embeddings'
 import { createClient } from '@/lib/supabase/server'
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
   // Free tier: 10 Spok messages per day
   const { data: prof } = await supabase
     .from('profiles')
-    .select('stripe_subscription_status, chat_messages_today, chat_messages_reset_at, is_admin')
+    .select('stripe_subscription_status, chat_messages_today, chat_messages_reset_at, is_admin, language')
     .eq('id', user.id)
     .single()
 
@@ -138,6 +138,7 @@ export async function POST(req: Request) {
   }
 
   const accessibilityInstructions = buildAccessibilityPrompt(accessibilityPrefs)
+  const languageInstruction = buildLanguagePrompt(prof?.language)
 
   const historyBlock = conversationHistory
     ? `\n\n---\nPrevious session context (do not repeat or summarise — use only to continue naturally):\n${conversationHistory}\n---`
@@ -147,6 +148,7 @@ export async function POST(req: Request) {
     SPOK_SYSTEM_PROMPT,
     TOPIC_LINKS_BLOCK,
     accessibilityInstructions,
+    languageInstruction,
     profile ? `\n\n---\n${profile}\n---\n\nUse this profile to personalise your responses.` : '',
     topicContext ? `\nCurrent topic: The student is studying "${topicContext}".` : '',
     modeAppend ? `\n\n---\nINSTRUCTION: ${modeAppend}\n---` : '',

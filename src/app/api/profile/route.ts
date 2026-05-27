@@ -8,7 +8,7 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('level, exam_board, target_grade, year_group, full_name, dyslexia_mode, adhd_mode, stripe_subscription_status, chat_messages_today, chat_messages_reset_at')
+    .select('level, exam_board, target_grade, year_group, full_name, dyslexia_mode, adhd_mode, stripe_subscription_status, chat_messages_today, chat_messages_reset_at, language')
     .eq('id', user.id)
     .single()
 
