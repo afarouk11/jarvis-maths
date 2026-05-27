@@ -133,7 +133,9 @@ function resolveTopicLinks(text: string): string {
 
 function normaliseDelimiters(text: string): string {
   return text
-    .replace(/\\\[([\s\S]*?)\\\]/g, (_, m) => `$$${m}$$`)
+    // \[...\] → block $$...$$ (must be on its own line for remark-math to parse as mathFlow)
+    .replace(/\\\[([\s\S]*?)\\\]/g, (_, m) => `\n\n$$\n${m.trim()}\n$$\n\n`)
+    // \(...\) → inline $...$
     .replace(/\\\(([\s\S]*?)\\\)/g, (_, m) => `$${m}$`)
 }
 
