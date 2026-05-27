@@ -36,7 +36,7 @@ const SCHOOLS_FEATURES = [
 
 // 2 lessons/week × £20 × 52 weeks ÷ 12 months
 const TUTOR_MONTHLY = Math.round((2 * 20 * 52) / 12)   // £173
-const PRO_PRICE     = 18.99
+const PRO_PRICE     = 24.99
 const SAVING        = Math.round(TUTOR_MONTHLY - PRO_PRICE) // £154
 
 export default function PricingPage() {
