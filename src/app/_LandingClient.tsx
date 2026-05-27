@@ -236,9 +236,9 @@ export function LandingPage() {
 
         {/* SPOK avatar with orbital rings */}
         <motion.div
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 18 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
           className="mb-10 relative inline-flex items-center justify-center"
           style={{ width: 280, height: 280 }}>
           {/* Outer orbital ring */}
