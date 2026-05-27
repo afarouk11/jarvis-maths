@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, isReasoningUIPart, isTextUIPart } from 'ai'
-import { Send, Mic, MicOff, Volume2, VolumeX, RefreshCw, Zap, Check, X, Lock, Square } from 'lucide-react'
+import { Send, Mic, MicOff, Volume2, VolumeX, RefreshCw, Zap, Check, X, Lock, Square, ChevronLeft, ChevronRight } from 'lucide-react'
 import { ThinkingBlock } from '@/components/jarvis/ThinkingBlock'
 import { JarvisAvatar } from '@/components/jarvis/JarvisAvatar'
 import dynamic from 'next/dynamic'
@@ -772,113 +772,143 @@ export default function SpokPage() {
           <JarvisScene amplitude={amplitude} state={jarvisState} />
         </div>
 
-        {/* Graph teaching panel — overlaid when active */}
+        {/* ── Slide panel — shared layout for ANIMATE (graph) and ADIAGRAM (geometry) ── */}
         <AnimatePresence>
-          {animateSpec && (
-            <motion.div
-              key="graph-panel"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.4 }}
-              className="absolute inset-0 z-20 flex flex-col items-center justify-center px-8 gap-3"
-              style={{ background: 'rgba(8,13,25,0.85)', backdropFilter: 'blur(8px)' }}
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between w-full mb-1">
-                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#f59e0b' }}>
-                  SPOK · Drawing
-                </p>
-                <button
-                  onClick={() => { setAnimateSpec(null); setAnimateStep(0) }}
-                  className="text-xs px-2 py-1 rounded-lg"
-                  style={{ color: 'rgba(245,158,11,0.4)', border: '1px solid rgba(245,158,11,0.15)' }}>
-                  ✕ dismiss
-                </button>
-              </div>
-              <AnimatedGraphRenderer spec={animateSpec} currentStep={animateStep} className="w-full" />
-              <div className="flex items-center gap-1.5 justify-center mt-1">
-                {animateSpec.steps.map((_, i) => (
-                  <div key={i} className="rounded-full transition-all duration-300"
-                    style={{
-                      width: i <= animateStep ? 6 : 4,
-                      height: i <= animateStep ? 6 : 4,
-                      background: i <= animateStep ? '#f59e0b' : 'rgba(245,158,11,0.2)',
-                    }} />
-                ))}
-              </div>
-            </motion.div>
-          )}
+          {(animateSpec || (animDiagramSpec && !diagramSpec)) && (() => {
+            const isGraph  = !!animateSpec
+            const steps    = isGraph ? animateSpec!.steps : animDiagramSpec!.steps
+            const step     = isGraph ? animateStep : animDiagramStep
+            const setStep  = isGraph
+              ? (n: number) => setAnimateStep(n)
+              : (n: number) => setAnimDiagramStep(n)
+            const dismiss  = isGraph
+              ? () => { setAnimateSpec(null); setAnimateStep(0) }
+              : () => { setAnimDiagramSpec(null); setAnimDiagramStep(0) }
+            const label    = steps[step]?.label ?? ''
+            const total    = steps.length
+
+            return (
+              <motion.div
+                key={isGraph ? 'graph-slide' : 'adiagram-slide'}
+                initial={{ opacity: 0, scale: 0.97 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.97 }}
+                transition={{ duration: 0.35 }}
+                className="absolute inset-0 z-20 flex flex-col px-6 py-5"
+                style={{ background: 'rgba(8,13,25,0.90)', backdropFilter: 'blur(10px)' }}
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Header row */}
+                <div className="flex items-center justify-between mb-3 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#f59e0b' }}>
+                      {isGraph ? 'SPOK · Graph' : 'SPOK · Diagram'}
+                    </p>
+                    <span className="text-xs font-mono px-2 py-0.5 rounded-md"
+                      style={{ background: 'rgba(245,158,11,0.1)', color: 'rgba(245,158,11,0.6)' }}>
+                      {step + 1} / {total}
+                    </span>
+                  </div>
+                  <button onClick={dismiss} className="text-xs px-2 py-1 rounded-lg"
+                    style={{ color: 'rgba(245,158,11,0.4)', border: '1px solid rgba(245,158,11,0.12)' }}>
+                    ✕ dismiss
+                  </button>
+                </div>
+
+                {/* Visual — fills available space */}
+                <div className="flex-1 min-h-0 flex items-center justify-center">
+                  {isGraph
+                    ? <AnimatedGraphRenderer spec={animateSpec!} currentStep={step} className="w-full" />
+                    : <AnimatedDiagramRenderer spec={animDiagramSpec!} currentStep={step} className="w-full" onElementClick={handleElementClick} />
+                  }
+                </div>
+
+                {/* Step label */}
+                <AnimatePresence mode="wait">
+                  {label && (
+                    <motion.p
+                      key={label}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.2 }}
+                      className="text-sm text-center leading-snug mt-3 shrink-0"
+                      style={{ color: 'rgba(253,233,184,0.85)', minHeight: '1.25rem' }}>
+                      {label}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+
+                {/* Navigation row */}
+                <div className="flex items-center justify-between mt-4 shrink-0">
+                  {/* Prev arrow */}
+                  <button
+                    onClick={() => setStep(Math.max(0, step - 1))}
+                    disabled={step === 0}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all disabled:opacity-20 hover:scale-[1.04] active:scale-[0.97]"
+                    style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#f59e0b' }}>
+                    <ChevronLeft size={14} />
+                    Back
+                  </button>
+
+                  {/* Dot indicators — clickable */}
+                  <div className="flex items-center gap-2">
+                    {steps.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setStep(i)}
+                        className="rounded-full transition-all duration-200 hover:scale-125"
+                        style={{
+                          width:  i === step ? 8 : 5,
+                          height: i === step ? 8 : 5,
+                          background: i < step
+                            ? 'rgba(245,158,11,0.4)'
+                            : i === step
+                              ? '#f59e0b'
+                              : 'rgba(245,158,11,0.15)',
+                        }} />
+                    ))}
+                  </div>
+
+                  {/* Next arrow */}
+                  <button
+                    onClick={() => setStep(Math.min(total - 1, step + 1))}
+                    disabled={step === total - 1}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all disabled:opacity-20 hover:scale-[1.04] active:scale-[0.97]"
+                    style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#f59e0b' }}>
+                    Next
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              </motion.div>
+            )
+          })()}
         </AnimatePresence>
 
-        {/* Diagram panel — overlaid when active */}
+        {/* Static diagram panel — no steps, just the full diagram */}
         <AnimatePresence>
-          {diagramSpec && !animateSpec && (
+          {diagramSpec && !animateSpec && !animDiagramSpec && (
             <motion.div
               key="diagram-panel"
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.97 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.4 }}
-              className="absolute inset-0 z-20 flex flex-col items-center justify-center px-8 gap-3"
-              style={{ background: 'rgba(8,13,25,0.88)', backdropFilter: 'blur(8px)' }}
+              exit={{ opacity: 0, scale: 0.97 }}
+              transition={{ duration: 0.35 }}
+              className="absolute inset-0 z-20 flex flex-col px-6 py-5"
+              style={{ background: 'rgba(8,13,25,0.90)', backdropFilter: 'blur(10px)' }}
               onClick={e => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between w-full mb-1">
+              <div className="flex items-center justify-between mb-3 shrink-0">
                 <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#f59e0b' }}>
                   SPOK · Diagram
                 </p>
-                <button
-                  onClick={() => setDiagramSpec(null)}
-                  className="text-xs px-2 py-1 rounded-lg"
-                  style={{ color: 'rgba(245,158,11,0.4)', border: '1px solid rgba(245,158,11,0.15)' }}>
+                <button onClick={() => setDiagramSpec(null)} className="text-xs px-2 py-1 rounded-lg"
+                  style={{ color: 'rgba(245,158,11,0.4)', border: '1px solid rgba(245,158,11,0.12)' }}>
                   ✕ dismiss
                 </button>
               </div>
-              <DiagramRenderer spec={diagramSpec} className="w-full" onElementClick={handleElementClick} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Animated diagram panel — overlaid when active */}
-        <AnimatePresence>
-          {animDiagramSpec && !animateSpec && !diagramSpec && (
-            <motion.div
-              key="adiagram-panel"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.4 }}
-              className="absolute inset-0 z-20 flex flex-col items-center justify-center px-8 gap-3"
-              style={{ background: 'rgba(8,13,25,0.88)', backdropFilter: 'blur(8px)' }}
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between w-full mb-1">
-                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#f59e0b' }}>
-                  SPOK · Drawing
-                </p>
-                <button
-                  onClick={() => { setAnimDiagramSpec(null); setAnimDiagramStep(0) }}
-                  className="text-xs px-2 py-1 rounded-lg"
-                  style={{ color: 'rgba(245,158,11,0.4)', border: '1px solid rgba(245,158,11,0.15)' }}>
-                  ✕ dismiss
-                </button>
-              </div>
-              <AnimatedDiagramRenderer
-                spec={animDiagramSpec}
-                currentStep={animDiagramStep}
-                className="w-full"
-                onElementClick={handleElementClick}
-              />
-              <div className="flex items-center gap-1.5 justify-center mt-1">
-                {animDiagramSpec.steps.map((_, i) => (
-                  <div key={i} className="rounded-full transition-all duration-300"
-                    style={{
-                      width: i <= animDiagramStep ? 6 : 4,
-                      height: i <= animDiagramStep ? 6 : 4,
-                      background: i <= animDiagramStep ? '#f59e0b' : 'rgba(245,158,11,0.2)',
-                    }} />
-                ))}
+              <div className="flex-1 min-h-0 flex items-center justify-center">
+                <DiagramRenderer spec={diagramSpec} className="w-full" onElementClick={handleElementClick} />
               </div>
             </motion.div>
           )}

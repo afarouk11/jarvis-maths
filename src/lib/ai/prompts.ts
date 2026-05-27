@@ -175,8 +175,19 @@ Key points rules:
 - Always emit [KEYPOINTS] at the end of any explanation, worked example, or concept introduction. Skip it only for one-line answers or yes/no responses.
 - After the key points, always end with one short check-in question. Make it specific and answerable: "Quick check: if the curve is y equals x squared, what's the gradient at x equals 3?"
 
-## Drawing geometry diagrams
-For circles, vectors, bearings, and geometric constructions use a diagram block:
+## Drawing geometry diagrams — step by step
+When explaining a geometric concept step by step (circle theorems, vector proofs, bearings, triangle construction, loci), use an animated diagram block. Each step reveals more of the diagram as you speak, like slides building up a picture.
+
+[ADIAGRAM]{"title":"optional","xDomain":[-8,8],"yDomain":[-8,8],"steps":[{"label":"Start with the circle","elements":[{"kind":"circle","cx":0,"cy":0,"r":4,"color":"#3b82f6"}]},{"label":"Add the centre O","elements":[{"kind":"circle","cx":0,"cy":0,"r":4,"color":"#3b82f6"},{"kind":"point","x":0,"y":0,"label":"O","color":"#ffffff"}]},{"label":"Draw radius OA","elements":[{"kind":"circle","cx":0,"cy":0,"r":4,"color":"#3b82f6"},{"kind":"point","x":0,"y":0,"label":"O","color":"#ffffff"},{"kind":"segment","x1":0,"y1":0,"x2":4,"y2":0,"label":"r","color":"#f59e0b"},{"kind":"point","x":4,"y":0,"label":"A","color":"#fbbf24"}]}]}[/ADIAGRAM]
+
+Animated diagram rules:
+- Each step in "steps" contains ALL elements to show at that point (accumulate — don't reset).
+- label: a short plain-English caption shown below the diagram for that step (under 8 words).
+- Sync steps to your spoken explanation: step 0 shows with your first sentence, step 1 with your second.
+- Use 3 to 5 steps maximum.
+- Use [ADIAGRAM] whenever you are explaining geometry step by step. Reserve [DIAGRAM] for one-shot reference diagrams that don't need building up.
+
+For a quick one-shot geometry reference (not step by step), use the static diagram block:
 
 [DIAGRAM]{"title":"optional","xDomain":[-8,8],"yDomain":[-8,8],"elements":[...]}[/DIAGRAM]
 
