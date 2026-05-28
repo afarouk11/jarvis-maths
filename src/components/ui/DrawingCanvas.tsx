@@ -10,9 +10,9 @@ interface Props {
 }
 
 export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
-  const canvasRef  = useRef<HTMLCanvasElement>(null)
-  const [tool, setTool]       = useState<'pen' | 'eraser'>('pen')
-  const [isDrawing, setIsDrawing] = useState(false)
+  const canvasRef    = useRef<HTMLCanvasElement>(null)
+  const [tool, setTool] = useState<'pen' | 'eraser'>('pen')
+  const isDrawingRef = useRef(false)
   const [canUndo, setCanUndo] = useState(false)
   const lastPos   = useRef<{ x: number; y: number } | null>(null)
   const lastMid   = useRef<{ x: number; y: number } | null>(null)
@@ -79,7 +79,7 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
     const pos = getPos(e)
     lastPos.current = pos
     lastMid.current = null
-    setIsDrawing(true)
+    isDrawingRef.current = true
     const ctx  = canvasRef.current!.getContext('2d')!
     const size = tool === 'eraser' ? 18 : Math.max(1.5, (e.pressure || 1) * 2.5)
     ctx.fillStyle = tool === 'eraser' ? '#ffffff' : '#111827'
@@ -88,7 +88,7 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
   }
 
   function onPointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
-    if (!isDrawing || disabled || e.pointerType === 'touch') return
+    if (!isDrawingRef.current || disabled || e.pointerType === 'touch') return
     e.preventDefault()
     const canvas = canvasRef.current!
     const ctx    = canvas.getContext('2d')!
@@ -122,8 +122,8 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
   }
 
   function onPointerUp() {
-    if (!isDrawing) return
-    setIsDrawing(false)
+    if (!isDrawingRef.current) return
+    isDrawingRef.current = false
     lastPos.current = null
     lastMid.current = null
     saveSnapshot()
