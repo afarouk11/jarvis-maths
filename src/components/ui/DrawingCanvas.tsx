@@ -25,6 +25,17 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
   const cssHeightRef      = useRef(initialHeight)
   const pendingScrollRef  = useRef<number | null>(null)
 
+  // thickness index 0-3 stored separately per tool so switching remembers last choice
+  const [penThicknessIdx,    setPenThicknessIdx]    = useState(2) // default Medium
+  const [eraserThicknessIdx, setEraserThicknessIdx] = useState(2)
+  const thicknessIdxRef = useRef(2) // tracks active tool's index for event handlers
+
+  const PEN_SIZES    = [1, 3, 6, 12]   // CSS px, pressure-modulated later
+  const ERASER_SIZES = [8, 16, 32, 64]
+  const THICKNESS_LABELS = ['Extra Thin', 'Thin', 'Medium', 'Thick']
+  // Visual dot diameters for the UI — represent relative size, not exact px
+  const DOT_SIZES = [6, 9, 13, 18]
+
   const isDrawingRef      = useRef(false)
   const activePointerRef  = useRef<number | null>(null)
   const lastPos           = useRef<{ x: number; y: number } | null>(null)
@@ -36,9 +47,20 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
   const disabledRef       = useRef(disabled)
   const setCanUndoRef     = useRef(setCanUndo)
 
-  useEffect(() => { toolRef.current    = tool    }, [tool])
+  useEffect(() => { toolRef.current = tool }, [tool])
   useEffect(() => { onChangeRef.current  = onChange  }, [onChange])
   useEffect(() => { disabledRef.current  = disabled  }, [disabled])
+
+  // Keep thickness ref in sync when tool or index changes
+  useEffect(() => {
+    thicknessIdxRef.current = tool === 'pen' ? penThicknessIdx : eraserThicknessIdx
+  }, [tool, penThicknessIdx, eraserThicknessIdx])
+
+  function setThickness(idx: number) {
+    if (tool === 'pen') setPenThicknessIdx(idx)
+    else setEraserThicknessIdx(idx)
+    thicknessIdxRef.current = idx
+  }
 
   const initCanvas = useCallback(() => {
     const canvas = canvasRef.current
@@ -147,8 +169,13 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
       const pos  = getPos(e)
       lastPos.current = pos
 
-      const isEraser = toolRef.current === 'eraser'
-      const size     = isEraser ? 18 : Math.max(1, (e.pressure || 0.5) * 4)
+      const isEraser  = toolRef.current === 'eraser'
+      const baseline  = isEraser
+        ? ERASER_SIZES[thicknessIdxRef.current]
+        : PEN_SIZES[thicknessIdxRef.current]
+      // Modulate slightly with pressure but never override the chosen thickness
+      const pressure  = e.pressure > 0 ? e.pressure : 0.5
+      const size      = baseline * (0.75 + pressure * 0.5)
       lastLineWidth.current = size
 
       const ctx = canvas!.getContext('2d')!
@@ -192,8 +219,12 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
       const last    = lastPos.current!
       const isEraser = toolRef.current === 'eraser'
 
-      // Lerp line width to avoid sudden jumps from pressure changes
-      const targetWidth = isEraser ? 18 : Math.max(1, (e.pressure || 0.5) * 4)
+      // Lerp toward pressure-modulated baseline to avoid sudden width jumps
+      const baseline    = isEraser
+        ? ERASER_SIZES[thicknessIdxRef.current]
+        : PEN_SIZES[thicknessIdxRef.current]
+      const pressure    = e.pressure > 0 ? e.pressure : 0.5
+      const targetWidth = baseline * (0.75 + pressure * 0.5)
       const newWidth    = lastLineWidth.current + (targetWidth - lastLineWidth.current) * 0.4
       lastLineWidth.current = newWidth
 
@@ -267,7 +298,8 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
       style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
       onMouseDown={e => e.preventDefault()}
     >
-      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+        {/* Tool buttons */}
         {(['pen', 'eraser'] as const).map(t => (
           <button key={t} onClick={() => setTool(t)} disabled={disabled} style={{
             ...btnBase,
@@ -279,6 +311,40 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
             {t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
+
+        {/* Divider */}
+        <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.08)', margin: '0 2px' }} />
+
+        {/* Thickness selector — dots sized to represent each option */}
+        {DOT_SIZES.map((dotSize, idx) => {
+          const activeIdx = tool === 'pen' ? penThicknessIdx : eraserThicknessIdx
+          const isActive  = idx === activeIdx
+          return (
+            <button
+              key={idx}
+              onClick={() => setThickness(idx)}
+              disabled={disabled}
+              title={THICKNESS_LABELS[idx]}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 28, height: 28, borderRadius: 6, cursor: disabled ? 'not-allowed' : 'pointer',
+                background: isActive ? 'rgba(59,130,246,0.18)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${isActive ? 'rgba(59,130,246,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                transition: 'background 0.12s, border-color 0.12s',
+              }}
+            >
+              <div style={{
+                width: dotSize, height: dotSize, borderRadius: '50%',
+                background: isActive ? '#60a5fa' : '#6b7280',
+                transition: 'background 0.12s',
+              }} />
+            </button>
+          )
+        })}
+
+        {/* Divider */}
+        <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.08)', margin: '0 2px' }} />
+
         <button onClick={undo} disabled={disabled || !canUndo} style={{
           ...btnBase,
           background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
