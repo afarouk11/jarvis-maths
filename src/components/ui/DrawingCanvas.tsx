@@ -55,13 +55,7 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
     ctx.imageSmoothingEnabled = true
     ctx.imageSmoothingQuality = 'high'
 
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, logicalW, logicalH)
-    ctx.strokeStyle = '#d1d5db'
-    ctx.lineWidth = 0.5
-    for (let y = 32; y < logicalH; y += 32) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(logicalW, y); ctx.stroke()
-    }
+    ctx.clearRect(0, 0, logicalW, logicalH)
     history.current = [ctx.getImageData(0, 0, canvas.width, canvas.height)]
     setCanUndo(false)
   }, [cssHeight])
@@ -140,10 +134,12 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
       const ctx = canvas!.getContext('2d')!
       ctx.imageSmoothingEnabled = true
       ctx.imageSmoothingQuality = 'high'
+      ctx.globalCompositeOperation = isEraser ? 'destination-out' : 'source-over'
       ctx.beginPath()
-      ctx.fillStyle = isEraser ? '#ffffff' : '#111827'
+      ctx.fillStyle = isEraser ? 'rgba(0,0,0,1)' : '#111827'
       ctx.arc(pos.x, pos.y, size / 2, 0, Math.PI * 2)
       ctx.fill()
+      ctx.globalCompositeOperation = 'source-over'
     }
 
     function onMove(e: PointerEvent) {
@@ -162,7 +158,8 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
       const newWidth    = lastLineWidth.current + (targetWidth - lastLineWidth.current) * 0.4
       lastLineWidth.current = newWidth
 
-      ctx.strokeStyle = isEraser ? '#ffffff' : '#111827'
+      ctx.globalCompositeOperation = isEraser ? 'destination-out' : 'source-over'
+      ctx.strokeStyle = isEraser ? 'rgba(0,0,0,1)' : '#111827'
       ctx.lineWidth   = newWidth
       ctx.lineCap     = 'round'
       ctx.lineJoin    = 'round'
@@ -184,6 +181,7 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
       }
 
       ctx.stroke()
+      ctx.globalCompositeOperation = 'source-over'
       lastPos.current = pos
     }
 
@@ -269,17 +267,21 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
         </div>
       )}
 
-      <canvas
-        ref={canvasRef}
-        style={{
-          width: '100%', height: cssHeight, display: 'block',
-          background: '#fff', borderRadius: 4,
-          border: '1px solid #aaa',
-          touchAction: 'none',
-          cursor: disabled ? 'default' : tool === 'eraser' ? 'cell' : 'crosshair',
-          backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, #d0d7de 31px, #d0d7de 32px)',
-        }}
-      />
+      <div style={{
+        borderRadius: 4, border: '1px solid #aaa', overflow: 'hidden',
+        background: '#ffffff',
+        backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, #d0d7de 31px, #d0d7de 32px)',
+      }}>
+        <canvas
+          ref={canvasRef}
+          style={{
+            width: '100%', height: cssHeight, display: 'block',
+            background: 'transparent',
+            touchAction: 'none',
+            cursor: disabled ? 'default' : tool === 'eraser' ? 'cell' : 'crosshair',
+          }}
+        />
+      </div>
     </div>
   )
 }
