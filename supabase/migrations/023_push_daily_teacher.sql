@@ -9,8 +9,10 @@ create table if not exists push_subscriptions (
   unique(user_id, endpoint)
 );
 alter table push_subscriptions enable row level security;
-create policy "users manage own subscriptions" on push_subscriptions
-  for all using (auth.uid() = user_id);
+do $$ begin
+  create policy "users manage own subscriptions" on push_subscriptions
+    for all using (auth.uid() = user_id);
+exception when duplicate_object then null; end $$;
 
 -- Daily challenge completions
 create table if not exists daily_challenge_completions (
@@ -24,8 +26,10 @@ create table if not exists daily_challenge_completions (
   unique(user_id, challenge_date)
 );
 alter table daily_challenge_completions enable row level security;
-create policy "users manage own challenges" on daily_challenge_completions
-  for all using (auth.uid() = user_id);
+do $$ begin
+  create policy "users manage own challenges" on daily_challenge_completions
+    for all using (auth.uid() = user_id);
+exception when duplicate_object then null; end $$;
 
 -- Teacher/parent role on profiles
 alter table profiles
@@ -41,11 +45,19 @@ create table if not exists teacher_student_links (
   unique(teacher_id, student_id)
 );
 alter table teacher_student_links enable row level security;
-create policy "teachers see their students" on teacher_student_links
-  for select using (auth.uid() = teacher_id);
-create policy "students see their teacher links" on teacher_student_links
-  for select using (auth.uid() = student_id);
-create policy "students can link themselves" on teacher_student_links
-  for insert with check (auth.uid() = student_id);
-create policy "teachers can remove links" on teacher_student_links
-  for delete using (auth.uid() = teacher_id);
+do $$ begin
+  create policy "teachers see their students" on teacher_student_links
+    for select using (auth.uid() = teacher_id);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "students see their teacher links" on teacher_student_links
+    for select using (auth.uid() = student_id);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "students can link themselves" on teacher_student_links
+    for insert with check (auth.uid() = student_id);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "teachers can remove links" on teacher_student_links
+    for delete using (auth.uid() = teacher_id);
+exception when duplicate_object then null; end $$;
