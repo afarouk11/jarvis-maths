@@ -10,14 +10,27 @@ interface Props {
 }
 
 export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
-  const canvasRef    = useRef<HTMLCanvasElement>(null)
+  const canvasRef       = useRef<HTMLCanvasElement>(null)
   const [tool, setTool] = useState<'pen' | 'eraser'>('pen')
-  const isDrawingRef = useRef(false)
   const [canUndo, setCanUndo] = useState(false)
-  const lastPos   = useRef<{ x: number; y: number } | null>(null)
-  const lastMid   = useRef<{ x: number; y: number } | null>(null)
-  const history   = useRef<ImageData[]>([])
-  const height    = Math.max(140, marks * 38)
+
+  // All mutable drawing state lives in refs — never in React state — so
+  // there are zero stale-closure windows between rapid strokes.
+  const isDrawingRef      = useRef(false)
+  const activePointerRef  = useRef<number | null>(null)
+  const lastPos           = useRef<{ x: number; y: number } | null>(null)
+  const lastMid           = useRef<{ x: number; y: number } | null>(null)
+  const history           = useRef<ImageData[]>([])
+  const toolRef           = useRef(tool)
+  const onChangeRef       = useRef(onChange)
+  const disabledRef       = useRef(disabled)
+
+  // Keep refs in sync with latest prop/state values
+  useEffect(() => { toolRef.current = tool }, [tool])
+  useEffect(() => { onChangeRef.current = onChange }, [onChange])
+  useEffect(() => { disabledRef.current = disabled }, [disabled])
+
+  const height = Math.max(140, marks * 38)
 
   const initCanvas = useCallback(() => {
     const canvas = canvasRef.current
@@ -36,31 +49,54 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
 
   useEffect(() => { initCanvas() }, [initCanvas])
 
+  // Block all text selection while canvas is mounted (draw mode is active)
   useEffect(() => {
     const style = document.createElement('style')
     style.textContent = '* { -webkit-user-select: none !important; user-select: none !important; }'
     document.head.appendChild(style)
-
     const prevent = (e: Event) => e.preventDefault()
     document.addEventListener('selectstart', prevent)
-    const canvas = canvasRef.current
-    canvas?.addEventListener('contextmenu', prevent)
-
     return () => {
       document.head.removeChild(style)
       document.removeEventListener('selectstart', prevent)
-      canvas?.removeEventListener('contextmenu', prevent)
     }
   }, [])
 
-  function saveSnapshot() {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')!
-    const snap = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    history.current = [...history.current, snap].slice(-20)
-    setCanUndo(true)
-  }
+  // Root cause fix: listen for pointerup AND pointercancel on window so stroke-end
+  // is always caught even if the pointer lifts outside the canvas bounds.
+  useEffect(() => {
+    function endStroke(e: PointerEvent) {
+      if (e.pointerId !== activePointerRef.current) return
+      if (!isDrawingRef.current) return
+
+      isDrawingRef.current   = false
+      activePointerRef.current = null
+      lastPos.current        = null
+      lastMid.current        = null
+
+      const canvas = canvasRef.current
+      if (!canvas) return
+
+      // Root cause fix: always release pointer capture on stroke end
+      try { canvas.releasePointerCapture(e.pointerId) } catch { /* already released */ }
+
+      // Snapshot for undo
+      const ctx  = canvas.getContext('2d')!
+      const snap = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      history.current = [...history.current, snap].slice(-20)
+      setCanUndo(true)
+
+      // Notify parent with final image — once per stroke, not on every move
+      onChangeRef.current(canvas.toDataURL('image/png').split(',')[1])
+    }
+
+    window.addEventListener('pointerup',     endStroke)
+    window.addEventListener('pointercancel', endStroke)
+    return () => {
+      window.removeEventListener('pointerup',     endStroke)
+      window.removeEventListener('pointercancel', endStroke)
+    }
+  }, [])
 
   function getPos(e: React.PointerEvent<HTMLCanvasElement>) {
     const canvas = canvasRef.current!
@@ -72,35 +108,50 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
   }
 
   function onPointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
-    if (disabled) return
+    if (disabledRef.current) return
     if (e.pointerType === 'touch') return
     e.preventDefault()
+
+    // Root cause fix: hard-reset any stuck state from a missed pointerup
+    isDrawingRef.current    = false
+    activePointerRef.current = null
+    lastPos.current         = null
+    lastMid.current         = null
+
     e.currentTarget.setPointerCapture(e.pointerId)
+    activePointerRef.current = e.pointerId
+    isDrawingRef.current     = true
+
     const pos = getPos(e)
     lastPos.current = pos
-    lastMid.current = null
-    isDrawingRef.current = true
+
+    // Root cause fix: always open a fresh path at stroke start
     const ctx  = canvasRef.current!.getContext('2d')!
-    const size = tool === 'eraser' ? 18 : Math.max(1.5, (e.pressure || 1) * 2.5)
-    ctx.fillStyle = tool === 'eraser' ? '#ffffff' : '#111827'
-    ctx.beginPath(); ctx.arc(pos.x, pos.y, size / 2, 0, Math.PI * 2); ctx.fill()
+    const size = toolRef.current === 'eraser' ? 18 : Math.max(1.5, (e.pressure || 1) * 2.5)
+    ctx.beginPath()
+    ctx.fillStyle = toolRef.current === 'eraser' ? '#ffffff' : '#111827'
+    ctx.arc(pos.x, pos.y, size / 2, 0, Math.PI * 2)
+    ctx.fill()
   }
 
   function onPointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
-    if (!isDrawingRef.current || disabled || e.pointerType === 'touch') return
+    if (!isDrawingRef.current || disabledRef.current) return
+    if (e.pointerType === 'touch') return
+    if (e.pointerId !== activePointerRef.current) return
     e.preventDefault()
+
     const canvas = canvasRef.current!
     const ctx    = canvas.getContext('2d')!
     const pos    = getPos(e)
     const last   = lastPos.current!
 
-    ctx.strokeStyle = tool === 'eraser' ? '#ffffff' : '#111827'
-    ctx.lineWidth   = tool === 'eraser' ? 18 : Math.max(1.5, (e.pressure || 1) * 2.5)
+    ctx.strokeStyle = toolRef.current === 'eraser' ? '#ffffff' : '#111827'
+    ctx.lineWidth   = toolRef.current === 'eraser' ? 18 : Math.max(1.5, (e.pressure || 1) * 2.5)
     ctx.lineCap     = 'round'
     ctx.lineJoin    = 'round'
     ctx.beginPath()
 
-    if (tool === 'eraser') {
+    if (toolRef.current === 'eraser') {
       ctx.moveTo(last.x, last.y)
       ctx.lineTo(pos.x, pos.y)
     } else {
@@ -119,15 +170,6 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
     lastPos.current = pos
   }
 
-  function onPointerUp() {
-    if (!isDrawingRef.current) return
-    isDrawingRef.current = false
-    lastPos.current = null
-    lastMid.current = null
-    saveSnapshot()
-    notify()
-  }
-
   function undo() {
     if (history.current.length <= 1) return
     history.current = history.current.slice(0, -1)
@@ -135,15 +177,13 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
     const ctx    = canvas.getContext('2d')!
     ctx.putImageData(history.current[history.current.length - 1], 0, 0)
     setCanUndo(history.current.length > 1)
-    notify()
+    onChangeRef.current(canvas.toDataURL('image/png').split(',')[1])
   }
 
-  function notify() {
-    const canvas = canvasRef.current!
-    onChange(canvas.toDataURL('image/png').split(',')[1])
+  function clear() {
+    initCanvas()
+    onChange('')
   }
-
-  function clear() { initCanvas(); onChange('') }
 
   const btnBase: CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 4,
@@ -190,8 +230,6 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
         height={height}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerLeave={onPointerUp}
         onMouseDown={e => e.preventDefault()}
         onDoubleClick={e => e.preventDefault()}
         style={{
