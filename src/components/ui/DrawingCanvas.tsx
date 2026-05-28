@@ -79,19 +79,24 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
       if (e.pointerId !== activePointerRef.current) return
       if (!isDrawingRef.current) return
 
-      isDrawingRef.current    = false
+      // Reset immediately so the next stroke can start without waiting
+      isDrawingRef.current     = false
       activePointerRef.current = null
-      lastPos.current         = null
-      lastMid.current         = null
+      lastPos.current          = null
+      lastMid.current          = null
 
       try { canvas!.releasePointerCapture(e.pointerId) } catch { /* already released */ }
 
-      const ctx  = canvas!.getContext('2d')!
-      const snap = ctx.getImageData(0, 0, canvas!.width, canvas!.height)
-      history.current = [...history.current, snap].slice(-20)
-      setCanUndoRef.current(true)
-
-      onChangeRef.current(canvas!.toDataURL('image/png').split(',')[1])
+      // Defer getImageData + toDataURL — GPU readback on iPad can block for
+      // hundreds of ms and would delay the next pointerdown if done synchronously
+      const c = canvas!
+      setTimeout(() => {
+        const ctx  = c.getContext('2d')!
+        const snap = ctx.getImageData(0, 0, c.width, c.height)
+        history.current = [...history.current, snap].slice(-20)
+        setCanUndoRef.current(true)
+        onChangeRef.current(c.toDataURL('image/png').split(',')[1])
+      }, 0)
     }
 
     function onDown(e: PointerEvent) {
