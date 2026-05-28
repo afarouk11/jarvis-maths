@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
 
   const { data: batch } = await admin
     .from('school_outreach')
-    .select('id, school_name, contact_email')
+    .select('id, school_name, contact_email, personalisation')
     .eq('status', 'pending')
     .order('created_at')
     .limit(batchLimit)
@@ -77,7 +77,12 @@ export async function POST(req: NextRequest) {
   const results = { sent: 0, failed: 0, errors: [] as string[] }
 
   for (const school of batch) {
-    const { subject, html, text } = schoolOutreachEmail(school.school_name)
+    const p = (school.personalisation ?? {}) as { offersAlevel?: boolean; offersGCSE?: boolean }
+    const { subject, html, text } = schoolOutreachEmail({
+      schoolName: school.school_name,
+      offersAlevel: p.offersAlevel ?? false,
+      offersGCSE: p.offersGCSE ?? true,
+    })
 
     if (dryRun) {
       results.sent++
