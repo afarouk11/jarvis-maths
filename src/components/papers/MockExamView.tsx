@@ -296,6 +296,7 @@ export function MockExamView({ paper, focusTopics, onClose }: {
                                 marks={q.marks}
                                 disabled={!!st.result}
                                 onChange={img => updateState(q.number, { drawingImage: img })}
+                                initialImage={st.drawingImage || undefined}
                               />
                             ) : (
                               <>
@@ -356,12 +357,12 @@ export function MockExamView({ paper, focusTopics, onClose }: {
                             {!st.result ? (
                               <button
                                 onClick={() => markQuestion(q)}
-                                disabled={!st.studentAnswer.trim() || st.marking}
+                                disabled={st.marking || (st.drawMode ? !st.drawingImage : !st.studentAnswer.trim())}
                                 className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded transition-all disabled:opacity-40"
                                 style={{
                                   background: '#1d4ed8', color: '#fff',
                                   border: 'none', fontFamily: 'Arial, sans-serif',
-                                  cursor: st.studentAnswer.trim() ? 'pointer' : 'not-allowed',
+                                  cursor: (st.drawMode ? !!st.drawingImage : !!st.studentAnswer.trim()) ? 'pointer' : 'not-allowed',
                                 }}>
                                 {st.marking
                                   ? <><Loader2 size={11} className="animate-spin" /> Marking...</>

@@ -7,9 +7,10 @@ interface Props {
   onChange: (base64: string) => void
   marks?: number
   disabled?: boolean
+  initialImage?: string
 }
 
-export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
+export function DrawingCanvas({ onChange, marks = 3, disabled, initialImage }: Props) {
   const canvasRef       = useRef<HTMLCanvasElement>(null)
   const [tool, setTool] = useState<'pen' | 'eraser'>('pen')
   const [canUndo, setCanUndo] = useState(false)
@@ -81,9 +82,20 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
     ctx.imageSmoothingQuality = 'high'
 
     ctx.clearRect(0, 0, logicalW, logicalH)
-    history.current = [ctx.getImageData(0, 0, canvas.width, canvas.height)]
-    setCanUndo(false)
-  }, [])
+
+    if (initialImage) {
+      const img = new Image()
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, logicalW, logicalH)
+        history.current = [ctx.getImageData(0, 0, canvas.width, canvas.height)]
+        setCanUndo(false)
+      }
+      img.src = `data:image/png;base64,${initialImage}`
+    } else {
+      history.current = [ctx.getImageData(0, 0, canvas.width, canvas.height)]
+      setCanUndo(false)
+    }
+  }, [initialImage])
 
   // useLayoutEffect so DPR dimensions are set before the first paint
   useLayoutEffect(() => { initCanvas() }, [initCanvas])
