@@ -20,6 +20,10 @@ export async function POST(req: Request) {
 
   const { stem, correctAnswer, studentAnswer, studentAnswerImage, workedSolution } = await req.json()
 
+  const isMultiLine = typeof studentAnswer === 'string'
+    && studentAnswer.includes('\n')
+    && studentAnswer.split('\n').filter((l: string) => l.trim()).length > 1
+
   const instructions = `## Marking instructions
 Apply AQA mark scheme conventions:
 - M marks: method marks — award if the correct method is used, even if arithmetic is wrong
@@ -30,14 +34,29 @@ Apply AQA mark scheme conventions:
 - Do NOT penalise for omitting units unless the question specifically asks for them
 - Award partial credit whenever the student demonstrates correct method even with arithmetic slips
 
+${isMultiLine ? `## Line-by-line marking mode
+The student has shown step-by-step working. Analyse each non-empty line they wrote.
+For each line, return a step object with: "line" (the student's text), "status" ("correct"|"error"|"incomplete"), "comment" (brief — what's right, what's wrong, or what's missing).
+Stop at the first "error" line and explain the fix clearly.` : ''}
+
+Also check for exam technique issues:
+- Not stating a formula before using it (loses M1)
+- Missing substitution step (loses A1)
+- Missing units on a measurement answer (loses B1)
+- Rounding too early in multi-step working
+- Writing an answer without proof when question says "show that"
+
 Return JSON with exactly this structure:
 {
   "correct": true | false,
   "quality": 0-5,
   "feedback": "1-2 sentence AQA-style feedback: state marks awarded and reason, then one specific improvement tip if wrong",
-  "partialCredit": true | false
+  "partialCredit": true | false,
+  "exam_technique_flags": [],
+  ${isMultiLine ? '"steps": [{"line":"...","status":"correct"|"error"|"incomplete","comment":"..."}]' : '"steps": null'}
 }
 
+exam_technique_flags: array of strings — each one a specific mark-scheme issue found (e.g. "No formula stated before use — loses M1"). Empty array if no issues.
 Quality scale: 0=no correct work, 1=correct start only, 2=correct method wrong answer, 3=mostly correct minor slip, 4=correct minor presentation issue, 5=fully correct.
 
 Return ONLY the JSON.`

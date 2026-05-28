@@ -12,11 +12,19 @@ interface Props {
   onComplete: () => void
 }
 
+interface MarkingStep {
+  line: string
+  status: 'correct' | 'error' | 'incomplete'
+  comment: string
+}
+
 interface Marking {
   correct: boolean
   quality: number
   feedback: string
   partialCredit: boolean
+  exam_technique_flags?: string[]
+  steps?: MarkingStep[] | null
 }
 
 export function TryItBlock({ block, onComplete }: Props) {
@@ -97,8 +105,8 @@ export function TryItBlock({ block, onComplete }: Props) {
               ref={textareaRef}
               value={answer}
               onChange={e => setAnswer(e.target.value)}
-              placeholder="Type your answer here — use plain text, e.g. dy/dx = 20x^4 - 3"
-              rows={3}
+              placeholder="Show your working step by step — one line per step. SPOK will mark each line."
+              rows={4}
               className="w-full px-4 py-3 rounded-xl text-sm resize-none outline-none transition-all"
               style={{
                 background: 'rgba(255,255,255,0.04)',
@@ -140,6 +148,27 @@ export function TryItBlock({ block, onComplete }: Props) {
                 </span>
               </div>
 
+              {/* Line-by-line steps */}
+              {marking.steps && marking.steps.length > 0 && (
+                <div className="space-y-1.5">
+                  {marking.steps.map((s, i) => (
+                    <div key={i} className="flex gap-2.5 items-start px-3 py-2 rounded-lg text-xs"
+                      style={{
+                        background: s.status === 'correct' ? 'rgba(74,222,128,0.06)' : s.status === 'error' ? 'rgba(248,113,113,0.08)' : 'rgba(251,191,36,0.06)',
+                        border: `1px solid ${s.status === 'correct' ? 'rgba(74,222,128,0.2)' : s.status === 'error' ? 'rgba(248,113,113,0.25)' : 'rgba(251,191,36,0.2)'}`,
+                      }}>
+                      <span className="shrink-0 mt-0.5 text-base leading-none">
+                        {s.status === 'correct' ? '✓' : s.status === 'error' ? '✗' : '⚠'}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="font-mono text-slate-300">{s.line}</p>
+                        {s.comment && <p className="mt-0.5" style={{ color: s.status === 'correct' ? '#86efac' : s.status === 'error' ? '#fca5a5' : '#fcd34d' }}>{s.comment}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Spok feedback */}
               <div className="p-4 rounded-xl text-sm"
                 style={{
@@ -151,6 +180,19 @@ export function TryItBlock({ block, onComplete }: Props) {
                 </p>
                 <p className="text-slate-300 leading-relaxed">{marking.feedback}</p>
               </div>
+
+              {/* Exam technique flags */}
+              {marking.exam_technique_flags && marking.exam_technique_flags.length > 0 && (
+                <div className="space-y-1.5">
+                  {marking.exam_technique_flags.map((flag, i) => (
+                    <div key={i} className="flex gap-2 items-start px-3 py-2 rounded-lg text-xs"
+                      style={{ background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.25)', color: '#fcd34d' }}>
+                      <span className="shrink-0">⚠</span>
+                      <span>Exam alert — {flag}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Model answer */}
               <div className="p-4 rounded-xl text-sm"

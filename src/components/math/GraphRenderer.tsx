@@ -66,6 +66,9 @@ export function GraphRenderer({ spec, className }: Props) {
 
     import('function-plot').then(({ default: functionPlot }) => {
       if (!container) return
+      // Use rAF so layout has settled and clientWidth is accurate
+      requestAnimationFrame(() => {
+      if (!container.isConnected) return
       container.innerHTML = ''
       const el = document.createElement('div')
       el.id = id
@@ -79,7 +82,7 @@ export function GraphRenderer({ spec, className }: Props) {
 
         functionPlot({
           target: `#${id}`,
-          width: container.clientWidth || 460,
+          width: container.getBoundingClientRect().width || container.clientWidth || 460,
           height: 280,
           xAxis: {
             domain: spec.xDomain ?? [-10, 10],
@@ -118,9 +121,11 @@ export function GraphRenderer({ spec, className }: Props) {
         console.error('[GraphRenderer] function-plot error:', e)
         container.innerHTML = `<p style="color:#ef4444;font-size:12px;padding:8px">Graph error — could not render</p>`
       }
+      }) // end requestAnimationFrame
     })
 
     return cleanup
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(spec)])
 
   return (
@@ -201,6 +206,8 @@ export function AnimatedGraphRenderer({ spec, currentStep, className }: { spec: 
 
     import('function-plot').then(({ default: functionPlot }) => {
       if (!container) return
+      requestAnimationFrame(() => {
+      if (!container.isConnected) return
       container.innerHTML = ''
       const el = document.createElement('div')
       el.id = id
@@ -214,7 +221,7 @@ export function AnimatedGraphRenderer({ spec, currentStep, className }: { spec: 
 
         const instance = functionPlot({
           target: `#${id}`,
-          width: container.clientWidth || 460,
+          width: container.getBoundingClientRect().width || container.clientWidth || 460,
           height: 260,
           xAxis: { domain: builtSpec.xDomain ?? [-10, 10], label: 'x' },
           yAxis: { domain: builtSpec.yDomain ?? [-10, 10], label: 'y' },
@@ -365,6 +372,7 @@ export function AnimatedGraphRenderer({ spec, currentStep, className }: { spec: 
       }
 
       prevStepRef.current = currentStep
+      }) // end requestAnimationFrame
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep, JSON.stringify(builtSpec)])

@@ -13,11 +13,19 @@ import { CheckCircle, XCircle, Loader2, Zap, Check, X, Pen, Type } from 'lucide-
 import { DrawingCanvas } from '@/components/ui/DrawingCanvas'
 import { Skeleton } from '@/components/ui/skeleton'
 
+interface MarkingStep {
+  line: string
+  status: 'correct' | 'error' | 'incomplete'
+  comment: string
+}
+
 interface MarkResult {
   correct: boolean
   quality: number
   feedback: string
   partialCredit: boolean
+  exam_technique_flags?: string[]
+  steps?: MarkingStep[] | null
 }
 
 function PracticePageInner() {
@@ -49,6 +57,7 @@ function PracticePageInner() {
   const [proRequired, setProRequired] = useState(false)
   const [upgradeLoading, setUpgradeLoading] = useState(false)
   const [generateError, setGenerateError] = useState<string | null>(null)
+  const [questionSource, setQuestionSource] = useState<'ai' | 'past-paper'>('ai')
   const [drawMode, setDrawMode] = useState(false)
   const [drawingImage, setDrawingImage] = useState('')
 
@@ -118,11 +127,24 @@ function PracticePageInner() {
 
     const topic = allTopics.find(t => t.slug === slug)!
     try {
-      const res = await fetch('/api/generate-question', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topicId: slug, topicName: topic.name, difficulty: 3 }),
-      })
+      let res: Response
+      if (questionSource === 'past-paper') {
+        res = await fetch(`/api/past-paper-question?topic=${encodeURIComponent(topic.name)}&topicId=${encodeURIComponent(slug)}`)
+        if (res.status === 404) {
+          // Fall back to AI generation silently
+          res = await fetch('/api/generate-question', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ topicId: slug, topicName: topic.name, difficulty: 3 }),
+          })
+        }
+      } else {
+        res = await fetch('/api/generate-question', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topicId: slug, topicName: topic.name, difficulty: 3 }),
+        })
+      }
       if (!res.ok) {
         const text = await res.text()
         let msg = `Server error ${res.status}`
@@ -132,8 +154,8 @@ function PracticePageInner() {
         const data = await res.json()
         setQuestion(data)
       }
-    } catch (err: any) {
-      setGenerateError(err?.message ?? 'Network error — please try again')
+    } catch (err: unknown) {
+      setGenerateError(err instanceof Error ? err.message : 'Network error — please try again')
     } finally {
       setLoading(false)
     }
@@ -392,21 +414,36 @@ function PracticePageInner() {
 
       {/* Topic picker — hidden in Study Now mode */}
       {!studyNowMode && (
-        <div className="mb-6 flex items-center gap-3">
-          <select
-            value={selectedSlug}
-            onChange={e => setSelectedSlug(e.target.value)}
-            className="px-3 py-2 rounded-lg text-sm outline-none"
-            style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', color: '#e8f0fe', colorScheme: 'dark' }}>
-            {allTopics.map(t => <option key={t.slug} value={t.slug} style={{ background: '#1e3a5f', color: '#e8f0fe' }}>{t.name}</option>)}
-          </select>
-          <motion.button
-            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-            onClick={generateQuestion} disabled={loading}
-            className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
-            style={{ background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa' }}>
-            {loading ? 'Generating...' : question ? 'New question' : 'Start'}
-          </motion.button>
+        <div className="mb-6 space-y-3">
+          <div className="flex items-center gap-3">
+            <select
+              value={selectedSlug}
+              onChange={e => setSelectedSlug(e.target.value)}
+              className="px-3 py-2 rounded-lg text-sm outline-none flex-1 min-w-0"
+              style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', color: '#e8f0fe', colorScheme: 'dark' }}>
+              {allTopics.map(t => <option key={t.slug} value={t.slug} style={{ background: '#1e3a5f', color: '#e8f0fe' }}>{t.name}</option>)}
+            </select>
+            <motion.button
+              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              onClick={generateQuestion} disabled={loading}
+              className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 shrink-0"
+              style={{ background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa' }}>
+              {loading ? 'Generating...' : question ? 'New question' : 'Start'}
+            </motion.button>
+          </div>
+          {/* AI / Past Paper toggle */}
+          <div className="flex items-center gap-1 p-1 rounded-lg w-fit"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            {(['ai', 'past-paper'] as const).map(src => (
+              <button key={src} onClick={() => setQuestionSource(src)}
+                className="px-3 py-1 rounded-md text-xs font-medium transition-all"
+                style={questionSource === src
+                  ? { background: 'rgba(59,130,246,0.25)', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.35)' }
+                  : { color: '#64748b', border: '1px solid transparent' }}>
+                {src === 'ai' ? 'AI Question' : 'Past Paper'}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -448,9 +485,17 @@ function PracticePageInner() {
             <div className="rounded-2xl p-6 mb-4"
               style={{ background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.15)' }}>
               <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-medium text-blue-400">
-                  {allTopics.find(t => t.slug === selectedSlug)?.name} · {question.marks} mark{question.marks !== 1 ? 's' : ''}
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-medium text-blue-400">
+                    {allTopics.find(t => t.slug === selectedSlug)?.name} · {question.marks} mark{question.marks !== 1 ? 's' : ''}
+                  </span>
+                  {(question as { source?: string }).source && (question as { source?: string }).source !== 'ai-generated' && (
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                      style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)', color: '#fbbf24' }}>
+                      {(question as { source?: string }).source}
+                    </span>
+                  )}
+                </div>
                 <span className="text-xs" style={{ color: '#5a7aaa' }}>
                   {'★'.repeat(question.difficulty)}{'☆'.repeat(5 - question.difficulty)}
                 </span>
@@ -490,8 +535,8 @@ function PracticePageInner() {
                     ref={answerTextareaRef}
                     value={studentAnswer}
                     onChange={e => setStudentAnswer(e.target.value)}
-                    placeholder="Type your answer here... (you can use plain text, e.g. x = 3 or x^2 + 2x)"
-                    rows={4}
+                    placeholder={"Show your working step by step — one line per step. SPOK will mark each line.\n\nExample:\nStep 1: formula...\nStep 2: substitution..."}
+                    rows={5}
                     className="w-full rounded-xl p-4 text-sm outline-none resize-none"
                     style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(59,130,246,0.2)', color: '#e8f0fe' }}
                   />
@@ -542,6 +587,40 @@ function PracticePageInner() {
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {/* Line-by-line step marking */}
+            {markResult && markResult.steps && markResult.steps.length > 0 && (
+              <div className="space-y-1.5 mb-4">
+                {markResult.steps.map((s, i) => (
+                  <div key={i} className="flex gap-2.5 items-start px-3 py-2 rounded-lg text-xs"
+                    style={{
+                      background: s.status === 'correct' ? 'rgba(74,222,128,0.06)' : s.status === 'error' ? 'rgba(248,113,113,0.08)' : 'rgba(251,191,36,0.06)',
+                      border: `1px solid ${s.status === 'correct' ? 'rgba(74,222,128,0.2)' : s.status === 'error' ? 'rgba(248,113,113,0.25)' : 'rgba(251,191,36,0.2)'}`,
+                    }}>
+                    <span className="shrink-0 mt-0.5 text-base leading-none">
+                      {s.status === 'correct' ? '✓' : s.status === 'error' ? '✗' : '⚠'}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-mono text-slate-300">{s.line}</p>
+                      {s.comment && <p className="mt-0.5" style={{ color: s.status === 'correct' ? '#86efac' : s.status === 'error' ? '#fca5a5' : '#fcd34d' }}>{s.comment}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Exam technique flags */}
+            {markResult && markResult.exam_technique_flags && markResult.exam_technique_flags.length > 0 && (
+              <div className="space-y-1.5 mb-4">
+                {markResult.exam_technique_flags.map((flag, i) => (
+                  <div key={i} className="flex gap-2 items-start px-3 py-2 rounded-lg text-xs"
+                    style={{ background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.25)', color: '#fcd34d' }}>
+                    <span className="shrink-0">⚠</span>
+                    <span>Exam alert — {flag}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Worked solution + answer */}
             <AnimatePresence>

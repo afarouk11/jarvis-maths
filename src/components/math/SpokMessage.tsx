@@ -143,8 +143,7 @@ function MarkdownMath({ content, color }: { content: string; color: string }) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkMath]}
-      rehypePlugins={[rehypeKatex]}
-      key={content}
+      rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
       components={{
         p: ({ children }) => (
           <p className="mb-2 last:mb-0 leading-relaxed" style={{ color }}>{children}</p>

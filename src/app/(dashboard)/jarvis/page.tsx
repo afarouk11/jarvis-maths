@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, isReasoningUIPart, isTextUIPart } from 'ai'
-import { Send, Mic, MicOff, Volume2, VolumeX, RefreshCw, Zap, Check, X, Lock, Square, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Send, Mic, MicOff, Volume2, VolumeX, RefreshCw, Zap, Check, X, Lock, Square, ChevronLeft, ChevronRight, Paperclip } from 'lucide-react'
 import { ThinkingBlock } from '@/components/jarvis/ThinkingBlock'
 import { JarvisAvatar } from '@/components/jarvis/JarvisAvatar'
 import dynamic from 'next/dynamic'
@@ -36,12 +36,21 @@ export default function SpokPage() {
   const [diagramSpec, setDiagramSpec] = useState<DiagramSpec | null>(null)
   const [animDiagramSpec, setAnimDiagramSpec] = useState<AnimDiagramSpec | null>(null)
   const [animDiagramStep, setAnimDiagramStep] = useState(0)
+  // Track last-set spec JSON to avoid re-rendering diagrams on every streaming chunk
+  const lastAnimateSpecJsonRef  = useRef<string | null>(null)
+  const lastDiagramSpecJsonRef  = useRef<string | null>(null)
+  const lastAnimDiagramJsonRef  = useRef<string | null>(null)
   const prevSentenceRef = useRef('')
   const [limitReached, setLimitReached] = useState(false)
   const [upgradeLoading, setUpgradeLoading] = useState(false)
   const [messagesUsedToday, setMessagesUsedToday] = useState<number | null>(null)
   const [avgMastery, setAvgMastery] = useState<number>(0)
   const FREE_LIMIT = 5
+
+  // Photo input for handwritten working
+  const [pendingImage, setPendingImage]     = useState<string | null>(null)
+  const pendingImageRef                     = useRef<string | null>(null)
+  const fileInputRef                        = useRef<HTMLInputElement>(null)
 
   // Quick reply chips from SPOK's last response
   const [quickReplies, setQuickReplies]     = useState<string[]>([])
@@ -135,6 +144,7 @@ export default function SpokPage() {
         skillMode: activeModeRef.current,
         accessibilityPrefs: accessibilityPrefsRef.current,
         conversationHistory: !hasSeededHistory.current ? (historyRef.current || undefined) : undefined,
+        imageData: pendingImageRef.current ?? undefined,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }), []),
@@ -173,35 +183,54 @@ export default function SpokPage() {
         || (lastMsg.parts as any[]).filter((p: any) => p.type === 'text').map((p: any) => p.text ?? '').join(''))
       : (lastMsg as any).content ?? ''
 
-    // Visual panels — only one active at a time
+    // Visual panels — only one active at a time.
+    // JSON-compare before setting state to avoid re-rendering the visual on every streaming chunk.
     const animMatch = fullText.match(/\[ANIMATE\]([\s\S]*?)\[\/ANIMATE\]/)
     if (animMatch) {
       const parsed = parseAnimateSpec(animMatch[1].trim())
       if (parsed) {
-        setAnimateSpec(parsed)
-        setAnimateStep(0)
-        setDiagramSpec(null)
-        setAnimDiagramSpec(null)
-        prevSentenceRef.current = ''
+        const j = JSON.stringify(parsed)
+        if (j !== lastAnimateSpecJsonRef.current) {
+          lastAnimateSpecJsonRef.current = j
+          lastDiagramSpecJsonRef.current = null
+          lastAnimDiagramJsonRef.current = null
+          setAnimateSpec(parsed)
+          setAnimateStep(0)
+          setDiagramSpec(null)
+          setAnimDiagramSpec(null)
+          prevSentenceRef.current = ''
+        }
       }
     } else {
       const adiagramMatch = fullText.match(/\[ADIAGRAM\]([\s\S]*?)\[\/ADIAGRAM\]/)
       if (adiagramMatch) {
         const parsed = parseAnimDiagramSpec(adiagramMatch[1].trim())
         if (parsed) {
-          setAnimDiagramSpec(parsed)
-          setAnimDiagramStep(0)
-          setAnimateSpec(null)
-          setDiagramSpec(null)
+          const j = JSON.stringify(parsed)
+          if (j !== lastAnimDiagramJsonRef.current) {
+            lastAnimDiagramJsonRef.current = j
+            lastAnimateSpecJsonRef.current = null
+            lastDiagramSpecJsonRef.current = null
+            setAnimDiagramSpec(parsed)
+            setAnimDiagramStep(0)
+            setAnimateSpec(null)
+            setDiagramSpec(null)
+          }
         }
       } else {
         const diagMatch = fullText.match(/\[DIAGRAM\]([\s\S]*?)\[\/DIAGRAM\]/)
         if (diagMatch) {
           const parsed = parseDiagramSpec(diagMatch[1].trim())
           if (parsed) {
-            setDiagramSpec(parsed)
-            setAnimateSpec(null)
-            setAnimDiagramSpec(null)
+            const j = JSON.stringify(parsed)
+            if (j !== lastDiagramSpecJsonRef.current) {
+              lastDiagramSpecJsonRef.current = j
+              lastAnimateSpecJsonRef.current = null
+              lastAnimDiagramJsonRef.current = null
+              setDiagramSpec(parsed)
+              setAnimateSpec(null)
+              setAnimDiagramSpec(null)
+            }
           }
         }
       }
@@ -212,7 +241,7 @@ export default function SpokPage() {
     if (qrMatch) {
       try { setQuickReplies(JSON.parse(qrMatch[1].trim())) } catch { setQuickReplies([]) }
     } else {
-      setQuickReplies([])
+      setQuickReplies(prev => prev.length === 0 ? prev : [])
     }
 
     // "Try it yourself" interactive problem
@@ -259,7 +288,6 @@ export default function SpokPage() {
     const sentences = sentenceBufferRef.current.feedText(newChunk)
     sentences.forEach(s => {
       queueSpeak(s)
-      setJarvisState('speaking')
     })
   }, [messages, status, queueSpeak])
 
@@ -290,13 +318,13 @@ export default function SpokPage() {
 
   useEffect(() => {
     if (listening) setJarvisState('listening')
-    else if (jarvisState === 'listening') setJarvisState('idle')
+    else setJarvisState(prev => prev === 'listening' ? 'idle' : prev)
   }, [listening])
 
   useEffect(() => {
     if (speaking) setJarvisState('speaking')
-    else if (jarvisState === 'speaking' && !isLoading) setJarvisState('idle')
-  }, [speaking])
+    else setJarvisState(prev => (prev === 'speaking' && !isLoading) ? 'idle' : prev)
+  }, [speaking, isLoading])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -338,8 +366,28 @@ export default function SpokPage() {
     setAnimDiagramStep(0)
     setQuickReplies([])
     hasSeededHistory.current = true
+    pendingImageRef.current = pendingImage
     sendMessage({ text: inputValue.trim() })
     setInputValue('')
+    setPendingImage(null)
+    pendingImageRef.current = null
+  }
+
+  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => {
+      const result = ev.target?.result
+      if (typeof result === 'string') {
+        setPendingImage(result)
+        if (!inputValue.trim()) {
+          setInputValue('Here is my working — please mark it step by step.')
+        }
+      }
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
   }
 
   function sendQuick(text: string) {
@@ -376,8 +424,8 @@ export default function SpokPage() {
     idle:      'Ready',
   }[jarvisState]
 
-  const handleElementClick = useCallback((label: string, description: string) => {
-    setInputValue(`Explain ${description} in this diagram`)
+  const handleElementClick = useCallback((label: string, _description: string) => {
+    setInputValue(`I think ${label} = `)
     inputRef.current?.focus()
   }, [])
 
@@ -688,8 +736,38 @@ export default function SpokPage() {
         <form onSubmit={handleSend}
           className="px-6 py-4 shrink-0"
           style={{ borderTop: '1px solid rgba(59,130,246,0.1)' }}>
+          {/* Image thumbnail preview */}
+          {pendingImage && (
+            <div className="flex items-center gap-2 mb-2 px-1">
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={pendingImage} alt="Working" className="h-14 w-20 object-cover rounded-lg"
+                  style={{ border: '1px solid rgba(59,130,246,0.35)' }} />
+                <button type="button" onClick={() => setPendingImage(null)}
+                  className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center"
+                  style={{ background: '#ef4444', color: 'white' }}>
+                  <X size={8} />
+                </button>
+              </div>
+              <span className="text-xs" style={{ color: '#5a7aaa' }}>Photo attached — SPOK will mark your working</span>
+            </div>
+          )}
           <div className="flex items-center gap-3 px-4 py-3 rounded-2xl"
             style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(59,130,246,0.15)' }}>
+            {/* Hidden file input */}
+            <input ref={fileInputRef} type="file" accept="image/*" capture="environment"
+              className="hidden" onChange={handleImageSelect} />
+            {/* Camera button */}
+            <button type="button" onClick={() => fileInputRef.current?.click()}
+              title="Attach photo of working"
+              className="p-1.5 rounded-lg transition-all shrink-0"
+              style={{
+                background: pendingImage ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${pendingImage ? 'rgba(59,130,246,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                color: pendingImage ? '#60a5fa' : '#5a7aaa',
+              }}>
+              <Paperclip size={13} />
+            </button>
             <input
               ref={inputRef}
               value={inputValue}

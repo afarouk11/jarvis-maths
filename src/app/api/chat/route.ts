@@ -31,7 +31,7 @@ Rules:
 export const maxDuration = 60
 
 export async function POST(req: Request) {
-  const { messages, topicContext, accessibilityPrefs, skillMode, conversationHistory } = await req.json()
+  const { messages, topicContext, accessibilityPrefs, skillMode, conversationHistory, imageData } = await req.json()
   const modeAppend = skillMode
     ? (CHAT_SKILL_MODES.find(m => m.id === (skillMode as SkillModeId))?.systemAppend ?? '')
     : ''
@@ -174,6 +174,23 @@ export async function POST(req: Request) {
   }
 
   const modelMessages = await convertToModelMessages(messages)
+
+  // If the student attached a photo of their working, inject it into the last user message
+  if (imageData && typeof imageData === 'string' && modelMessages.length > 0) {
+    const lastMsg = modelMessages[modelMessages.length - 1]
+    if (lastMsg.role === 'user') {
+      const existingText = typeof lastMsg.content === 'string'
+        ? lastMsg.content
+        : (lastMsg.content as Array<{ type: string; text?: string }>)
+            .filter(p => p.type === 'text')
+            .map(p => p.text ?? '')
+            .join('')
+      lastMsg.content = [
+        { type: 'image' as const, image: imageData },
+        { type: 'text' as const, text: existingText || 'Here is my handwritten working. Please mark it step by step.' },
+      ]
+    }
+  }
 
   // If KB returned graph reference images, inject them before the last user message
   // so Claude can see the example graph style when generating [GRAPH] blocks.
