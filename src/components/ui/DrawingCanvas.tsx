@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, useEffect, useCallback, type CSSProperties } from 'react'
-import { Pen, Eraser, Trash2, Undo2 } from 'lucide-react'
+import { Pen, Eraser, Trash2, Undo2, X } from 'lucide-react'
 
 interface Props {
   onChange: (base64: string) => void
@@ -13,6 +13,12 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
   const canvasRef       = useRef<HTMLCanvasElement>(null)
   const [tool, setTool] = useState<'pen' | 'eraser'>('pen')
   const [canUndo, setCanUndo] = useState(false)
+  const [showScribbleBanner, setShowScribbleBanner] = useState(() => {
+    if (typeof window === 'undefined') return false
+    const isIpad = /iPad/.test(navigator.userAgent) ||
+      (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform))
+    return isIpad && localStorage.getItem('scribble-dismissed') !== '1'
+  })
 
   // All drawing state in refs — zero React renders involved in stroke handling
   const isDrawingRef       = useRef(false)
@@ -226,6 +232,24 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
           <Trash2 size={11} /> Clear
         </button>
       </div>
+
+      {showScribbleBanner && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8,
+          marginBottom: 8, padding: '8px 10px', borderRadius: 8,
+          background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.35)',
+        }}>
+          <p style={{ fontSize: 11, color: '#fbbf24', margin: 0, lineHeight: 1.5 }}>
+            <strong>iPad tip:</strong> For smooth drawing, go to{' '}
+            <strong>Settings → Apple Pencil</strong> and turn off <strong>Scribble</strong>.
+          </p>
+          <button
+            onClick={() => { localStorage.setItem('scribble-dismissed', '1'); setShowScribbleBanner(false) }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fbbf24', padding: 0, flexShrink: 0 }}>
+            <X size={13} />
+          </button>
+        </div>
+      )}
 
       <canvas
         ref={canvasRef}
