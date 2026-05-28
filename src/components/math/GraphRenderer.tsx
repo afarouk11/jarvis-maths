@@ -94,6 +94,26 @@ export function GraphRenderer({ spec, className }: Props) {
           annotations: spec.annotations,
           tip: { xLine: true, yLine: true },
         })
+
+        // Graph paper styling — overrides function-plot's internal SVG
+        const svg = container.querySelector<SVGElement>('svg')
+        if (svg) {
+          svg.style.background = 'transparent'
+          svg.querySelectorAll<SVGElement>('.grid line').forEach(l => {
+            l.setAttribute('stroke', 'rgba(150,195,220,0.55)')
+            l.setAttribute('stroke-width', '0.7')
+          })
+          svg.querySelectorAll<SVGElement>('.x.axis path, .y.axis path').forEach(p => {
+            p.setAttribute('stroke', 'rgba(40,80,120,0.6)')
+            p.setAttribute('stroke-width', '1.5')
+          })
+          svg.querySelectorAll<SVGElement>('.x.axis line, .y.axis line').forEach(l => {
+            l.setAttribute('stroke', 'rgba(40,80,120,0.35)')
+          })
+          svg.querySelectorAll<SVGElement>('text').forEach(t => {
+            t.setAttribute('fill', 'rgba(30,60,100,0.75)')
+          })
+        }
       } catch (e) {
         console.error('[GraphRenderer] function-plot error:', e)
         container.innerHTML = `<p style="color:#ef4444;font-size:12px;padding:8px">Graph error — could not render</p>`
@@ -112,8 +132,9 @@ export function GraphRenderer({ spec, className }: Props) {
         ref={containerRef}
         className="w-full rounded-xl overflow-hidden"
         style={{
-          background: 'rgba(8,13,28,0.8)',
-          border: '1px solid rgba(59,130,246,0.15)',
+          background: 'rgba(255,255,255,0.92)',
+          border: '1px solid rgba(173,210,230,0.65)',
+          boxShadow: '0 2px 16px rgba(40,80,120,0.1)',
           minHeight: 280,
         }}
       />
@@ -202,6 +223,26 @@ export function AnimatedGraphRenderer({ spec, currentStep, className }: { spec: 
           annotations: builtSpec.annotations,
           tip: { xLine: true, yLine: true },
         })
+
+        // Graph paper styling
+        const svg = container.querySelector<SVGElement>('svg')
+        if (svg) {
+          svg.style.background = 'transparent'
+          svg.querySelectorAll<SVGElement>('.grid line').forEach(l => {
+            l.setAttribute('stroke', 'rgba(150,195,220,0.55)')
+            l.setAttribute('stroke-width', '0.7')
+          })
+          svg.querySelectorAll<SVGElement>('.x.axis path, .y.axis path').forEach(p => {
+            p.setAttribute('stroke', 'rgba(40,80,120,0.6)')
+            p.setAttribute('stroke-width', '1.5')
+          })
+          svg.querySelectorAll<SVGElement>('.x.axis line, .y.axis line').forEach(l => {
+            l.setAttribute('stroke', 'rgba(40,80,120,0.35)')
+          })
+          svg.querySelectorAll<SVGElement>('text').forEach(t => {
+            t.setAttribute('fill', 'rgba(30,60,100,0.75)')
+          })
+        }
 
         // SPOK pointer annotations — pulsing rings + labels on the graph
         if (currentHighlights.length > 0) {
@@ -372,8 +413,9 @@ export function AnimatedGraphRenderer({ spec, currentStep, className }: { spec: 
         ref={containerRef}
         className="w-full rounded-xl overflow-hidden"
         style={{
-          background: 'rgba(8,13,28,0.8)',
-          border: '1px solid rgba(59,130,246,0.15)',
+          background: 'rgba(255,255,255,0.92)',
+          border: '1px solid rgba(173,210,230,0.65)',
+          boxShadow: '0 2px 16px rgba(40,80,120,0.1)',
           minHeight: 260,
         }}
       />

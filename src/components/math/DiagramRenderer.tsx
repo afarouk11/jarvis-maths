@@ -158,7 +158,7 @@ function renderPoint(
 ) {
   const px = c.mx(overridePos?.x ?? el.x)
   const py = c.my(overridePos?.y ?? el.y)
-  const color = el.color ?? '#ffffff'
+  const color = el.color ?? '#1e40af'
   const hitKey = `point-${key}`
   const isHovered = opts.hoveredKey === hitKey
 
@@ -289,7 +289,7 @@ function renderNorth(
   const bx = c.mx(el.x)
   const by = c.my(el.y)
   const len = c.mLen(el.len ?? 2.5)
-  const color = 'rgba(255,255,255,0.75)'
+  const color = 'rgba(30,64,120,0.8)'
   const mid = markerId('north-white')
 
   const tipX = bx
@@ -369,7 +369,7 @@ function renderRightAngle(
   const px = c.mx(el.x)
   const py = c.my(el.y)
   const size = c.mLen(el.size ?? 0.4)
-  const color = 'rgba(255,255,255,0.65)'
+  const color = 'rgba(40,80,120,0.65)'
 
   const a1 = (-el.angle * Math.PI) / 180
   const a2 = (-(el.angle + 90) * Math.PI) / 180
@@ -421,50 +421,67 @@ function renderGrid(c: Coords) {
   const lines: React.ReactElement[] = []
   const { xMin, xMax, yMin, yMax } = c
 
+  // Minor grid lines at 0.5-unit intervals (only when zoomed in enough)
+  const pixelPerUnit = INNER_W / (xMax - xMin)
+  if (pixelPerUnit > 12) {
+    for (let x2 = Math.ceil(xMin * 2) / 2; x2 <= Math.floor(xMax * 2) / 2; x2 += 0.5) {
+      if (Number.isInteger(x2)) continue
+      lines.push(
+        <line key={`gxm${x2}`}
+          x1={c.mx(x2)} y1={MARGIN.top}
+          x2={c.mx(x2)} y2={MARGIN.top + INNER_H}
+          stroke="rgba(173,210,230,0.4)" strokeWidth={0.4}
+        />,
+      )
+    }
+    for (let y2 = Math.ceil(yMin * 2) / 2; y2 <= Math.floor(yMax * 2) / 2; y2 += 0.5) {
+      if (Number.isInteger(y2)) continue
+      lines.push(
+        <line key={`gym${y2}`}
+          x1={MARGIN.left} y1={c.my(y2)}
+          x2={MARGIN.left + INNER_W} y2={c.my(y2)}
+          stroke="rgba(173,210,230,0.4)" strokeWidth={0.4}
+        />,
+      )
+    }
+  }
+
+  // Major grid lines at 1-unit intervals
   for (let x = Math.ceil(xMin); x <= Math.floor(xMax); x++) {
     lines.push(
-      <line
-        key={`gx${x}`}
+      <line key={`gx${x}`}
         x1={c.mx(x)} y1={MARGIN.top}
         x2={c.mx(x)} y2={MARGIN.top + INNER_H}
-        stroke="rgba(255,255,255,0.05)"
-        strokeWidth={1}
+        stroke="rgba(150,195,220,0.55)" strokeWidth={0.7}
       />,
     )
   }
-
   for (let y = Math.ceil(yMin); y <= Math.floor(yMax); y++) {
     lines.push(
-      <line
-        key={`gy${y}`}
+      <line key={`gy${y}`}
         x1={MARGIN.left} y1={c.my(y)}
         x2={MARGIN.left + INNER_W} y2={c.my(y)}
-        stroke="rgba(255,255,255,0.05)"
-        strokeWidth={1}
+        stroke="rgba(150,195,220,0.55)" strokeWidth={0.7}
       />,
     )
   }
 
+  // Axes — darker so they read as the zero lines
   if (yMin <= 0 && yMax >= 0) {
     lines.push(
-      <line
-        key="xaxis"
+      <line key="xaxis"
         x1={MARGIN.left} y1={c.my(0)}
         x2={MARGIN.left + INNER_W} y2={c.my(0)}
-        stroke="rgba(255,255,255,0.2)"
-        strokeWidth={1}
+        stroke="rgba(40,80,120,0.6)" strokeWidth={1.5}
       />,
     )
   }
-
   if (xMin <= 0 && xMax >= 0) {
     lines.push(
-      <line
-        key="yaxis"
+      <line key="yaxis"
         x1={c.mx(0)} y1={MARGIN.top}
         x2={c.mx(0)} y2={MARGIN.top + INNER_H}
-        stroke="rgba(255,255,255,0.2)"
-        strokeWidth={1}
+        stroke="rgba(40,80,120,0.6)" strokeWidth={1.5}
       />,
     )
   }
@@ -613,9 +630,9 @@ function WhiteboardCanvas({ width, height }: { width: number; height: number }) 
             title={t}
             style={{
               ...btnBase,
-              background: tool === t ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.06)',
-              border: `1px solid ${tool === t ? 'rgba(245,158,11,0.5)' : 'rgba(255,255,255,0.1)'}`,
-              color: tool === t ? '#f59e0b' : 'rgba(255,255,255,0.5)',
+              background: tool === t ? 'rgba(245,158,11,0.15)' : 'rgba(40,80,120,0.07)',
+              border: `1px solid ${tool === t ? 'rgba(245,158,11,0.45)' : 'rgba(40,80,120,0.2)'}`,
+              color: tool === t ? '#b45309' : 'rgba(40,80,120,0.6)',
             }}>
             {icon}
           </button>
@@ -625,9 +642,9 @@ function WhiteboardCanvas({ width, height }: { width: number; height: number }) 
           title="Clear"
           style={{
             ...btnBase,
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            color: 'rgba(255,255,255,0.5)',
+            background: 'rgba(40,80,120,0.07)',
+            border: '1px solid rgba(40,80,120,0.2)',
+            color: 'rgba(40,80,120,0.6)',
           }}>
           ✕
         </button>
@@ -748,9 +765,9 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
 
   const btnCtrl: React.CSSProperties = {
     width: 26, height: 26, borderRadius: 6, fontSize: 13, lineHeight: 1,
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    color: 'rgba(255,255,255,0.55)',
+    background: 'rgba(40,80,120,0.07)',
+    border: '1px solid rgba(40,80,120,0.2)',
+    color: 'rgba(40,80,120,0.65)',
     cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
   }
 
@@ -759,9 +776,8 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
       {spec.title && (
         <p style={{
           fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
-          color: '#fbbf24', textTransform: 'uppercase',
+          color: '#b45309', textTransform: 'uppercase',
           marginBottom: 8, fontFamily: FONT,
-          textShadow: '0 0 12px rgba(251,191,36,0.4)',
         }}>
           {spec.title}
         </p>
@@ -787,9 +803,9 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
             style={{
               position: 'absolute', top: 10, right: 12, zIndex: 15,
               padding: '3px 10px', borderRadius: 6, fontSize: 11,
-              background: 'rgba(245,158,11,0.15)',
-              border: '1px solid rgba(245,158,11,0.35)',
-              color: '#f59e0b', cursor: 'pointer', fontFamily: FONT,
+              background: 'rgba(245,158,11,0.12)',
+              border: '1px solid rgba(245,158,11,0.4)',
+              color: '#b45309', cursor: 'pointer', fontFamily: FONT,
             }}>
             Done
           </button>
@@ -801,10 +817,10 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
           width="100%"
           height="auto"
           style={{
-            background: 'rgba(6,10,22,0.92)',
+            background: 'rgba(255,255,255,0.92)',
             borderRadius: 14,
-            border: '1px solid rgba(245,158,11,0.18)',
-            boxShadow: '0 0 0 1px rgba(245,158,11,0.06), 0 8px 40px rgba(0,0,0,0.55)',
+            border: '1px solid rgba(173,210,230,0.65)',
+            boxShadow: '0 2px 16px rgba(40,80,120,0.1)',
             display: 'block',
             cursor: isDraggingAPoint ? 'none' : dragRef.current ? 'grabbing' : whiteboardActive ? 'none' : 'grab',
             userSelect: 'none',
@@ -1034,7 +1050,7 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
         <p style={{
           position: 'absolute', bottom: 12,
           left: whiteboardActive ? 130 : 44,
-          fontSize: 10, color: 'rgba(255,255,255,0.18)',
+          fontSize: 10, color: 'rgba(40,80,120,0.3)',
           pointerEvents: 'none', fontFamily: FONT,
         }}>
           {whiteboardActive ? 'draw mode' : 'scroll to zoom · drag to pan'}
