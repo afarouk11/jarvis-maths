@@ -37,11 +37,18 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
   useEffect(() => { initCanvas() }, [initCanvas])
 
   useEffect(() => {
+    const s = document.body.style
+    s.setProperty('user-select', 'none')
+    s.setProperty('-webkit-user-select', 'none')
+
     const prevent = (e: Event) => e.preventDefault()
     document.addEventListener('selectstart', prevent)
     const canvas = canvasRef.current
     canvas?.addEventListener('contextmenu', prevent)
+
     return () => {
+      s.removeProperty('user-select')
+      s.removeProperty('-webkit-user-select')
       document.removeEventListener('selectstart', prevent)
       canvas?.removeEventListener('contextmenu', prevent)
     }
