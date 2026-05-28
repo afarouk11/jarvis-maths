@@ -10,11 +10,11 @@ export async function POST(req: Request) {
 
   const { data: prof } = await supabase
     .from('profiles')
-    .select('stripe_subscription_status')
+    .select('stripe_subscription_status, pro_access_until')
     .eq('id', user.id)
     .single()
 
-  if (!isPro(prof?.stripe_subscription_status)) {
+  if (!isPro(prof?.stripe_subscription_status, prof?.pro_access_until)) {
     return Response.json({ error: 'pro_required' }, { status: 403 })
   }
 

@@ -33,6 +33,8 @@ export const PLANS = {
   },
 }
 
-export function isPro(status: string | null | undefined): boolean {
-  return status === 'active' || status === 'trialing'
+export function isPro(status: string | null | undefined, proAccessUntil?: string | null): boolean {
+  if (status === 'active' || status === 'trialing') return true
+  if (proAccessUntil && new Date(proAccessUntil) > new Date()) return true
+  return false
 }
