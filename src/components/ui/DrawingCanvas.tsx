@@ -199,9 +199,6 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
           backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, #d0d7de 31px, #d0d7de 32px)',
         }}
       />
-      <p style={{ fontSize: 11, color: '#4a6070', marginTop: 5 }}>
-        Apple Pencil or stylus only — finger touch is ignored to prevent palm marks
-      </p>
     </div>
   )
 }
