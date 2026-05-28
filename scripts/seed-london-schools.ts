@@ -21,6 +21,10 @@ import { parse } from 'csv-parse/sync'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as https from 'https'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 // DfE GIAS — all establishments (open + closed), updated periodically
 const GIAS_CSV_URL =
@@ -63,7 +67,8 @@ interface SchoolRow {
   personalisation: {
     offersGCSE: boolean
     offersAlevel: boolean
-    courses: string  // "GCSE & A-level Maths" or "GCSE Maths"
+    courses: string
+    emailDerived: boolean  // true = guessed as info@domain, not from official record
   }
 }
 
@@ -159,20 +164,43 @@ async function main() {
       continue
     }
 
-    // ── 5. Must have a contact email ──────────────────────────────────────────
-    const contactEmail = (
-      r['Email Address'] ?? r['Email address'] ?? r['Email'] ?? r['SchoolEmail'] ?? ''
-    ).trim().toLowerCase()
-    if (!contactEmail || !contactEmail.includes('@') || !contactEmail.includes('.')) {
-      skipReasons['no email'] = (skipReasons['no email'] ?? 0) + 1
-      continue
-    }
-
-    // ── 6. Build row ──────────────────────────────────────────────────────────
+    // ── 5. Build row ──────────────────────────────────────────────────────────
     const name = (r['EstablishmentName'] ?? r['School Name'] ?? '').trim()
     if (!name) continue
 
-    const offersGCSE  = highAge >= 16
+    // Try explicit email field first, then derive from website domain
+    const rawEmail = (
+      r['Email Address'] ?? r['Email address'] ?? r['Email'] ?? r['SchoolEmail'] ?? ''
+    ).trim().toLowerCase()
+
+    const rawWebsite = (r['SchoolWebsite'] ?? r['Website'] ?? '').trim()
+    const website = rawWebsite.replace(/^http:\/\//, 'https://')
+
+    let contactEmail = ''
+    let emailDerived = false
+
+    if (rawEmail && rawEmail.includes('@')) {
+      contactEmail = rawEmail
+    } else if (rawWebsite) {
+      // Derive info@domain from website URL — most UK schools use this pattern
+      try {
+        const url = new URL(rawWebsite.startsWith('http') ? rawWebsite : `https://${rawWebsite}`)
+        const domain = url.hostname.replace(/^www\./, '')
+        if (domain && domain.includes('.')) {
+          contactEmail = `info@${domain}`
+          emailDerived = true
+        }
+      } catch {
+        // invalid URL — skip
+      }
+    }
+
+    if (!contactEmail) {
+      skipReasons['no email or website'] = (skipReasons['no email or website'] ?? 0) + 1
+      continue
+    }
+
+    const offersGCSE   = highAge >= 16
     const offersAlevel = highAge >= 18
 
     schools.push({
@@ -180,11 +208,12 @@ async function main() {
       contact_email: contactEmail,
       school_type: type,
       borough: r['LA (name)'] ?? r['Local Authority'] ?? '',
-      website: (r['SchoolWebsite'] ?? '').trim().replace(/^http:\/\//, 'https://'),
+      website,
       personalisation: {
         offersGCSE,
         offersAlevel,
         courses: offersAlevel ? 'GCSE & A-level Maths' : 'GCSE Maths',
+        emailDerived,
       },
     })
   }
