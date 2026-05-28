@@ -47,6 +47,8 @@ export function DrawingCanvas({ onChange, marks = 3, disabled, initialImage }: P
   const onChangeRef       = useRef(onChange)
   const disabledRef       = useRef(disabled)
   const setCanUndoRef     = useRef(setCanUndo)
+  const initialImageRef   = useRef(initialImage) // captured once at mount, never tracked as dep
+  const restoredRef       = useRef(false)        // guard: restore only on first init
 
   useEffect(() => { toolRef.current = tool }, [tool])
   useEffect(() => { onChangeRef.current  = onChange  }, [onChange])
@@ -83,19 +85,21 @@ export function DrawingCanvas({ onChange, marks = 3, disabled, initialImage }: P
 
     ctx.clearRect(0, 0, logicalW, logicalH)
 
-    if (initialImage) {
+    const img64 = initialImageRef.current
+    if (img64 && !restoredRef.current) {
+      restoredRef.current = true
       const img = new Image()
       img.onload = () => {
         ctx.drawImage(img, 0, 0, logicalW, logicalH)
         history.current = [ctx.getImageData(0, 0, canvas.width, canvas.height)]
         setCanUndo(false)
       }
-      img.src = `data:image/png;base64,${initialImage}`
+      img.src = `data:image/png;base64,${img64}`
     } else {
       history.current = [ctx.getImageData(0, 0, canvas.width, canvas.height)]
       setCanUndo(false)
     }
-  }, [initialImage])
+  }, [])
 
   // useLayoutEffect so DPR dimensions are set before the first paint
   useLayoutEffect(() => { initCanvas() }, [initCanvas])
