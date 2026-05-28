@@ -37,14 +37,13 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
   useEffect(() => { initCanvas() }, [initCanvas])
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
     const prevent = (e: Event) => e.preventDefault()
-    canvas.addEventListener('selectstart', prevent)
-    canvas.addEventListener('contextmenu', prevent)
+    document.addEventListener('selectstart', prevent)
+    const canvas = canvasRef.current
+    canvas?.addEventListener('contextmenu', prevent)
     return () => {
-      canvas.removeEventListener('selectstart', prevent)
-      canvas.removeEventListener('contextmenu', prevent)
+      document.removeEventListener('selectstart', prevent)
+      canvas?.removeEventListener('contextmenu', prevent)
     }
   }, [])
 
