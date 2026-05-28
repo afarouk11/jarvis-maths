@@ -80,8 +80,15 @@ ${workedSolution ? `## Worked solution (mark scheme)\n${JSON.stringify(workedSol
       messages: [{
         role: 'user',
         content: [
-          { type: 'text', text: `${context}\n\n## Student's answer\nThe student's handwritten answer is shown in the attached image. Read and interpret all working shown.\n\n${instructions}` },
-          { type: 'image', image: `data:image/png;base64,${studentAnswerImage}` as any },
+          {
+            type: 'text',
+            text: `${context}\n\n## Student's answer\nThe student's answer is provided as a handwritten image. Transcribe what is written and then mark it against the question.\n\n${instructions}`,
+          },
+          {
+            type: 'image',
+            image: Buffer.from(studentAnswerImage, 'base64'),
+            mimeType: 'image/png',
+          },
         ],
       }],
     })

@@ -115,7 +115,17 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
         const snap = ctx.getImageData(0, 0, c.width, c.height)
         history.current = [...history.current, snap].slice(-20)
         setCanUndoRef.current(true)
-        onChangeRef.current(c.toDataURL('image/png').split(',')[1])
+
+        // Composite white background before export so AI receives dark ink on
+        // white rather than dark ink on transparency
+        const flat = document.createElement('canvas')
+        flat.width  = c.width
+        flat.height = c.height
+        const fctx = flat.getContext('2d')!
+        fctx.fillStyle = '#ffffff'
+        fctx.fillRect(0, 0, flat.width, flat.height)
+        fctx.drawImage(c, 0, 0)
+        onChangeRef.current(flat.toDataURL('image/png').split(',')[1])
       }, 0)
     }
 
