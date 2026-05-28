@@ -77,6 +77,23 @@ export function MockExamView({ paper, focusTopics, onClose }: {
     const hasAnswer = s.drawMode ? !!s.drawingImage : !!s.studentAnswer.trim()
     if (!hasAnswer) return
     updateState(q.number, { marking: true })
+
+    // Composite white background onto transparent drawing PNG before sending to AI
+    let answerImage = s.drawingImage
+    if (s.drawMode && s.drawingImage) {
+      const img = new Image()
+      img.src = `data:image/png;base64,${s.drawingImage}`
+      await new Promise<void>(resolve => { img.onload = () => resolve() })
+      const flat = document.createElement('canvas')
+      flat.width = img.naturalWidth
+      flat.height = img.naturalHeight
+      const fctx = flat.getContext('2d')!
+      fctx.fillStyle = '#ffffff'
+      fctx.fillRect(0, 0, flat.width, flat.height)
+      fctx.drawImage(img, 0, 0)
+      answerImage = flat.toDataURL('image/png').split(',')[1]
+    }
+
     const res = await fetch('/api/mark-answer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -84,7 +101,7 @@ export function MockExamView({ paper, focusTopics, onClose }: {
         stem: q.stem,
         correctAnswer: q.answer,
         studentAnswer: s.drawMode ? undefined : s.studentAnswer,
-        studentAnswerImage: s.drawMode ? s.drawingImage : undefined,
+        studentAnswerImage: s.drawMode ? answerImage : undefined,
         workedSolution: q.worked_solution,
       }),
     })
