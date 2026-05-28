@@ -21,6 +21,7 @@ export interface MockPaper {
 interface QuestionState {
   studentAnswer: string
   drawingImage: string
+  drawingHeight: number
   drawMode: boolean
   marking: boolean
   result: { correct: boolean; quality: number; feedback: string; partialCredit: boolean } | null
@@ -37,7 +38,7 @@ export function MockExamView({ paper, focusTopics, onClose }: {
 
   const [states, setStates] = useState<Record<number, QuestionState>>(() =>
     Object.fromEntries(allQuestions.map(q => [q.number, {
-      studentAnswer: '', drawingImage: '', drawMode: false, marking: false, result: null, marksEarned: 0, revealed: false,
+      studentAnswer: '', drawingImage: '', drawingHeight: 0, drawMode: false, marking: false, result: null, marksEarned: 0, revealed: false,
     }]))
   )
   const [expandedSolutions, setExpandedSolutions] = useState<Set<number>>(new Set())
@@ -297,6 +298,8 @@ export function MockExamView({ paper, focusTopics, onClose }: {
                                 disabled={!!st.result}
                                 onChange={img => updateState(q.number, { drawingImage: img })}
                                 initialImage={st.drawingImage || undefined}
+                                initialCssHeight={st.drawingHeight || undefined}
+                                onHeightChange={h => updateState(q.number, { drawingHeight: h })}
                               />
                             ) : (
                               <>

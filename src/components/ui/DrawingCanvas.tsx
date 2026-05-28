@@ -8,9 +8,11 @@ interface Props {
   marks?: number
   disabled?: boolean
   initialImage?: string
+  initialCssHeight?: number
+  onHeightChange?: (h: number) => void
 }
 
-export function DrawingCanvas({ onChange, marks = 3, disabled, initialImage }: Props) {
+export function DrawingCanvas({ onChange, marks = 3, disabled, initialImage, initialCssHeight, onHeightChange }: Props) {
   const canvasRef       = useRef<HTMLCanvasElement>(null)
   const [tool, setTool] = useState<'pen' | 'eraser'>('pen')
   const [canUndo, setCanUndo] = useState(false)
@@ -21,15 +23,16 @@ export function DrawingCanvas({ onChange, marks = 3, disabled, initialImage }: P
     return isIpad && localStorage.getItem('scribble-dismissed') !== '1'
   })
 
-  const initialHeight     = Math.max(140, marks * 38)
-  const [cssHeight, setCssHeight] = useState(initialHeight)
-  const cssHeightRef      = useRef(initialHeight)
+  const baseHeight        = Math.max(140, marks * 38)
+  const startHeight       = initialCssHeight ?? baseHeight
+  const [cssHeight, setCssHeight] = useState(startHeight)
+  const cssHeightRef      = useRef(startHeight)
   const pendingScrollRef  = useRef<number | null>(null)
 
   // thickness index 0-3 stored separately per tool so switching remembers last choice
-  const [penThicknessIdx,    setPenThicknessIdx]    = useState(2) // default Medium
+  const [penThicknessIdx,    setPenThicknessIdx]    = useState(1) // default Thin
   const [eraserThicknessIdx, setEraserThicknessIdx] = useState(2)
-  const thicknessIdxRef = useRef(2) // tracks active tool's index for event handlers
+  const thicknessIdxRef = useRef(1) // tracks active tool's index for event handlers
 
   const PEN_SIZES    = [1, 3, 6, 12]   // CSS px, pressure-modulated later
   const ERASER_SIZES = [8, 16, 32, 64]
@@ -47,12 +50,14 @@ export function DrawingCanvas({ onChange, marks = 3, disabled, initialImage }: P
   const onChangeRef       = useRef(onChange)
   const disabledRef       = useRef(disabled)
   const setCanUndoRef     = useRef(setCanUndo)
-  const initialImageRef   = useRef(initialImage) // captured once at mount, never tracked as dep
-  const restoredRef       = useRef(false)        // guard: restore only on first init
+  const initialImageRef    = useRef(initialImage)    // captured once at mount, never tracked as dep
+  const restoredRef        = useRef(false)           // guard: restore only on first init
+  const onHeightChangeRef  = useRef(onHeightChange)
 
-  useEffect(() => { toolRef.current = tool }, [tool])
-  useEffect(() => { onChangeRef.current  = onChange  }, [onChange])
-  useEffect(() => { disabledRef.current  = disabled  }, [disabled])
+  useEffect(() => { toolRef.current        = tool           }, [tool])
+  useEffect(() => { onChangeRef.current   = onChange        }, [onChange])
+  useEffect(() => { disabledRef.current   = disabled        }, [disabled])
+  useEffect(() => { onHeightChangeRef.current = onHeightChange }, [onHeightChange])
 
   // Keep thickness ref in sync when tool or index changes
   useEffect(() => {
@@ -222,6 +227,7 @@ export function DrawingCanvas({ onChange, marks = 3, disabled, initialImage }: P
       ctx.putImageData(imageData, 0, 0)
 
       setCssHeight(newLogicalH)
+      onHeightChangeRef.current?.(newLogicalH)
     }
 
     function onMove(e: PointerEvent) {
@@ -298,8 +304,8 @@ export function DrawingCanvas({ onChange, marks = 3, disabled, initialImage }: P
   }
 
   function clear() {
-    cssHeightRef.current = initialHeight
-    setCssHeight(initialHeight)
+    cssHeightRef.current = baseHeight
+    setCssHeight(baseHeight)
     initCanvas()
     onChange('')
   }
