@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useEffect, useCallback, type CSSProperties } from 'react'
+import { useRef, useState, useEffect, useLayoutEffect, useCallback, type CSSProperties } from 'react'
 import { Pen, Eraser, Trash2, Undo2, X } from 'lucide-react'
 
 interface Props {
@@ -20,39 +20,54 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
     return isIpad && localStorage.getItem('scribble-dismissed') !== '1'
   })
 
-  // All drawing state in refs — zero React renders involved in stroke handling
-  const isDrawingRef       = useRef(false)
-  const activePointerRef   = useRef<number | null>(null)
-  const lastPos            = useRef<{ x: number; y: number } | null>(null)
-  const lastMid            = useRef<{ x: number; y: number } | null>(null)
-  const history            = useRef<ImageData[]>([])
-  const toolRef            = useRef(tool)
-  const onChangeRef        = useRef(onChange)
-  const disabledRef        = useRef(disabled)
-  const setCanUndoRef      = useRef(setCanUndo)
+  const isDrawingRef      = useRef(false)
+  const activePointerRef  = useRef<number | null>(null)
+  const lastPos           = useRef<{ x: number; y: number } | null>(null)
+  const lastMid           = useRef<{ x: number; y: number } | null>(null)
+  const lastLineWidth     = useRef(1.5)
+  const history           = useRef<ImageData[]>([])
+  const toolRef           = useRef(tool)
+  const onChangeRef       = useRef(onChange)
+  const disabledRef       = useRef(disabled)
+  const setCanUndoRef     = useRef(setCanUndo)
 
-  useEffect(() => { toolRef.current = tool }, [tool])
-  useEffect(() => { onChangeRef.current = onChange }, [onChange])
-  useEffect(() => { disabledRef.current = disabled }, [disabled])
+  useEffect(() => { toolRef.current    = tool    }, [tool])
+  useEffect(() => { onChangeRef.current  = onChange  }, [onChange])
+  useEffect(() => { disabledRef.current  = disabled  }, [disabled])
 
-  const height = Math.max(140, marks * 38)
+  const cssHeight = Math.max(140, marks * 38)
 
   const initCanvas = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
+    const dpr      = window.devicePixelRatio || 1
+    const rect     = canvas.getBoundingClientRect()
+    const logicalW = rect.width  || 640
+    const logicalH = rect.height || cssHeight
+
+    // Set physical pixel dimensions for full retina resolution
+    canvas.width  = Math.round(logicalW * dpr)
+    canvas.height = Math.round(logicalH * dpr)
+
     const ctx = canvas.getContext('2d')!
+    // Scale once so all draw calls use CSS pixel coordinates
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+
     ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.fillRect(0, 0, logicalW, logicalH)
     ctx.strokeStyle = '#d1d5db'
     ctx.lineWidth = 0.5
-    for (let y = 32; y < canvas.height; y += 32) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke()
+    for (let y = 32; y < logicalH; y += 32) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(logicalW, y); ctx.stroke()
     }
     history.current = [ctx.getImageData(0, 0, canvas.width, canvas.height)]
     setCanUndo(false)
-  }, [])
+  }, [cssHeight])
 
-  useEffect(() => { initCanvas() }, [initCanvas])
+  // useLayoutEffect so DPR dimensions are set before the first paint
+  useLayoutEffect(() => { initCanvas() }, [initCanvas])
 
   // Block text selection while canvas is mounted
   useEffect(() => {
@@ -67,25 +82,21 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
     }
   }, [])
 
-  // All pointer handling in one native-listener useEffect — bypasses React
-  // synthetic event scheduling entirely so rapid strokes are never missed.
+  // All pointer handling via native listeners — bypasses React scheduling
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 
+    // getPos returns CSS pixel coordinates; ctx.setTransform handles DPR scaling
     function getPos(e: PointerEvent) {
       const rect = canvas!.getBoundingClientRect()
-      return {
-        x: (e.clientX - rect.left) * (canvas!.width  / rect.width),
-        y: (e.clientY - rect.top)  * (canvas!.height / rect.height),
-      }
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top }
     }
 
     function endStroke(e: PointerEvent) {
       if (e.pointerId !== activePointerRef.current) return
       if (!isDrawingRef.current) return
 
-      // Reset immediately so the next stroke can start without waiting
       isDrawingRef.current     = false
       activePointerRef.current = null
       lastPos.current          = null
@@ -93,8 +104,7 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
 
       try { canvas!.releasePointerCapture(e.pointerId) } catch { /* already released */ }
 
-      // Defer getImageData + toDataURL — GPU readback on iPad can block for
-      // hundreds of ms and would delay the next pointerdown if done synchronously
+      // Defer GPU readback so it doesn't block the next pointerdown on iPad
       const c = canvas!
       setTimeout(() => {
         const ctx  = c.getContext('2d')!
@@ -110,11 +120,11 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
       if (e.pointerType === 'touch') return
       e.preventDefault()
 
-      // Hard reset — clears any stuck state from a missed pointerup
-      isDrawingRef.current    = false
+      // Hard reset in case a previous pointerup was missed
+      isDrawingRef.current     = false
       activePointerRef.current = null
-      lastPos.current         = null
-      lastMid.current         = null
+      lastPos.current          = null
+      lastMid.current          = null
 
       canvas!.setPointerCapture(e.pointerId)
       activePointerRef.current = e.pointerId
@@ -123,10 +133,15 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
       const pos  = getPos(e)
       lastPos.current = pos
 
-      const ctx  = canvas!.getContext('2d')!
-      const size = toolRef.current === 'eraser' ? 18 : Math.max(1.5, (e.pressure || 1) * 2.5)
+      const isEraser = toolRef.current === 'eraser'
+      const size     = isEraser ? 18 : Math.max(1, (e.pressure || 0.5) * 4)
+      lastLineWidth.current = size
+
+      const ctx = canvas!.getContext('2d')!
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
       ctx.beginPath()
-      ctx.fillStyle = toolRef.current === 'eraser' ? '#ffffff' : '#111827'
+      ctx.fillStyle = isEraser ? '#ffffff' : '#111827'
       ctx.arc(pos.x, pos.y, size / 2, 0, Math.PI * 2)
       ctx.fill()
     }
@@ -137,17 +152,23 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
       if (e.pointerId !== activePointerRef.current) return
       e.preventDefault()
 
-      const ctx  = canvas!.getContext('2d')!
-      const pos  = getPos(e)
-      const last = lastPos.current!
+      const ctx     = canvas!.getContext('2d')!
+      const pos     = getPos(e)
+      const last    = lastPos.current!
+      const isEraser = toolRef.current === 'eraser'
 
-      ctx.strokeStyle = toolRef.current === 'eraser' ? '#ffffff' : '#111827'
-      ctx.lineWidth   = toolRef.current === 'eraser' ? 18 : Math.max(1.5, (e.pressure || 1) * 2.5)
+      // Lerp line width to avoid sudden jumps from pressure changes
+      const targetWidth = isEraser ? 18 : Math.max(1, (e.pressure || 0.5) * 4)
+      const newWidth    = lastLineWidth.current + (targetWidth - lastLineWidth.current) * 0.4
+      lastLineWidth.current = newWidth
+
+      ctx.strokeStyle = isEraser ? '#ffffff' : '#111827'
+      ctx.lineWidth   = newWidth
       ctx.lineCap     = 'round'
       ctx.lineJoin    = 'round'
       ctx.beginPath()
 
-      if (toolRef.current === 'eraser') {
+      if (isEraser) {
         ctx.moveTo(last.x, last.y)
         ctx.lineTo(pos.x, pos.y)
       } else {
@@ -166,8 +187,8 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
       lastPos.current = pos
     }
 
-    canvas.addEventListener('pointerdown',  onDown, { passive: false })
-    canvas.addEventListener('pointermove',  onMove, { passive: false })
+    canvas.addEventListener('pointerdown',  onDown,     { passive: false })
+    canvas.addEventListener('pointermove',  onMove,     { passive: false })
     window.addEventListener('pointerup',     endStroke)
     window.addEventListener('pointercancel', endStroke)
 
@@ -189,10 +210,7 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
     onChangeRef.current(canvas.toDataURL('image/png').split(',')[1])
   }
 
-  function clear() {
-    initCanvas()
-    onChange('')
-  }
+  function clear() { initCanvas(); onChange('') }
 
   const btnBase: CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 4,
@@ -253,10 +271,8 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
 
       <canvas
         ref={canvasRef}
-        width={640}
-        height={height}
         style={{
-          width: '100%', height: height, display: 'block',
+          width: '100%', height: cssHeight, display: 'block',
           background: '#fff', borderRadius: 4,
           border: '1px solid #aaa',
           touchAction: 'none',
