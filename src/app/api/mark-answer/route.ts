@@ -87,7 +87,7 @@ ${workedSolution ? `## Worked solution (mark scheme)\n${JSON.stringify(workedSol
           {
             type: 'image',
             image: Buffer.from(studentAnswerImage, 'base64'),
-            mimeType: 'image/png',
+            mediaType: 'image/png',
           },
         ],
       }],
