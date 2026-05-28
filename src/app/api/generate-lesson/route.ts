@@ -23,11 +23,11 @@ export async function POST(req: NextRequest) {
 
     const { data: prof } = await supabase
       .from('profiles')
-      .select('stripe_subscription_status, pro_access_until, level, exam_board')
+      .select('stripe_subscription_status, level, exam_board')
       .eq('id', user.id)
       .single()
 
-    if (!isPro(prof?.stripe_subscription_status, prof?.pro_access_until)) {
+    if (!isPro(prof?.stripe_subscription_status)) {
       return NextResponse.json({ error: 'pro_required' }, { status: 403 })
     }
 

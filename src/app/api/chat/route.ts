@@ -43,11 +43,11 @@ export async function POST(req: Request) {
   // Free tier: 10 Spok messages per day
   const { data: prof } = await supabase
     .from('profiles')
-    .select('stripe_subscription_status, pro_access_until, chat_messages_today, chat_messages_reset_at, is_admin, language')
+    .select('stripe_subscription_status, chat_messages_today, chat_messages_reset_at, is_admin, language')
     .eq('id', user.id)
     .single()
 
-  if (!isPro(prof?.stripe_subscription_status, prof?.pro_access_until) && !prof?.is_admin) {
+  if (!isPro(prof?.stripe_subscription_status) && !prof?.is_admin) {
     const today = new Date().toISOString().slice(0, 10)
     const resetDate = prof?.chat_messages_reset_at ?? today
     const count = resetDate === today ? (prof?.chat_messages_today ?? 0) : 0
