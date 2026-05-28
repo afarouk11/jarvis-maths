@@ -5,6 +5,35 @@ self.addEventListener('install', () => {
   self.skipWaiting()
 })
 
+// Push notification received
+self.addEventListener('push', e => {
+  const data = e.data?.json() ?? {}
+  e.waitUntil(
+    self.registration.showNotification(data.title ?? 'StudiQ', {
+      body: data.body ?? "Time to study — SPOK is waiting.",
+      icon: '/api/pwa-icon/192',
+      badge: '/api/pwa-icon/192',
+      data: { url: data.url ?? '/dashboard' },
+      tag: 'studiq-reminder',
+      renotify: true,
+      vibrate: [200, 100, 200],
+    })
+  )
+})
+
+// Notification clicked — open the app
+self.addEventListener('notificationclick', e => {
+  e.notification.close()
+  const url = e.notification.data?.url ?? '/dashboard'
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      const existing = list.find(c => c.focus)
+      if (existing) { existing.focus(); return }
+      return clients.openWindow(url)
+    })
+  )
+})
+
 // Activate — delete old caches, claim all clients
 self.addEventListener('activate', e => {
   e.waitUntil(

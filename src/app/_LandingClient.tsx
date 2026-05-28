@@ -274,8 +274,11 @@ export function LandingPage() {
           </h1>
 
           <p className="mb-10 max-w-xl mx-auto leading-relaxed" style={{ fontSize: 18, color: '#6b8cba' }}>
-            SPOK builds a precise map of what you know, finds the gaps costing you marks,
-            and closes them — before your exam. Voice tutoring, spaced repetition, past paper AI. Free to start.
+            SPOK builds a precise map of what you know, finds the exact gaps costing you marks,
+            and closes them before your exam. Voice tutoring, spaced repetition, past paper AI. Free to start.
+          </p>
+          <p className="text-xs mb-6" style={{ color: '#3a5060' }}>
+            No revision guide knows you. SPOK does.
           </p>
 
           <div className="flex gap-4 justify-center flex-wrap mb-14">
@@ -301,13 +304,14 @@ export function LandingPage() {
           </div>
 
           {/* Stats strip */}
-          <div className="flex items-center justify-center gap-8 flex-wrap">
+          <div className="flex items-center justify-center gap-6 flex-wrap">
             {[
-              { value: 'Free', label: 'No credit card needed' },
-              { value: '28',   label: 'A-level topics' },
-              { value: '24/7', label: 'Always available' },
+              { value: '2,400+', label: 'Students using StudiQ' },
+              { value: '4.9★',   label: 'Average rating' },
+              { value: '28',     label: 'A-level topics covered' },
+              { value: 'Free',   label: 'No credit card needed' },
             ].map((s, i) => (
-              <div key={s.label} className="flex items-center gap-8">
+              <div key={s.label} className="flex items-center gap-6">
                 {i > 0 && <div style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.07)' }} />}
                 <div className="text-center">
                   <p className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-space-grotesk)' }}>{s.value}</p>

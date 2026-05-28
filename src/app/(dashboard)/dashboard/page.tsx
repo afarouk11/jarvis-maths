@@ -7,7 +7,7 @@ import type { Level } from '@/lib/curriculum'
 import { isTopicLocked } from '@/lib/curriculum/topic-graph'
 import { getXPLevel } from '@/lib/xp-levels'
 import Link from 'next/link'
-import { BookOpen, Zap, Bot, FileText, Trophy, Flame, Clock, Lock } from 'lucide-react'
+import { BookOpen, Zap, Bot, FileText, Trophy, Flame } from 'lucide-react'
 import { StudyPlan } from '@/components/dashboard/StudyPlan'
 import { DueNotification } from '@/components/dashboard/DueNotification'
 import { SpokRecommendation } from '@/components/dashboard/SpokRecommendation'
@@ -17,6 +17,10 @@ import { UpgradedBanner } from '@/components/dashboard/UpgradedBanner'
 import { MorningBriefing } from '@/components/dashboard/MorningBriefing'
 import { ShareButton } from '@/components/dashboard/ShareButton'
 import { CreatorsReel } from '@/components/dashboard/CreatorsReel'
+import { StreakCard } from '@/components/dashboard/StreakCard'
+import { ExamCountdown } from '@/components/dashboard/ExamCountdown'
+import { DailyChallenge } from '@/components/dashboard/DailyChallenge'
+import { PushNotificationPrompt } from '@/components/dashboard/PushNotificationPrompt'
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ upgraded?: string }> }) {
   const params = await searchParams
@@ -80,6 +84,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-7">
       <UpgradedBanner show={justUpgraded} />
+      <PushNotificationPrompt />
       <MorningBriefing />
       <DueNotification dueCount={dueTopics.length} />
 
@@ -106,29 +111,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             {profile?.exam_board} {profile?.level === 'GCSE' ? 'GCSE' : 'A-level'} Maths · Target {profile?.target_grade}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <ShareButton
-            name={name}
-            grade={grade}
-            mastery={Math.round(avgPKnown * 100)}
-            topic={`${profile?.exam_board ?? 'AQA'} ${profile?.level === 'GCSE' ? 'GCSE' : 'A-level'} Maths`}
-          />
-          {daysToExam !== null && (
-            <div className="shrink-0 flex items-center gap-3 px-4 py-3 rounded-xl"
-              style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: `1px solid ${daysToExam < 30 ? 'rgba(239,68,68,0.25)' : 'rgba(255,255,255,0.08)'}`,
-              }}>
-              <Clock size={14} style={{ color: daysToExam < 30 ? '#f87171' : '#5a7aaa' }} />
-              <div>
-                <p className="font-bold leading-none" style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 22, color: daysToExam < 30 ? '#f87171' : '#e8f0fe' }}>
-                  {daysToExam}d
-                </p>
-                <p className="text-[11px] mt-0.5" style={{ color: '#5a7aaa' }}>to exam</p>
-              </div>
-            </div>
-          )}
-        </div>
+        <ShareButton
+          name={name}
+          grade={grade}
+          mastery={Math.round(avgPKnown * 100)}
+          topic={`${profile?.exam_board ?? 'AQA'} ${profile?.level === 'GCSE' ? 'GCSE' : 'A-level'} Maths`}
+        />
       </div>
 
       {/* Key stats */}
@@ -138,6 +126,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <XPCard xp={profile?.xp ?? 0} />
         <StatCard icon={<BookOpen size={16} />} label="Topics Studied" value={`${progress?.length ?? 0}`} sub={`of ${allTopics.length} total`} color="#22c55e" />
       </div>
+
+      {/* Exam countdown (full card) — only when exam date set */}
+      {profile?.exam_date && (
+        <ExamCountdown
+          examDate={profile.exam_date}
+          targetGrade={profile?.target_grade ?? 'A*'}
+          examBoard={profile?.exam_board ?? 'AQA'}
+        />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -183,6 +180,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
         {/* Right column */}
         <div className="space-y-6">
+          <StreakCard
+            streakDays={profile?.streak_days ?? 0}
+            xp={profile?.xp ?? 0}
+            lastStudiedAt={profile?.last_active_at ?? null}
+          />
+          <DailyChallenge />
           <StudyPlan />
 
           {/* Quick actions */}
