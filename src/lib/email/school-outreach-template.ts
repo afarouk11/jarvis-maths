@@ -63,8 +63,9 @@ Explore a live demo at studiq.org — no sign-up required.
 Thank you for your time.
 
 Warm regards,
-The StudiQ Team
-hello@studiq.org
+Muhammad Nakmouche
+Founder, StudiQ
+admin@studiq.org
 studiq.org
 
 P.S. We are covering all costs for this term. There is no upsell, no contract, and no obligation to continue. If the data doesn't show results worth continuing, we'd rather know than not.
@@ -146,8 +147,9 @@ To opt out, reply with "unsubscribe" and we will remove you immediately and perm
       <p style="font-size:14px;color:#374151;margin-bottom:4px;">Thank you for your time.</p>
       <p style="font-size:14px;margin:0;color:#374151;">
         Warm regards,<br/>
-        <strong>The StudiQ Team</strong><br/>
-        <a href="mailto:hello@studiq.org" style="color:#3b82f6;text-decoration:none;">hello@studiq.org</a>
+        <strong>Muhammad Nakmouche</strong><br/>
+        Founder, StudiQ<br/>
+        <a href="mailto:admin@studiq.org" style="color:#3b82f6;text-decoration:none;">admin@studiq.org</a>
         &nbsp;·&nbsp;
         <a href="https://studiq.org" style="color:#3b82f6;text-decoration:none;">studiq.org</a>
       </p>

@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
 
     try {
       const { error } = await resend.emails.send({
-        from: 'StudiQ <hello@studiq.org>',
+        from: 'Muhammad at StudiQ <admin@studiq.org>',
         to: school.contact_email,
         subject,
         html,
