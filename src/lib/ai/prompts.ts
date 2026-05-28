@@ -154,8 +154,17 @@ Graph rules:
 - Multiple functions: add more objects to the data array with different colors
 - Colors: #3b82f6 blue, #ef4444 red, #4ade80 green, #fbbf24 yellow, #a78bfa purple
 - Set xDomain and yDomain so the interesting region fills the view
-- Shade area under curve: add "closed":true and "graphType":"polyline" with "range":[a,b]
-- Use graphs for: any function, transformation, integration (shaded area), trig curves, sequences, kinematics graphs
+- Shade area under curve: use TWO data items — one for the outline, one shaded: [{"fn":"x^2","color":"#3b82f6"},{"fn":"x^2","color":"#3b82f640","closed":true,"graphType":"polyline","range":[0,3]}]
+- Live tangent line: add "derivative":{"fn":"dy/dx expression","updateOnMouseMove":true} to any curve — the tangent tracks the cursor. Use for differentiation lessons.
+  Example: {"fn":"x^3 - 3*x","color":"#3b82f6","derivative":{"fn":"3*x^2 - 3","updateOnMouseMove":true}}
+- Secant approximation (limit of derivative): {"fn":"x^2","color":"#3b82f6","secants":[{"x0":1,"x1":4},{"x0":1,"x1":2}]} — draws shrinking secants to show how the gradient is approached
+- Parametric curves: {"parametric":true,"x":"cos(t)","y":"sin(t)","range":[-3.14159,3.14159],"color":"#3b82f6","label":"circle"}
+  Ellipse: x:"4*cos(t)", y:"2*sin(t)". Lissajous: x:"sin(3*t)", y:"sin(2*t)". Cycloid: x:"t-sin(t)", y:"1-cos(t)", range:[0,6.28]
+- Restrict domain: add "range":[a,b] to any fn — essential for sqrt(x), 1/x, piecewise, or showing only part of a curve
+- Scatter / discrete data: {"graphType":"scatter","points":[[0,0],[1,1],[4,2],[9,3]],"color":"#fbbf24"}
+- Implicit curves (f(x,y)=0): {"fn":"x^2 + y^2 - 16","fnType":"implicit","color":"#a78bfa"} — use for circles, ellipses in standard form
+- Color convention: blue=#3b82f6 (primary), red=#ef4444 (secondary/derivative), green=#4ade80 (third curve), amber=#fbbf24 (highlights/tangent)
+- Use graphs for: any function, transformation, integration (shaded area), trig curves, sequences, kinematics graphs, parametric paths
 - Place the [GRAPH] block immediately after the text it illustrates
 - Never describe a graph in words alone when you can draw it
 
@@ -232,6 +241,138 @@ Rules:
 - Use [DIAGRAM] for: circles, angle diagrams, vector problems, bearings, triangle diagrams
 - Use [GRAPH] for function curves only — never use [DIAGRAM] for graphs of functions
 - Always include a point at every named vertex or centre
+- Use dashed style for construction lines, equal-length tick marks via short crossing segments, and "color":"#94a3b8" for auxiliary/construction geometry
+
+## Complete element reference
+
+Every element goes in the "elements" array. Copy these exactly — wrong property names render nothing.
+
+**circle** — draws the circle outline only (not filled)
+{"kind":"circle","cx":0,"cy":0,"r":5,"color":"#3b82f6","label":"C"}
+- cx, cy: centre coordinates. r: radius. label: shown near top of circle. color optional (defaults blue).
+
+**point** — filled dot with label
+{"kind":"point","x":3,"y":4,"label":"A","color":"#fbbf24"}
+- label shown above-right by default. Always add a point at every named location.
+
+**vector** — line with arrowhead at (x2,y2)
+{"kind":"vector","x1":0,"y1":0,"x2":3,"y2":4,"label":"a","color":"#ef4444"}
+- label shown at midpoint. Use for all directed quantities (force, velocity, displacement).
+
+**segment** — straight line, no arrowhead
+{"kind":"segment","x1":0,"y1":0,"x2":5,"y2":0,"label":"5 cm","color":"#4ade80","dashed":true}
+- dashed:true for construction lines, equal marks, or auxiliary segments.
+
+**arc** — curved arc (for angles, bearings, circle theorems)
+{"kind":"arc","cx":0,"cy":0,"r":1.5,"fromAngle":0,"toAngle":60,"label":"60°","color":"#fbbf24"}
+- fromAngle and toAngle are MATHEMATICAL degrees (anticlockwise from east = positive x-axis).
+- To draw the arc for angle ABC at vertex B: compute the math angles of rays BA and BC from B, then set fromAngle = smaller of the two, toAngle = larger.
+- Arc formula: given two points P1=(x1,y1) and P2=(x2,y2) and the vertex V=(vx,vy), the math angle of P from V is: atan2(Py-vy, Px-vx) × (180/π). Use the smaller as fromAngle and the larger as toAngle.
+- For a bearing arc: North=90°, East=0°, South=−90°, West=180°. Bearing B° maps to math angle = 90−B.
+
+**rightangle** — small square marker at a 90° corner
+{"kind":"rightangle","x":3,"y":0,"angle":0}
+- x,y: the corner position. angle: rotation in degrees (0 = corner opens into the first quadrant, 90 = opens left, etc.).
+
+**north** — north indicator arrow (for bearings)
+{"kind":"north","x":0,"y":0}
+- Draws an upward arrow labelled "N" at the given position.
+
+**label** — free-floating text annotation
+{"kind":"label","x":2,"y":2,"text":"hypotenuse","color":"#fbbf24"}
+- Use to label sides, regions, or add any text not attached to a point.
+
+**Colour conventions for diagrams:**
+- #3b82f6 blue: circles, primary shapes
+- #ef4444 red: angles, key measurements, second shape
+- #4ade80 green: third element, areas
+- #fbbf24 amber: highlights, labels, tangent lines
+- #a78bfa purple: construction / auxiliary lines
+- #94a3b8 slate: dashed construction geometry, tick marks
+
+## Diagram cookbook — copy and adapt these templates
+
+**Right-angled triangle (e.g. Pythagoras or trig)**
+- Vertices at A=(0,0), B=(4,0), C=(4,3). Right angle at B.
+- Always include: rightangle at B, segments AB, BC, AC, points at all three vertices, labels for sides if known.
+{"kind":"segment","x1":0,"y1":0,"x2":4,"y2":0,"label":"4","color":"#3b82f6"},
+{"kind":"segment","x1":4,"y1":0,"x2":4,"y2":3,"label":"3","color":"#3b82f6"},
+{"kind":"segment","x1":0,"y1":0,"x2":4,"y2":3,"label":"5","color":"#fbbf24"},
+{"kind":"rightangle","x":4,"y":0,"angle":90},
+{"kind":"point","x":0,"y":0,"label":"A","color":"#fbbf24"},
+{"kind":"point","x":4,"y":0,"label":"B","color":"#fbbf24"},
+{"kind":"point","x":4,"y":3,"label":"C","color":"#fbbf24"},
+{"kind":"arc","cx":0,"cy":0,"r":1,"fromAngle":0,"toAngle":36.87,"label":"θ","color":"#ef4444"}
+
+**Circle with tangent (coordinate geometry)**
+- Centre O=(0,0), radius 5, tangent point T=(3,4), tangent line, radius OT (perpendicular to tangent).
+{"kind":"circle","cx":0,"cy":0,"r":5,"color":"#3b82f6"},
+{"kind":"point","x":0,"y":0,"label":"O","color":"#fbbf24"},
+{"kind":"point","x":3,"y":4,"label":"T","color":"#fbbf24"},
+{"kind":"segment","x1":0,"y1":0,"x2":3,"y2":4,"label":"r=5","color":"#a78bfa"},
+{"kind":"segment","x1":-1,"y1":5.33,"x2":5,"y2":2.33,"label":"tangent","color":"#ef4444"},
+{"kind":"rightangle","x":3,"y":4,"angle":-53}
+
+**Circle theorem — angle at centre is twice angle at circumference**
+- Circle centre O=(0,0), radius 4. Arc from A=(4,0) to B=(−3.06,2.57). Angle at circumference from P=(0,−4).
+- Central angle AOB = 2 × inscribed angle APB.
+{"kind":"circle","cx":0,"cy":0,"r":4,"color":"#3b82f6"},
+{"kind":"point","x":0,"y":0,"label":"O","color":"#fbbf24"},
+{"kind":"point","x":4,"y":0,"label":"A","color":"#fbbf24"},
+{"kind":"point","x":-3.06,"y":2.57,"label":"B","color":"#fbbf24"},
+{"kind":"point","x":0,"y":-4,"label":"P","color":"#4ade80"},
+{"kind":"segment","x1":0,"y1":0,"x2":4,"y2":0,"color":"#a78bfa"},
+{"kind":"segment","x1":0,"y1":0,"x2":-3.06,"y2":2.57,"color":"#a78bfa"},
+{"kind":"segment","x1":0,"y1":-4,"x2":4,"y2":0,"color":"#ef4444"},
+{"kind":"segment","x1":0,"y1":-4,"x2":-3.06,"y2":2.57,"color":"#ef4444"},
+{"kind":"arc","cx":0,"cy":0,"r":1,"fromAngle":0,"toAngle":140,"label":"2θ","color":"#a78bfa"},
+{"kind":"arc","cx":0,"cy":-4,"r":1,"fromAngle":30,"toAngle":100,"label":"θ","color":"#ef4444"}
+
+**Bearing diagram — e.g. "A is 5 km from B on a bearing of 130°"**
+- Station A at origin, B at (5*sin(130°*π/180), 5*cos(130°*π/180)) ≈ (3.83, −3.21). Bearing arc from north clockwise.
+{"kind":"north","x":0,"y":0},
+{"kind":"point","x":0,"y":0,"label":"A","color":"#fbbf24"},
+{"kind":"point","x":3.83,"y":-3.21,"label":"B","color":"#fbbf24"},
+{"kind":"segment","x1":0,"y1":0,"x2":3.83,"y2":-3.21,"label":"5 km","color":"#3b82f6"},
+{"kind":"arc","cx":0,"cy":0,"r":1.5,"fromAngle":-40,"toAngle":90,"label":"130°","color":"#ef4444"}
+- Remember: bearing 130° → math angle = 90 − 130 = −40°. Arc goes from north (90°) clockwise to −40°, so fromAngle=−40, toAngle=90.
+
+**Vector parallelogram (addition and subtraction)**
+- Vectors a=(3,1) and b=(1,3) from the same origin. Resultant a+b=(4,4). Use the triangle or parallelogram law.
+{"kind":"vector","x1":0,"y1":0,"x2":3,"y2":1,"label":"a","color":"#3b82f6"},
+{"kind":"vector","x1":0,"y1":0,"x2":1,"y2":3,"label":"b","color":"#ef4444"},
+{"kind":"vector","x1":0,"y1":0,"x2":4,"y2":4,"label":"a+b","color":"#4ade80"},
+{"kind":"segment","x1":3,"y1":1,"x2":4,"y2":4,"color":"#ef4444","dashed":true},
+{"kind":"segment","x1":1,"y1":3,"x2":4,"y2":4,"color":"#3b82f6","dashed":true},
+{"kind":"point","x":0,"y":0,"label":"O","color":"#fbbf24"}
+
+**Parallel lines with alternate / co-interior angles**
+- Two parallel horizontal lines at y=0 and y=4, transversal from (−2,0) to (3,4). Mark equal alternate angles.
+{"kind":"segment","x1":-5,"y1":0,"x2":5,"y2":0,"label":"l₁","color":"#3b82f6"},
+{"kind":"segment","x1":-5,"y1":4,"x2":5,"y2":4,"label":"l₂","color":"#3b82f6"},
+{"kind":"segment","x1":-2,"y1":0,"x2":3,"y2":4,"color":"#ef4444"},
+{"kind":"arc","cx":-2,"cy":0,"r":0.8,"fromAngle":0,"toAngle":38.66,"label":"α","color":"#fbbf24"},
+{"kind":"arc","cx":3,"cy":4,"r":0.8,"fromAngle":180,"toAngle":218.66,"label":"α","color":"#fbbf24"},
+{"kind":"label","x":-4,"y":0.3,"text":"parallel","color":"#94a3b8"},
+{"kind":"label","x":-4,"y":4.3,"text":"parallel","color":"#94a3b8"}
+
+**Forces on an inclined plane**
+- Block on slope at angle θ=30°. Weight W vertically down, Normal N perpendicular to slope, Friction F up the slope.
+{"kind":"segment","x1":0,"y1":0,"x2":5,"y2":0,"label":"","color":"#94a3b8"},
+{"kind":"segment","x1":0,"y1":0,"x2":4.33,"y2":2.5,"label":"slope","color":"#3b82f6"},
+{"kind":"arc","cx":0,"cy":0,"r":1,"fromAngle":0,"toAngle":30,"label":"30°","color":"#94a3b8"},
+{"kind":"point","x":2.6,"y":1.5,"label":"block","color":"#3b82f6"},
+{"kind":"vector","x1":2.6,"y1":1.5,"x2":2.6,"y2":-0.5,"label":"W","color":"#ef4444"},
+{"kind":"vector","x1":2.6,"y1":1.5,"x2":1.6,"y2":3.23,"label":"N","color":"#4ade80"},
+{"kind":"vector","x1":2.6,"y1":1.5,"x2":1.23,"y2":2.29,"label":"F","color":"#fbbf24"}
+
+**Diagram quality rules (always follow these):**
+- Every named point MUST have a "point" element. Skipping points leaves unlabelled locations.
+- Label segments with lengths when known. Use short text: "5 cm", "r", "2a".
+- Always set xDomain/yDomain 15-20% larger than the extent of all elements. If a point is at x=5, xDomain should reach at least 6 or 7.
+- For angles, always add an arc element — do not rely on words to convey angle size.
+- Use rightangle whenever a 90° angle appears — the square marker is instantly recognisable.
+- When drawing two parallel lines, add tick marks (short crossing segments) to each line to signal they're equal/parallel.
 
 ## Visual example protocol
 Follow this structure whenever:
