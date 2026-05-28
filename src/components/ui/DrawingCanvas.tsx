@@ -20,6 +20,11 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
     return isIpad && localStorage.getItem('scribble-dismissed') !== '1'
   })
 
+  const initialHeight     = Math.max(140, marks * 38)
+  const [cssHeight, setCssHeight] = useState(initialHeight)
+  const cssHeightRef      = useRef(initialHeight)
+  const pendingScrollRef  = useRef<number | null>(null)
+
   const isDrawingRef      = useRef(false)
   const activePointerRef  = useRef<number | null>(null)
   const lastPos           = useRef<{ x: number; y: number } | null>(null)
@@ -35,15 +40,13 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
   useEffect(() => { onChangeRef.current  = onChange  }, [onChange])
   useEffect(() => { disabledRef.current  = disabled  }, [disabled])
 
-  const cssHeight = Math.max(140, marks * 38)
-
   const initCanvas = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const dpr      = window.devicePixelRatio || 1
     const rect     = canvas.getBoundingClientRect()
     const logicalW = rect.width  || 640
-    const logicalH = rect.height || cssHeight
+    const logicalH = rect.height || cssHeightRef.current
 
     // Set physical pixel dimensions for full retina resolution
     canvas.width  = Math.round(logicalW * dpr)
@@ -58,10 +61,17 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
     ctx.clearRect(0, 0, logicalW, logicalH)
     history.current = [ctx.getImageData(0, 0, canvas.width, canvas.height)]
     setCanUndo(false)
-  }, [cssHeight])
+  }, [])
 
   // useLayoutEffect so DPR dimensions are set before the first paint
   useLayoutEffect(() => { initCanvas() }, [initCanvas])
+
+  // Restore scroll position after canvas height expands (runs before browser paints)
+  useLayoutEffect(() => {
+    if (pendingScrollRef.current === null) return
+    window.scrollTo(0, pendingScrollRef.current)
+    pendingScrollRef.current = null
+  }, [cssHeight])
 
   // Block text selection while canvas is mounted
   useEffect(() => {
@@ -142,6 +152,25 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
       ctx.globalCompositeOperation = 'source-over'
     }
 
+    function expandCanvas() {
+      const dpr        = window.devicePixelRatio || 1
+      const ctx        = canvas!.getContext('2d')!
+      const imageData  = ctx.getImageData(0, 0, canvas!.width, canvas!.height)
+      const newLogicalH = cssHeightRef.current + 400
+
+      // Update ref immediately so onMove won't re-trigger before React re-renders
+      cssHeightRef.current = newLogicalH
+      pendingScrollRef.current = window.scrollY
+
+      canvas!.height = Math.round(newLogicalH * dpr)
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
+      ctx.putImageData(imageData, 0, 0)
+
+      setCssHeight(newLogicalH)
+    }
+
     function onMove(e: PointerEvent) {
       if (!isDrawingRef.current || disabledRef.current) return
       if (e.pointerType === 'touch') return
@@ -183,6 +212,9 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
       ctx.stroke()
       ctx.globalCompositeOperation = 'source-over'
       lastPos.current = pos
+
+      // Expand canvas when drawing within 100px of the bottom
+      if (pos.y > cssHeightRef.current - 100) expandCanvas()
     }
 
     canvas.addEventListener('pointerdown',  onDown,     { passive: false })
@@ -208,7 +240,12 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
     onChangeRef.current(canvas.toDataURL('image/png').split(',')[1])
   }
 
-  function clear() { initCanvas(); onChange('') }
+  function clear() {
+    cssHeightRef.current = initialHeight
+    setCssHeight(initialHeight)
+    initCanvas()
+    onChange('')
+  }
 
   const btnBase: CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 4,
