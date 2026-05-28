@@ -16,10 +16,12 @@ create table if not exists school_outreach (
 
 -- Only admins can read/write this table
 alter table school_outreach enable row level security;
-create policy "admin only" on school_outreach
-  for all using (
-    exists (select 1 from profiles where id = auth.uid() and is_admin = true)
-  );
+do $$ begin
+  create policy "admin only" on school_outreach
+    for all using (
+      exists (select 1 from profiles where id = auth.uid() and is_admin = true)
+    );
+exception when duplicate_object then null; end $$;
 
 -- Index for filtering by status
 create index if not exists school_outreach_status_idx on school_outreach(status);
