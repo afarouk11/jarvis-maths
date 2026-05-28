@@ -84,7 +84,6 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
     const size = tool === 'eraser' ? 18 : Math.max(1.5, (e.pressure || 1) * 2.5)
     ctx.fillStyle = tool === 'eraser' ? '#ffffff' : '#111827'
     ctx.beginPath(); ctx.arc(pos.x, pos.y, size / 2, 0, Math.PI * 2); ctx.fill()
-    notify()
   }
 
   function onPointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
@@ -118,7 +117,6 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
 
     ctx.stroke()
     lastPos.current = pos
-    notify()
   }
 
   function onPointerUp() {
@@ -127,6 +125,7 @@ export function DrawingCanvas({ onChange, marks = 3, disabled }: Props) {
     lastPos.current = null
     lastMid.current = null
     saveSnapshot()
+    notify()
   }
 
   function undo() {
