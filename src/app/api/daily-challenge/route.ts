@@ -31,7 +31,17 @@ export async function GET() {
     .limit(5)
 
   const weakest = progress?.[0]
-  const topicSlug = weakest?.topic_id ?? 'quadratics'
+
+  // Resolve topic UUID → human-readable slug for the AI prompt
+  let topicSlug = 'quadratics'
+  if (weakest?.topic_id) {
+    const { data: topicRow } = await supabase
+      .from('topics')
+      .select('slug')
+      .eq('id', weakest.topic_id)
+      .single()
+    if (topicRow?.slug) topicSlug = topicRow.slug
+  }
   const level = profile?.level === 'GCSE' ? 'GCSE' : 'A-level'
   const board = profile?.exam_board ?? 'AQA'
 
@@ -80,7 +90,8 @@ export async function POST(req: NextRequest) {
   }, { onConflict: 'user_id,challenge_date' })
 
   if (xpEarned > 0) {
-    await admin.rpc('increment_xp', { user_id: user.id, amount: xpEarned }).maybeSingle()
+    const { data: prof } = await admin.from('profiles').select('xp').eq('id', user.id).single()
+    await admin.from('profiles').update({ xp: (prof?.xp ?? 0) + xpEarned }).eq('id', user.id)
   }
 
   return NextResponse.json({ ok: true, xpEarned })

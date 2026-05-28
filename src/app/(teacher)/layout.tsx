@@ -1,14 +1,25 @@
+'use client'
+
 import { NotebookBackground } from '@/components/layout/NotebookBackground'
 import Link from 'next/link'
 import { StudiQLogo } from '@/components/ui/StudiQLogo'
-import { GraduationCap, Users, BarChart2, Settings, LogOut } from 'lucide-react'
+import { BarChart2, Users, GraduationCap, LogOut } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 
 const NAV = [
-  { href: '/teacher',          icon: <BarChart2 size={16} />,    label: 'Overview' },
-  { href: '/teacher/students', icon: <Users size={16} />,        label: 'Students' },
+  { href: '/teacher',          icon: <BarChart2 size={16} />, label: 'Overview' },
+  { href: '/teacher/students', icon: <Users size={16} />,     label: 'Students' },
 ]
 
 export default function TeacherLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
+
+  async function signOut() {
+    await createClient().auth.signOut()
+    router.push('/sign-in')
+  }
+
   return (
     <NotebookBackground>
       <div className="flex min-h-screen">
@@ -43,14 +54,12 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
               <GraduationCap size={14} />
               Student view
             </Link>
-            <form action="/api/auth/signout" method="POST">
-              <button type="submit"
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs transition-colors hover:text-white"
-                style={{ color: '#5a7aaa' }}>
-                <LogOut size={14} />
-                Sign out
-              </button>
-            </form>
+            <button onClick={signOut}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs transition-colors hover:text-white"
+              style={{ color: '#5a7aaa' }}>
+              <LogOut size={14} />
+              Sign out
+            </button>
           </div>
         </aside>
 

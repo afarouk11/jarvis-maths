@@ -21,14 +21,14 @@ self.addEventListener('push', e => {
   )
 })
 
-// Notification clicked — open the app
+// Notification clicked — navigate to the relevant URL
 self.addEventListener('notificationclick', e => {
   e.notification.close()
-  const url = e.notification.data?.url ?? '/dashboard'
+  const url = new URL(e.notification.data?.url ?? '/dashboard', self.location.origin).href
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-      const existing = list.find(c => c.focus)
-      if (existing) { existing.focus(); return }
+      const existing = list.find(c => c.url.startsWith(self.location.origin))
+      if (existing) return existing.navigate(url).then(c => c?.focus())
       return clients.openWindow(url)
     })
   )
