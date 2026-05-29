@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { StudiQLogo } from '@/components/ui/StudiQLogo'
-import { Check, Play, BookOpen, Brain, BarChart2, Zap, FileText, Users } from 'lucide-react'
+import { Check, Brain, Zap, BarChart2, BookOpen, FileText, Users } from 'lucide-react'
 
 const VIDEO_ID = '5lNYCryUae0'
 
@@ -96,7 +96,7 @@ export default function SchoolsPage() {
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold mb-6"
             style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', color: '#4ade80' }}>
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-            Free for schools this term — no budget required
+            Summer Programme + Autumn Term — no budget required
           </div>
 
           <h1 className="text-white mb-5"
@@ -110,11 +110,11 @@ export default function SchoolsPage() {
           <p className="max-w-xl mx-auto mb-10 leading-relaxed" style={{ fontSize: 17, color: '#6b8cba' }}>
             StudiQ gives every student a personalised AI tutor that finds their exact gaps,
             explains maths step-by-step, and tracks their progress toward their target grade.
-            Free for your school this term.
+            Free for your school this summer and next term.
           </p>
 
           <div className="flex gap-4 justify-center flex-wrap">
-            <Link href="/demo?from=schools">
+            <Link href="/guest">
               <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
                 className="px-8 py-3.5 rounded-xl font-semibold text-white"
                 style={{ background: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', boxShadow: '0 0 40px rgba(59,130,246,0.35)', fontSize: 15 }}>
@@ -146,20 +146,59 @@ export default function SchoolsPage() {
           </div>
         </motion.div>
 
-        {/* Free term offer */}
-        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }}
-          className="rounded-2xl p-8 mb-20 text-center"
-          style={{ background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.2)' }}>
-          <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: '#4ade80' }}>The offer</p>
-          <h2 className="text-white mb-2" style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 28, fontWeight: 700 }}>
-            Free for your school this term
+        {/* Two offers */}
+        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} className="mb-20">
+          <p className="text-center text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: '#4ade80' }}>What we're offering</p>
+          <h2 className="text-center text-white mb-8"
+            style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 28, fontWeight: 700 }}>
+            Two free programmes — starting this summer
           </h2>
-          <p className="mb-8 max-w-lg mx-auto" style={{ color: '#6b8cba', fontSize: 15 }}>
-            No budget. No contract. No commitment beyond the term.
-            In return, we only ask for two things.
+          <div className="grid md:grid-cols-2 gap-5">
+
+            <div className="rounded-2xl p-6"
+              style={{ background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.2)' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-2xl">☀️</span>
+                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4ade80' }}>Summer Programme</p>
+              </div>
+              <p className="text-white font-semibold mb-2" style={{ fontSize: 17 }}>July &amp; August</p>
+              <p style={{ color: '#6b8cba', fontSize: 14, lineHeight: 1.7 }}>
+                For students who want a head start before September — incoming Year 12s building on their GCSE,
+                Year 13 resitters, or anyone who wants to arrive in September ahead of the curve.
+                Students work through StudiQ independently at their own pace over the summer.
+              </p>
+            </div>
+
+            <div className="rounded-2xl p-6"
+              style={{ background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.2)' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-2xl">📚</span>
+                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#60a5fa' }}>Autumn Term</p>
+              </div>
+              <p className="text-white font-semibold mb-2" style={{ fontSize: 17 }}>From September</p>
+              <p style={{ color: '#6b8cba', fontSize: 14, lineHeight: 1.7 }}>
+                Free access for all your GCSE &amp; A-level Maths students for the entire autumn term,
+                with the teacher dashboard so you can track every student's predicted grade
+                and progress from day one.
+              </p>
+            </div>
+
+          </div>
+        </motion.div>
+
+        {/* What we ask */}
+        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }}
+          className="rounded-2xl p-8 mb-20"
+          style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.2)' }}>
+          <p className="text-center text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: '#fbbf24' }}>No budget. No contract.</p>
+          <h2 className="text-center text-white mb-2" style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 24, fontWeight: 700 }}>
+            We only ask for two things
+          </h2>
+          <p className="text-center mb-8 max-w-lg mx-auto" style={{ color: '#6b8cba', fontSize: 15 }}>
+            We want to prove this works with real data, not testimonials.
           </p>
 
-          <div className="grid md:grid-cols-2 gap-6 text-left max-w-2xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
             <div className="rounded-xl p-5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
               <p className="text-sm font-semibold text-white mb-3">What you get</p>
               <ul className="space-y-2">
@@ -216,17 +255,17 @@ export default function SchoolsPage() {
           </h2>
           <p className="mb-8 max-w-md mx-auto" style={{ color: '#6b8cba', fontSize: 15 }}>
             Sign up free and explore the full platform — or get in touch directly and
-            Muhammad will set everything up for you.
+            Muhammad will set everything up for you personally.
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
-            <Link href="/sign-up">
+            <Link href="/guest">
               <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
                 className="px-8 py-3.5 rounded-xl font-semibold text-white"
                 style={{ background: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', fontSize: 15 }}>
                 Try it free now →
               </motion.button>
             </Link>
-            <a href="mailto:admin@studiq.org?subject=School trial enquiry — free term">
+            <a href="mailto:admin@studiq.org?subject=School trial enquiry — summer + autumn">
               <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
                 className="px-8 py-3.5 rounded-xl font-semibold"
                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', color: '#94a3b8', fontSize: 15 }}>
@@ -235,7 +274,7 @@ export default function SchoolsPage() {
             </a>
           </div>
           <p className="mt-6 text-xs" style={{ color: '#3a4a5c' }}>
-            No credit card. No commitment. Free for the whole term.
+            No credit card. No commitment. Free for the summer and the whole autumn term.
           </p>
         </motion.div>
       </div>

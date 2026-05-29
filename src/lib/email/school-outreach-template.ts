@@ -1,7 +1,7 @@
 interface OutreachEmailOptions {
   schoolName: string
-  offersAlevel: boolean   // true → school teaches A-level maths
-  offersGCSE: boolean     // true → school teaches GCSE maths (always true after seed filter)
+  offersAlevel: boolean
+  offersGCSE: boolean
 }
 
 export function schoolOutreachEmail(opts: OutreachEmailOptions): { subject: string; html: string; text: string } {
@@ -19,47 +19,44 @@ export function schoolOutreachEmail(opts: OutreachEmailOptions): { subject: stri
       ? 'Years 12–13'
       : 'Years 10–11'
 
-  const subject = offersAlevel
-    ? `Free AI Maths Tutor for Your ${courses} Students This Term — No Cost Required`
-    : `Free AI Maths Tutor for Your GCSE Maths Students This Term — No Cost Required`
+  const subject = `Free AI Maths Tutor for ${schoolName} — Autumn Term + Summer Programme`
 
   const text = `Dear Head of Maths at ${schoolName},
 
-I'm writing on behalf of StudiQ, an AI-powered maths tutoring platform built specifically for ${courses} students. We're reaching out to a small number of London schools this term with an offer to provide completely free access for all your ${yearGroups} students — no budget required, no commitment beyond this term.
+With exams wrapping up, I wanted to reach out at what I think is exactly the right moment.
 
-WHAT WE'RE PROPOSING
+I'm Muhammad, founder of StudiQ — an AI-powered maths tutoring platform built specifically for ${courses} students. We're offering a small number of London schools two things completely free, with no strings attached:
 
-We would give every ${courses} student full access to StudiQ's platform for one complete term, including:
+1. A SUMMER MATHS PROGRAMME (July–August)
+For students who want to get ahead before September — whether that's incoming Year 12s building on their GCSE, Year 13 resitters, or any student who wants a head start. Students work through StudiQ independently over the summer at their own pace.
 
-• SPOK — a voice and text AI tutor that explains maths step-by-step, answers questions out loud, and adapts to each student's exact knowledge gaps
-• Bayesian Knowledge Tracing — a diagnostic engine that pinpoints precisely which subtopics each student is weak on, so no revision time is wasted
-• Spaced repetition and past paper AI — questions scheduled at exactly the right time, with 5-year paper analysis for AQA, Edexcel, and OCR
-• Teacher dashboard — real-time visibility into every student's predicted grade, mastery by topic, and study activity${offersAlevel ? `
-• Both GCSE and A-level content — the platform covers the full specification for both courses in one place` : ''}
+2. FULL CLASS ACCESS FROM SEPTEMBER (Autumn Term)
+Free access for all your ${yearGroups} students for the entire autumn term, including the teacher dashboard so you can track every student's progress from day one.
+
+WHAT STUDENTS GET
+• SPOK — a voice and text AI tutor that explains maths step by step and adapts to each student's exact gaps
+• Knowledge Tracing — pinpoints precisely which subtopics are costing marks
+• Past paper AI — 5-year analysis for AQA, Edexcel and OCR
+• Spaced repetition — proven to double long-term retention
+• Teacher dashboard — predicted grades, mastery by topic, daily activity${offersAlevel ? `
+• Full GCSE and A-level coverage in one place` : ''}
 
 WHAT WE ASK IN RETURN
-
 Only two things:
+1. Students complete a short baseline assessment before they start (15–20 minutes)
+2. Students complete the same assessment at the end of term
 
-1. Students complete a short baseline assessment before they begin (15–20 minutes, curriculum-aligned to ${courses})
-2. Students complete the same assessment at the end of the term, so we can measure progress honestly
+That's it. We want to prove — with real data — that this works. No testimonials, no publicity, no financial commitment.
 
-That's it. The data helps us prove — or disprove — whether the platform actually moves grades. We want rigorous evidence, not anecdotes.
-
-WHY WE'RE DOING THIS
-
-StudiQ is an early-stage product. We believe it works, but we want school-validated outcome data to prove it. We are not asking for testimonials, publicity, or any financial commitment. We simply want to know: does this help real students?
-
-WHAT THIS LOOKS LIKE IN PRACTICE
-
-• Setup takes under 10 minutes per class — students join with a code you share
-• No IT changes — runs in the browser, any device, at home
-• You receive a term-end report showing before/after performance by topic and student
-
-If you'd be open to trialling this with one class or year group, I'd love a 20-minute call.
+IN PRACTICE
+• Under 10 minutes to set up — students join with a class code
+• No IT changes — runs in the browser on any device
+• You receive a full progress report at the end of term
 
 Watch the 2-minute demo: https://youtu.be/5lNYCryUae0
-Full offer details: https://studiq.org/schools
+Full details: https://studiq.org/schools
+
+If you'd like to get started for September — or even get a few students on the summer programme before the holidays — just reply to this email and I'll set everything up for you personally.
 
 Thank you for your time.
 
@@ -69,11 +66,11 @@ Founder, StudiQ
 admin@studiq.org
 studiq.org
 
-P.S. We are covering all costs for this term. There is no upsell, no contract, and no obligation to continue. If the data doesn't show results worth continuing, we'd rather know than not.
+P.S. There is no cost, no upsell, and no obligation beyond the term. If the data doesn't show results worth continuing, we'd rather know than not.
 
 ---
-You're receiving this because ${schoolName} is a secondary school in London that teaches ${courses}.
-To opt out, reply with "unsubscribe" and we will remove you immediately and permanently.`
+You're receiving this because ${schoolName} is a London secondary school that teaches ${courses}.
+To opt out permanently, reply with "unsubscribe" and we will remove you immediately.`
 
   const html = `<!DOCTYPE html>
 <html>
@@ -94,10 +91,10 @@ To opt out, reply with "unsubscribe" and we will remove you immediately and perm
         <span style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:-0.02em;">StudiQ</span>
       </div>
       <h1 style="color:#ffffff;font-size:21px;font-weight:700;margin:0;line-height:1.35;letter-spacing:-0.01em;">
-        Free AI Maths Tutor for Your<br/>
-        <span style="color:#60a5fa;">${courses} Students — No Cost Required</span>
+        Free AI Maths Tutor for Your ${courses} Students<br/>
+        <span style="color:#60a5fa;">Summer Programme + Autumn Term</span>
       </h1>
-      <p style="color:#5a7aaa;font-size:13px;margin:10px 0 0;">${yearGroups} · AQA · Edexcel · OCR</p>
+      <p style="color:#5a7aaa;font-size:13px;margin:10px 0 0;">${yearGroups} · AQA · Edexcel · OCR · No cost required</p>
     </div>
 
     <!-- Body -->
@@ -105,37 +102,47 @@ To opt out, reply with "unsubscribe" and we will remove you immediately and perm
 
       <p style="margin-top:0;">Dear Head of Maths at <strong>${schoolName}</strong>,</p>
 
-      <p>I'm writing on behalf of <strong>StudiQ</strong>, an AI-powered maths tutoring platform built for <strong>${courses}</strong> students. We're offering a small number of London schools <strong>completely free access for a full term</strong> — no budget, no commitment beyond the term.</p>
+      <p>With exams wrapping up, I wanted to reach out at what I think is exactly the right moment.</p>
+
+      <p>I'm Muhammad, founder of <strong>StudiQ</strong> — an AI-powered maths tutoring platform for <strong>${courses}</strong> students. We're offering a small number of London schools two things, completely free:</p>
+
+      <!-- Two offers -->
+      <div style="display:grid;gap:12px;margin:24px 0;">
+
+        <div style="background:#f0fdf4;border-left:4px solid #22c55e;border-radius:0 8px 8px 0;padding:18px 22px;">
+          <p style="margin:0 0 6px;font-weight:700;color:#111827;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;">☀️ Summer Maths Programme — July &amp; August</p>
+          <p style="margin:0;font-size:14px;color:#374151;line-height:1.7;">For students who want a head start before September — incoming Year 12s, resitters, or anyone who wants to arrive in September ahead of the curve. Students work through StudiQ independently at their own pace over the summer.</p>
+        </div>
+
+        <div style="background:#f0f6ff;border-left:4px solid #3b82f6;border-radius:0 8px 8px 0;padding:18px 22px;">
+          <p style="margin:0 0 6px;font-weight:700;color:#111827;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;">📚 Full Class Access — Autumn Term from September</p>
+          <p style="margin:0;font-size:14px;color:#374151;line-height:1.7;">Free access for all your ${yearGroups} students for the entire autumn term, with the teacher dashboard so you can track every student's predicted grade and progress from day one.</p>
+        </div>
+
+      </div>
 
       <!-- What students get -->
-      <div style="background:#f0f6ff;border-left:4px solid #3b82f6;border-radius:0 8px 8px 0;padding:20px 24px;margin:24px 0;">
-        <p style="margin:0 0 12px;font-weight:700;color:#111827;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;">What your ${courses} students get</p>
+      <div style="background:#f8faff;border:1px solid #e0eaff;border-radius:8px;padding:20px 24px;margin:24px 0;">
+        <p style="margin:0 0 12px;font-weight:700;color:#111827;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;">What students get</p>
         <ul style="margin:0;padding-left:18px;color:#374151;font-size:14px;line-height:2.1;">
           <li><strong>SPOK</strong> — voice &amp; text AI tutor, step-by-step explanations, adapts to each student's exact gaps</li>
           <li><strong>Knowledge Tracing</strong> — pinpoints the exact subtopics costing marks in ${courses}</li>
-          <li><strong>Past paper AI</strong> — 5-year analysis for AQA, Edexcel &amp; OCR; predicts what's likely this year</li>
+          <li><strong>Past paper AI</strong> — 5-year analysis for AQA, Edexcel &amp; OCR</li>
           <li><strong>Spaced repetition</strong> — questions scheduled at the perfect moment, proven to double retention</li>
-          <li><strong>Teacher dashboard</strong> — predicted grades, mastery by topic, and study activity for every student</li>
+          <li><strong>Teacher dashboard</strong> — predicted grades, mastery by topic, and daily activity per student</li>
           ${offersAlevel ? '<li><strong>GCSE &amp; A-level in one place</strong> — full specification coverage for both courses</li>' : ''}
         </ul>
       </div>
 
       <!-- What we ask -->
-      <div style="background:#fffbeb;border-left:4px solid #f59e0b;border-radius:0 8px 8px 0;padding:20px 24px;margin:24px 0;">
+      <div style="background:#fffbeb;border-left:4px solid #f59e0b;border-radius:0 8px 8px 0;padding:18px 22px;margin:24px 0;">
         <p style="margin:0 0 10px;font-weight:700;color:#111827;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;">What we ask in return</p>
         <ol style="margin:0;padding-left:18px;color:#374151;font-size:14px;line-height:2.1;">
-          <li>Students complete a <strong>short baseline assessment before</strong> they start (15–20 min, ${courses} curriculum)</li>
-          <li>Students complete the <strong>same assessment at the end of term</strong> to measure genuine progress</li>
+          <li>Students complete a <strong>short baseline assessment before</strong> they start (15–20 min)</li>
+          <li>Students complete the <strong>same assessment at the end of term</strong> to measure real progress</li>
         </ol>
-        <p style="margin:14px 0 0;font-size:13px;color:#92400e;">We want rigorous evidence, not anecdotes. If the data doesn't show results, we'd rather know.</p>
+        <p style="margin:12px 0 0;font-size:13px;color:#92400e;">We want rigorous evidence, not anecdotes. If the data doesn't show results, we'd rather know.</p>
       </div>
-
-      <h3 style="color:#111827;font-size:14px;font-weight:700;margin:28px 0 10px;text-transform:uppercase;letter-spacing:0.05em;">In practice</h3>
-      <ul style="margin:0;padding-left:18px;font-size:14px;line-height:2.1;color:#374151;">
-        <li>Under 10 minutes to set up per class — students join with a code</li>
-        <li>No IT changes — browser-based, works on any device at home</li>
-        <li>Term-end report: before/after by topic and student</li>
-      </ul>
 
       <!-- Video thumbnail -->
       <div style="margin:28px 0;text-align:center;">
@@ -143,9 +150,9 @@ To opt out, reply with "unsubscribe" and we will remove you immediately and perm
           <img src="https://img.youtube.com/vi/5lNYCryUae0/maxresdefault.jpg"
             alt="Watch the StudiQ demo"
             width="100%"
-            style="border-radius:10px;display:block;border:2px solid rgba(59,130,246,0.3);" />
-          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:64px;height:64px;background:rgba(239,68,68,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;">
-            <div style="width:0;height:0;border-style:solid;border-width:10px 0 10px 20px;border-color:transparent transparent transparent #ffffff;margin-left:4px;"></div>
+            style="border-radius:10px;display:block;border:2px solid #dbeafe;" />
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60px;height:60px;background:rgba(220,38,38,0.92);border-radius:50%;">
+            <div style="width:0;height:0;border-style:solid;border-width:10px 0 10px 20px;border-color:transparent transparent transparent #ffffff;position:absolute;top:50%;left:55%;transform:translate(-50%,-50%);"></div>
           </div>
         </a>
         <p style="margin:10px 0 0;font-size:13px;color:#6b7280;">▶ Watch the 2-minute demo</p>
@@ -156,7 +163,7 @@ To opt out, reply with "unsubscribe" and we will remove you immediately and perm
         <a href="https://studiq.org/schools" style="display:inline-block;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#ffffff;text-decoration:none;padding:15px 36px;border-radius:10px;font-weight:600;font-size:15px;letter-spacing:-0.01em;">
           See the full offer →
         </a>
-        <p style="margin:14px 0 0;font-size:13px;color:#6b7280;">Or reply to arrange a 20-minute walkthrough.</p>
+        <p style="margin:14px 0 0;font-size:14px;color:#374151;">Or just <strong>reply to this email</strong> — I'll set everything up for you personally.</p>
       </div>
 
       <p style="font-size:14px;color:#374151;margin-bottom:4px;">Thank you for your time.</p>
