@@ -58,7 +58,8 @@ WHAT THIS LOOKS LIKE IN PRACTICE
 
 If you'd be open to trialling this with one class or year group, I'd love a 20-minute call.
 
-Explore a live demo at studiq.org — no sign-up required.
+Watch the 2-minute demo: https://youtu.be/5lNYCryUae0
+Full offer details: https://studiq.org/schools
 
 Thank you for your time.
 
@@ -136,12 +137,26 @@ To opt out, reply with "unsubscribe" and we will remove you immediately and perm
         <li>Term-end report: before/after by topic and student</li>
       </ul>
 
-      <!-- CTA -->
-      <div style="text-align:center;margin:36px 0 28px;">
-        <a href="https://studiq.org" style="display:inline-block;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#ffffff;text-decoration:none;padding:15px 36px;border-radius:10px;font-weight:600;font-size:15px;letter-spacing:-0.01em;">
-          Explore StudiQ →
+      <!-- Video thumbnail -->
+      <div style="margin:28px 0;text-align:center;">
+        <a href="https://youtu.be/5lNYCryUae0" target="_blank" style="display:block;text-decoration:none;position:relative;">
+          <img src="https://img.youtube.com/vi/5lNYCryUae0/maxresdefault.jpg"
+            alt="Watch the StudiQ demo"
+            width="100%"
+            style="border-radius:10px;display:block;border:2px solid rgba(59,130,246,0.3);" />
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:64px;height:64px;background:rgba(239,68,68,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;">
+            <div style="width:0;height:0;border-style:solid;border-width:10px 0 10px 20px;border-color:transparent transparent transparent #ffffff;margin-left:4px;"></div>
+          </div>
         </a>
-        <p style="margin:14px 0 0;font-size:13px;color:#6b7280;">Or simply reply to arrange a 20-minute walkthrough.</p>
+        <p style="margin:10px 0 0;font-size:13px;color:#6b7280;">▶ Watch the 2-minute demo</p>
+      </div>
+
+      <!-- CTA -->
+      <div style="text-align:center;margin:28px 0;">
+        <a href="https://studiq.org/schools" style="display:inline-block;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#ffffff;text-decoration:none;padding:15px 36px;border-radius:10px;font-weight:600;font-size:15px;letter-spacing:-0.01em;">
+          See the full offer →
+        </a>
+        <p style="margin:14px 0 0;font-size:13px;color:#6b7280;">Or reply to arrange a 20-minute walkthrough.</p>
       </div>
 
       <p style="font-size:14px;color:#374151;margin-bottom:4px;">Thank you for your time.</p>
