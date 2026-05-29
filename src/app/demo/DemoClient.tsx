@@ -120,6 +120,7 @@ export default function DemoPage() {
 function DemoInner() {
   const searchParams = useSearchParams()
   const recordMode = searchParams.has('record')
+  const fromSchools = searchParams.get('from') === 'schools'
 
   type Phase = 'intro' | 'problem' | 'map' | 'chat' | 'practice' | 'stats' | 'cta'
   const [phase, setPhase] = useState<Phase>('intro')
@@ -189,8 +190,19 @@ function DemoInner() {
 
   return (
     <div
-      className={recordMode ? '' : 'flex items-center justify-center min-h-screen'}
+      className={recordMode ? '' : 'flex flex-col items-center justify-center min-h-screen'}
       style={{ background: '#050912' }}>
+
+      {/* Schools welcome banner */}
+      {fromSchools && (
+        <div className="w-full text-center py-3 px-6 text-sm font-medium"
+          style={{ background: 'rgba(34,197,94,0.1)', borderBottom: '1px solid rgba(34,197,94,0.2)', color: '#4ade80' }}>
+          👋 Welcome — this is a live demo of StudiQ. No account needed. &nbsp;
+          <a href="mailto:admin@studiq.org?subject=School trial enquiry" style={{ color: '#86efac', textDecoration: 'underline' }}>
+            Email Muhammad to set it up for your school →
+          </a>
+        </div>
+      )}
 
       <div
         className="relative overflow-hidden flex flex-col"

@@ -114,7 +114,7 @@ export default function SchoolsPage() {
           </p>
 
           <div className="flex gap-4 justify-center flex-wrap">
-            <Link href="/sign-up">
+            <Link href="/demo?from=schools">
               <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
                 className="px-8 py-3.5 rounded-xl font-semibold text-white"
                 style={{ background: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', boxShadow: '0 0 40px rgba(59,130,246,0.35)', fontSize: 15 }}>
