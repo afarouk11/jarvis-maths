@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
-import { Database, Clapperboard } from 'lucide-react'
+import { Database, Clapperboard, FileText } from 'lucide-react'
 
 const TYPES = [
   { value: 'worked_example', label: 'Worked Example' },
@@ -11,6 +11,17 @@ const TYPES = [
   { value: 'formula',        label: 'Formula / Identity' },
   { value: 'tip',            label: 'Exam Tip' },
 ]
+
+interface OfficialPaperRow {
+  id: string
+  title: string
+  board: string
+  year: number
+  paper: number
+  pdf_url: string | null
+  mark_scheme_url: string | null
+  created_at: string
+}
 
 interface CreatorVideoRow {
   id: string
@@ -38,7 +49,15 @@ export default function AdminPage() {
   const [saving, setSaving]         = useState(false)
   const [deleting, setDeleting]     = useState<string | null>(null)
   const [toast, setToast]           = useState('')
-  const [tab, setTab]               = useState<'knowledge' | 'creators'>('knowledge')
+  const [tab, setTab]               = useState<'knowledge' | 'creators' | 'papers'>('knowledge')
+
+  // Official papers state
+  const [officialPapers, setOfficialPapers]   = useState<OfficialPaperRow[]>([])
+  const [paperSaving, setPaperSaving]         = useState(false)
+  const [paperDeleting, setPaperDeleting]     = useState<string | null>(null)
+  const [paperForm, setPaperForm]             = useState({
+    title: '', board: 'Edexcel', year: new Date().getFullYear(), paper: 1, pdf_url: '', mark_scheme_url: '',
+  })
 
   // Creators state
   const [videos, setVideos]         = useState<CreatorVideoRow[]>([])
@@ -76,6 +95,13 @@ export default function AdminPage() {
       .select('id, topic_slug, type, title, content, created_at')
       .order('created_at', { ascending: false })
       .then(({ data }) => setEntries(data ?? []))
+  }, [authorized])
+
+  useEffect(() => {
+    if (!authorized) return
+    fetch('/api/papers/official')
+      .then(r => r.json())
+      .then(d => setOfficialPapers(d.papers ?? []))
   }, [authorized])
 
   useEffect(() => {
@@ -199,6 +225,7 @@ export default function AdminPage() {
         {([
           { key: 'knowledge', label: 'Knowledge Base', icon: <Database size={13} /> },
           { key: 'creators',  label: 'Creators',       icon: <Clapperboard size={13} /> },
+          { key: 'papers',    label: 'Past Papers',    icon: <FileText size={13} /> },
         ] as const).map(({ key, label, icon }) => (
           <button
             key={key}
@@ -414,6 +441,160 @@ export default function AdminPage() {
           {videos.length === 0 && (
             <p className="text-sm text-center py-8" style={{ color: '#3a4a5c' }}>No creator videos yet.</p>
           )}
+        </div>
+      </>}
+
+      {tab === 'papers' && <>
+        {/* Add paper form */}
+        <form
+          onSubmit={async e => {
+            e.preventDefault()
+            if (!paperForm.title.trim()) return
+            setPaperSaving(true)
+            try {
+              const res = await fetch('/api/papers/official', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(paperForm),
+              })
+              if (!res.ok) throw new Error(await res.text())
+              const row: OfficialPaperRow = await res.json()
+              setOfficialPapers(prev => [row, ...prev])
+              setPaperForm({ title: '', board: 'Edexcel', year: new Date().getFullYear(), paper: 1, pdf_url: '', mark_scheme_url: '' })
+              showToast('Paper added.')
+            } catch (err: any) {
+              showToast('Error: ' + err.message)
+            } finally {
+              setPaperSaving(false)
+            }
+          }}
+          className="space-y-4 rounded-xl p-5"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+        >
+          <p className="text-sm font-semibold text-white">Add Official Paper</p>
+
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Title *</label>
+            <input
+              value={paperForm.title}
+              onChange={e => setPaperForm(f => ({ ...f, title: e.target.value }))}
+              placeholder="e.g. A-Level Mathematics Paper 1 (Pure)"
+              className="w-full rounded-lg px-3 py-2 text-sm text-white outline-none placeholder:text-slate-600"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Board *</label>
+              <select
+                value={paperForm.board}
+                onChange={e => setPaperForm(f => ({ ...f, board: e.target.value }))}
+                className="w-full rounded-lg px-3 py-2 text-sm text-white outline-none"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+              >
+                <option value="Edexcel">Edexcel</option>
+                <option value="AQA">AQA</option>
+                <option value="OCR">OCR</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Year *</label>
+              <input
+                type="number"
+                min={2000}
+                max={2100}
+                value={paperForm.year}
+                onChange={e => setPaperForm(f => ({ ...f, year: Number(e.target.value) }))}
+                className="w-full rounded-lg px-3 py-2 text-sm text-white outline-none"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Paper *</label>
+              <select
+                value={paperForm.paper}
+                onChange={e => setPaperForm(f => ({ ...f, paper: Number(e.target.value) as 1 | 2 | 3 }))}
+                className="w-full rounded-lg px-3 py-2 text-sm text-white outline-none"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+              >
+                <option value={1}>Paper 1</option>
+                <option value={2}>Paper 2</option>
+                <option value={3}>Paper 3</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Paper PDF URL</label>
+            <input
+              value={paperForm.pdf_url}
+              onChange={e => setPaperForm(f => ({ ...f, pdf_url: e.target.value }))}
+              placeholder="https://…"
+              className="w-full rounded-lg px-3 py-2 text-sm text-white outline-none placeholder:text-slate-600"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+            />
+          </div>
+
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Mark Scheme URL</label>
+            <input
+              value={paperForm.mark_scheme_url}
+              onChange={e => setPaperForm(f => ({ ...f, mark_scheme_url: e.target.value }))}
+              placeholder="https://…"
+              className="w-full rounded-lg px-3 py-2 text-sm text-white outline-none placeholder:text-slate-600"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={paperSaving || !paperForm.title.trim()}
+            className="px-4 py-2 rounded-lg text-sm font-medium transition-opacity disabled:opacity-40"
+            style={{ background: 'rgba(245,158,11,0.2)', border: '1px solid rgba(245,158,11,0.35)', color: '#fbbf24' }}
+          >
+            {paperSaving ? 'Saving…' : 'Add Paper'}
+          </button>
+        </form>
+
+        {/* Paper list */}
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-slate-300">{officialPapers.length} papers</p>
+          {officialPapers.length === 0 && (
+            <p className="text-sm text-center py-8" style={{ color: '#3a4a5c' }}>No official papers added yet.</p>
+          )}
+          {officialPapers.map(p => (
+            <div key={p.id} className="rounded-xl px-4 py-3 flex items-center gap-3"
+              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-white font-medium truncate">{p.title}</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {p.board} · {p.year} · Paper {p.paper}
+                  {p.pdf_url && <span className="ml-2 text-indigo-400">PDF ✓</span>}
+                  {p.mark_scheme_url && <span className="ml-2 text-green-400">MS ✓</span>}
+                </p>
+              </div>
+              <button
+                onClick={async () => {
+                  setPaperDeleting(p.id)
+                  try {
+                    await fetch('/api/papers/official', {
+                      method: 'DELETE',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ id: p.id }),
+                    })
+                    setOfficialPapers(prev => prev.filter(x => x.id !== p.id))
+                  } finally {
+                    setPaperDeleting(null)
+                  }
+                }}
+                disabled={paperDeleting === p.id}
+                className="text-xs text-red-400 hover:text-red-300 shrink-0 disabled:opacity-40"
+              >
+                {paperDeleting === p.id ? '…' : 'Delete'}
+              </button>
+            </div>
+          ))}
         </div>
       </>}
     </div>

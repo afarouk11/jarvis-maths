@@ -27,48 +27,16 @@ const GCSE_TYPES = [
 interface FreqItem { slug: string; count: number; percent: number; lastYear?: number; due?: boolean }
 interface SavedPaperMeta { id: string; title: string; created_at: string; focus_topics: string[]; total_marks: number | null; time_minutes: number | null }
 
-interface PastPaper {
-  id: number
+interface OfficialPaper {
+  id: string
   title: string
   board: Board
   year: number
   paper: 1 | 2 | 3
-  pdfUrl: string
-  msUrl: string
+  pdf_url: string | null
+  mark_scheme_url: string | null
+  created_at: string
 }
-
-const MOCK_PAST_PAPERS: PastPaper[] = [
-  { id: 1,  title: 'A-Level Mathematics Paper 1 (Pure)',           board: 'Edexcel', year: 2024, paper: 1, pdfUrl: '#', msUrl: '#' },
-  { id: 2,  title: 'A-Level Mathematics Paper 2 (Pure)',           board: 'Edexcel', year: 2024, paper: 2, pdfUrl: '#', msUrl: '#' },
-  { id: 3,  title: 'A-Level Mathematics Paper 3 (Stats & Mech)',   board: 'Edexcel', year: 2024, paper: 3, pdfUrl: '#', msUrl: '#' },
-  { id: 4,  title: 'A-Level Mathematics Paper 1 (Pure)',           board: 'Edexcel', year: 2023, paper: 1, pdfUrl: '#', msUrl: '#' },
-  { id: 5,  title: 'A-Level Mathematics Paper 2 (Pure)',           board: 'Edexcel', year: 2023, paper: 2, pdfUrl: '#', msUrl: '#' },
-  { id: 6,  title: 'A-Level Mathematics Paper 3 (Stats & Mech)',   board: 'Edexcel', year: 2023, paper: 3, pdfUrl: '#', msUrl: '#' },
-  { id: 7,  title: 'A-Level Mathematics Paper 1 (Pure)',           board: 'Edexcel', year: 2022, paper: 1, pdfUrl: '#', msUrl: '#' },
-  { id: 8,  title: 'A-Level Mathematics Paper 2 (Pure)',           board: 'Edexcel', year: 2022, paper: 2, pdfUrl: '#', msUrl: '#' },
-  { id: 9,  title: 'A-Level Mathematics Paper 3 (Stats & Mech)',   board: 'Edexcel', year: 2022, paper: 3, pdfUrl: '#', msUrl: '#' },
-  { id: 10, title: 'A-Level Mathematics Paper 1 (Pure)',           board: 'Edexcel', year: 2019, paper: 1, pdfUrl: '#', msUrl: '#' },
-  { id: 11, title: 'A-Level Mathematics Paper 2 (Pure)',           board: 'Edexcel', year: 2019, paper: 2, pdfUrl: '#', msUrl: '#' },
-  { id: 12, title: 'A-Level Mathematics Paper 3 (Stats & Mech)',   board: 'Edexcel', year: 2019, paper: 3, pdfUrl: '#', msUrl: '#' },
-  { id: 13, title: 'A-Level Mathematics Paper 1 (Pure)',           board: 'AQA',     year: 2024, paper: 1, pdfUrl: '#', msUrl: '#' },
-  { id: 14, title: 'A-Level Mathematics Paper 2 (Pure)',           board: 'AQA',     year: 2024, paper: 2, pdfUrl: '#', msUrl: '#' },
-  { id: 15, title: 'A-Level Mathematics Paper 3 (Applied)',        board: 'AQA',     year: 2024, paper: 3, pdfUrl: '#', msUrl: '#' },
-  { id: 16, title: 'A-Level Mathematics Paper 1 (Pure)',           board: 'AQA',     year: 2023, paper: 1, pdfUrl: '#', msUrl: '#' },
-  { id: 17, title: 'A-Level Mathematics Paper 2 (Pure)',           board: 'AQA',     year: 2023, paper: 2, pdfUrl: '#', msUrl: '#' },
-  { id: 18, title: 'A-Level Mathematics Paper 3 (Applied)',        board: 'AQA',     year: 2023, paper: 3, pdfUrl: '#', msUrl: '#' },
-  { id: 19, title: 'A-Level Mathematics Paper 1 (Pure)',           board: 'AQA',     year: 2021, paper: 1, pdfUrl: '#', msUrl: '#' },
-  { id: 20, title: 'A-Level Mathematics Paper 2 (Pure)',           board: 'AQA',     year: 2021, paper: 2, pdfUrl: '#', msUrl: '#' },
-  { id: 21, title: 'A-Level Mathematics Paper 3 (Applied)',        board: 'AQA',     year: 2021, paper: 3, pdfUrl: '#', msUrl: '#' },
-  { id: 22, title: 'A-Level Mathematics Paper 1 (Pure)',           board: 'OCR',     year: 2024, paper: 1, pdfUrl: '#', msUrl: '#' },
-  { id: 23, title: 'A-Level Mathematics Paper 2 (Pure & Stats)',   board: 'OCR',     year: 2024, paper: 2, pdfUrl: '#', msUrl: '#' },
-  { id: 24, title: 'A-Level Mathematics Paper 3 (Pure & Mech)',    board: 'OCR',     year: 2024, paper: 3, pdfUrl: '#', msUrl: '#' },
-  { id: 25, title: 'A-Level Mathematics Paper 1 (Pure)',           board: 'OCR',     year: 2023, paper: 1, pdfUrl: '#', msUrl: '#' },
-  { id: 26, title: 'A-Level Mathematics Paper 2 (Pure & Stats)',   board: 'OCR',     year: 2023, paper: 2, pdfUrl: '#', msUrl: '#' },
-  { id: 27, title: 'A-Level Mathematics Paper 3 (Pure & Mech)',    board: 'OCR',     year: 2023, paper: 3, pdfUrl: '#', msUrl: '#' },
-  { id: 28, title: 'A-Level Mathematics Paper 1 (Pure)',           board: 'OCR',     year: 2020, paper: 1, pdfUrl: '#', msUrl: '#' },
-  { id: 29, title: 'A-Level Mathematics Paper 2 (Pure & Stats)',   board: 'OCR',     year: 2020, paper: 2, pdfUrl: '#', msUrl: '#' },
-  { id: 30, title: 'A-Level Mathematics Paper 3 (Pure & Mech)',    board: 'OCR',     year: 2020, paper: 3, pdfUrl: '#', msUrl: '#' },
-]
 
 const TOPIC_QUESTIONS = [
   'Differentiation',
@@ -119,11 +87,13 @@ export default function PapersPage() {
   const [savedLoading, setSavedLoading] = useState(true)
 
   // Tab + Official filters
-  const [activeTab, setActiveTab]     = useState<TabId>('my-papers')
-  const [boardFilter, setBoardFilter] = useState<Board | 'All'>('All')
-  const [yearFilter, setYearFilter]   = useState<number | 'All'>('All')
-  const [paperFilter, setPaperFilter] = useState<1 | 2 | 3 | 'All'>('All')
+  const [activeTab, setActiveTab]         = useState<TabId>('my-papers')
+  const [boardFilter, setBoardFilter]     = useState<Board | 'All'>('All')
+  const [yearFilter, setYearFilter]       = useState<number | 'All'>('All')
+  const [paperFilter, setPaperFilter]     = useState<1 | 2 | 3 | 'All'>('All')
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null)
+  const [officialPapers, setOfficialPapers]   = useState<OfficialPaper[]>([])
+  const [officialLoading, setOfficialLoading] = useState(false)
 
   useEffect(() => {
     fetch('/api/profile').then(r => r.json()).then(d => {
@@ -197,7 +167,17 @@ export default function PapersPage() {
   const paperTypes = level === 'GCSE' ? GCSE_TYPES : ALEVEL_TYPES
   const selected   = (paperTypes as any[]).find(p => p.type === paperType) ?? paperTypes[0]
 
-  const filteredPapers = MOCK_PAST_PAPERS.filter(p => {
+  useEffect(() => {
+    if (activeTab !== 'official' || officialPapers.length > 0) return
+    setOfficialLoading(true)
+    fetch('/api/papers/official')
+      .then(r => r.json())
+      .then(d => setOfficialPapers(d.papers ?? []))
+      .catch(() => {})
+      .finally(() => setOfficialLoading(false))
+  }, [activeTab, officialPapers.length])
+
+  const filteredPapers = officialPapers.filter(p => {
     if (boardFilter !== 'All' && p.board !== boardFilter) return false
     if (yearFilter  !== 'All' && p.year  !== yearFilter)  return false
     if (paperFilter !== 'All' && p.paper !== paperFilter) return false
@@ -534,9 +514,27 @@ export default function PapersPage() {
 
             {/* Table */}
             <div>
-              {filteredPapers.length === 0 ? (
+              {officialLoading ? (
+                <div className="divide-y divide-white/[0.04]">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="px-5 py-3.5 flex items-center gap-4 animate-pulse">
+                      <div className="shrink-0 h-5 w-14 rounded-md" style={{ background: 'rgba(255,255,255,0.06)' }} />
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-3.5 rounded w-2/3" style={{ background: 'rgba(255,255,255,0.06)' }} />
+                        <div className="h-2.5 rounded w-1/4" style={{ background: 'rgba(255,255,255,0.04)' }} />
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="h-7 w-20 rounded-lg" style={{ background: 'rgba(255,255,255,0.06)' }} />
+                        <div className="h-7 w-24 rounded-lg" style={{ background: 'rgba(255,255,255,0.06)' }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : filteredPapers.length === 0 ? (
                 <div className="py-12 text-center">
-                  <p className="text-sm" style={{ color: '#5a7aaa' }}>No papers match the selected filters.</p>
+                  <p className="text-sm" style={{ color: '#5a7aaa' }}>
+                    {officialPapers.length === 0 ? 'No papers added yet — use the Admin page to add links.' : 'No papers match the selected filters.'}
+                  </p>
                 </div>
               ) : (
                 <div className="divide-y divide-white/[0.04]">
@@ -550,36 +548,41 @@ export default function PapersPage() {
                         transition={{ delay: i * 0.02 }}
                         className="px-5 py-3.5 flex items-center gap-4 hover:bg-white/[0.02] transition-colors"
                       >
-                        {/* Board badge */}
                         <span className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-md"
                           style={{ background: bs.bg, border: `1px solid ${bs.border}`, color: bs.color, minWidth: 56, textAlign: 'center' }}>
                           {p.board}
                         </span>
-
-                        {/* Title */}
                         <div className="min-w-0 flex-1">
                           <p className="text-sm text-white truncate">{p.title}</p>
                           <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>
                             {p.year} · Paper {p.paper}
                           </p>
                         </div>
-
-                        {/* Actions */}
                         <div className="shrink-0 flex items-center gap-2">
-                          <a
-                            href={p.pdfUrl}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-[1.02]"
-                            style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)', color: '#818cf8' }}
-                          >
-                            <FileText size={11} /> Paper PDF
-                          </a>
-                          <a
-                            href={p.msUrl}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-[1.02]"
-                            style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)', color: '#34d399' }}
-                          >
-                            <ExternalLink size={11} /> Mark Scheme
-                          </a>
+                          {p.pdf_url ? (
+                            <a href={p.pdf_url} target="_blank" rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-[1.02]"
+                              style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)', color: '#818cf8' }}>
+                              <FileText size={11} /> Paper PDF
+                            </a>
+                          ) : (
+                            <span className="px-3 py-1.5 rounded-lg text-xs"
+                              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', color: '#374151' }}>
+                              PDF pending
+                            </span>
+                          )}
+                          {p.mark_scheme_url ? (
+                            <a href={p.mark_scheme_url} target="_blank" rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-[1.02]"
+                              style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)', color: '#34d399' }}>
+                              <ExternalLink size={11} /> Mark Scheme
+                            </a>
+                          ) : (
+                            <span className="px-3 py-1.5 rounded-lg text-xs"
+                              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', color: '#374151' }}>
+                              MS pending
+                            </span>
+                          )}
                         </div>
                       </motion.div>
                     )
