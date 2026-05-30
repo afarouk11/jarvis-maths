@@ -152,6 +152,13 @@ export default function OnboardingPage() {
         </div>
 
         <div className="w-full max-w-md">
+          {/* Compact SPOK greeting — mobile only (side panel is desktop-only) */}
+          <div className="lg:hidden mb-6 rounded-xl p-3"
+            style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)' }}>
+            <p className="text-sm font-semibold text-amber-400">{line.heading}</p>
+            <p className="text-xs mt-0.5 leading-relaxed" style={{ color: '#7c98c4' }}>{line.body}</p>
+          </div>
+
           <AnimatePresence mode="wait">
             <motion.div
               key={step}
@@ -259,6 +266,9 @@ export default function OnboardingPage() {
                   {/* Exam board */}
                   <div>
                     <label className="text-xs text-slate-500 mb-2 block">Exam board</label>
+                    <p className="text-xs mb-2 leading-relaxed" style={{ color: '#475569' }}>
+                      The organisation that sets and marks your exam. Not sure? Ask your teacher — you can change this later.
+                    </p>
                     <div className="grid grid-cols-3 gap-3">
                       {EXAM_BOARDS.map(b => (
                         <button key={b} onClick={() => setExamBoard(b)}
@@ -277,7 +287,10 @@ export default function OnboardingPage() {
                   {/* Target grade */}
                   <div>
                     <label className="text-xs text-slate-500 mb-2 block">Target grade</label>
-                    <div className={`grid gap-2 ${targetGrades.length > 4 ? 'grid-cols-6' : 'grid-cols-4'}`}>
+                    <p className="text-xs mb-2 leading-relaxed" style={{ color: '#475569' }}>
+                      The grade you’re aiming for. Pick a stretch — SPOK builds every session around getting you there.
+                    </p>
+                    <div className={`grid gap-2 ${targetGrades.length > 4 ? 'grid-cols-3 sm:grid-cols-6' : 'grid-cols-4'}`}>
                       {targetGrades.map(g => (
                         <button key={g} onClick={() => setTargetGrade(g)}
                           className="py-3 rounded-xl text-sm font-bold transition-all hover:scale-[1.03]"
@@ -295,7 +308,7 @@ export default function OnboardingPage() {
                   {/* Year group */}
                   <div>
                     <label className="text-xs text-slate-500 mb-2 block">Year group</label>
-                    <div className={`grid gap-3 grid-cols-${yearGroups.length}`}>
+                    <div className={`grid gap-3 ${yearGroups.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
                       {yearGroups.map(y => (
                         <button key={y.value} onClick={() => setYearGroup(y.value)}
                           className="py-4 rounded-xl text-sm font-bold transition-all hover:scale-[1.03] flex flex-col items-center gap-0.5"
