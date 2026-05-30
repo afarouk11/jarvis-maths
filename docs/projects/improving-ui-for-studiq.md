@@ -39,7 +39,7 @@ contrast/text-size (no new light theme). Delivered in independently-shippable ph
 - [x] **Phase 3 — Onboarding** — plain-language explainers (exam board, target grade), mobile-friendly grade grid, compact mobile SPOK greeting
 - [x] **Phase 4 — Practice & math input** — bigger grouped/labelled math keypad with aria-labels, keypad on its own row
 - [x] **Phase 5 — Friendly states** — `friendlyError()` wired into practice; friendly error header + "Try again" button
-- [ ] **Phase 6 — Soften upsell** — pre-warn before limits, calm inline banner instead of frustration-moment modal *(remaining — touches the 1172-line SPOK chat; do carefully)*
+- [x] **Phase 6 — Soften upsell** — reframed AI-marking paywall ("Want SPOK to mark this?"), reassures the worked answer is always free, added a free "See the worked answer instead" path. *(SPOK-chat message-limit pre-warning still to do.)*
 - [x] **Phase 7 — Accessibility** — accessibility panel now reachable on mobile, aria-labels, bigger tap target *(presets + diagram alt text still to do)*
 
 ## Competitive differentiation (fold into phases)
