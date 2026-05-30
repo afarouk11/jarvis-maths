@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { StudiQLogo } from '@/components/ui/StudiQLogo'
 
-const DEMO_EMAIL    = process.env.NEXT_PUBLIC_DEMO_EMAIL    ?? ''
-const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_PASSWORD ?? ''
+const DEMO_EMAIL    = process.env.NEXT_PUBLIC_DEMO_EMAIL    ?? 'demo@studiq.org'
+const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_PASSWORD ?? 'StudiQ_Demo_2025!'
 
 export default function GuestPage() {
   const router = useRouter()
