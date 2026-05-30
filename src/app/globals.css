@@ -49,6 +49,15 @@
   --color-grid: var(--grid);
   --color-gold: var(--gold);
   --color-indigo: var(--indigo);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-text-strong: var(--text-strong);
+  --color-text-normal: var(--text-normal);
+  --color-text-soft: var(--text-soft);
 }
 
 :root {
@@ -89,6 +98,22 @@
   --grid: rgba(59, 130, 246, 0.06);
   --gold: #f59e0b;
   --indigo: #6366f1;
+
+  /* Semantic status tokens (student-friendly UI) */
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+
+  /* Layered surfaces — replace ad-hoc rgba(255,255,255,0.0x) */
+  --surface-1: rgba(255, 255, 255, 0.03);
+  --surface-2: rgba(255, 255, 255, 0.05);
+  --surface-3: rgba(255, 255, 255, 0.07);
+  --surface-border: rgba(255, 255, 255, 0.08);
+
+  /* Text hierarchy (AA contrast on dark) */
+  --text-strong: #e8f0fe;   /* headings, key values */
+  --text-normal: #cbd5e1;   /* body copy */
+  --text-soft:   #7c98c4;   /* metadata — brightened from #5a7aaa for AA */
 }
 
 @layer base {
@@ -98,11 +123,27 @@
   body {
     @apply bg-background text-foreground;
     background-color: #0a0f1e;
+    font-size: 15px;        /* student-friendly base; avoid sub-14px body copy */
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
   }
   html {
     @apply font-sans;
     color-scheme: dark;
   }
+}
+
+/* Focus visible — clear keyboard focus for accessibility */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 /* Notebook grid background — enhanced with dot overlay */
