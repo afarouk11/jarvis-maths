@@ -12,6 +12,7 @@ import { GCSE_TOPICS } from '@/lib/curriculum/gcse-topics'
 import { CheckCircle, XCircle, Loader2, Zap, Check, X, Pen, Type } from 'lucide-react'
 import { DrawingCanvas } from '@/components/ui/DrawingCanvas'
 import { Skeleton } from '@/components/ui/skeleton'
+import { friendlyError } from '@/lib/friendly-error'
 
 interface MarkingStep {
   line: string
@@ -146,16 +147,13 @@ function PracticePageInner() {
         })
       }
       if (!res.ok) {
-        const text = await res.text()
-        let msg = `Server error ${res.status}`
-        try { const p = JSON.parse(text); msg = [p.error, p.details].filter(Boolean).join(' — ') || msg } catch { msg = text.slice(0, 200) }
-        setGenerateError(msg)
+        setGenerateError(friendlyError(`Server error ${res.status}`))
       } else {
         const data = await res.json()
         setQuestion(data)
       }
     } catch (err: unknown) {
-      setGenerateError(err instanceof Error ? err.message : 'Network error — please try again')
+      setGenerateError(friendlyError(err))
     } finally {
       setLoading(false)
     }
@@ -453,9 +451,14 @@ function PracticePageInner() {
           className="rounded-2xl p-4 mb-4 flex items-start gap-3"
           style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
           <XCircle size={16} className="text-red-400 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-sm font-medium text-red-300">Generation failed</p>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-red-300">Couldn’t load a question</p>
             <p className="text-xs mt-0.5" style={{ color: '#f87171' }}>{generateError}</p>
+            <button onClick={generateQuestion}
+              className="mt-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+              style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
+              Try again
+            </button>
           </div>
         </motion.div>
       )}
@@ -524,22 +527,26 @@ function PracticePageInner() {
                         <Pen size={11} /> Draw
                       </button>
                     </div>
-                    {!drawMode && <MathKeypad getTextarea={() => answerTextareaRef.current} setValue={setStudentAnswer} />}
                   </div>
                 </div>
 
                 {drawMode ? (
                   <DrawingCanvas marks={question.marks} onChange={setDrawingImage} />
                 ) : (
-                  <textarea
-                    ref={answerTextareaRef}
-                    value={studentAnswer}
-                    onChange={e => setStudentAnswer(e.target.value)}
-                    placeholder={"Show your working step by step — one line per step. SPOK will mark each line.\n\nExample:\nStep 1: formula...\nStep 2: substitution..."}
-                    rows={5}
-                    className="w-full rounded-xl p-4 text-sm outline-none resize-none"
-                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(59,130,246,0.2)', color: '#e8f0fe' }}
-                  />
+                  <>
+                    <textarea
+                      ref={answerTextareaRef}
+                      value={studentAnswer}
+                      onChange={e => setStudentAnswer(e.target.value)}
+                      placeholder={"Show your working step by step — one line per step. SPOK will mark each line.\n\nExample:\nStep 1: formula...\nStep 2: substitution..."}
+                      rows={5}
+                      className="w-full rounded-xl p-4 text-sm outline-none resize-none"
+                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(59,130,246,0.2)', color: '#e8f0fe' }}
+                    />
+                    <div className="mt-2">
+                      <MathKeypad getTextarea={() => answerTextareaRef.current} setValue={setStudentAnswer} />
+                    </div>
+                  </>
                 )}
 
                 <div className="flex gap-2 mt-2">
