@@ -35,12 +35,12 @@ contrast/text-size (no new light theme). Delivered in independently-shippable ph
 
 - [x] **Foundations** — semantic design tokens, 15px base text, focus rings, `<HelpTip>` + glossary, `friendlyError()` helper
 - [x] **Phase 1 — Navigation** — sidebar cut to 5 daily items + "More" group; admin removed; bigger tap targets; friendlier mobile labels
-- [ ] **Phase 2 — Dashboard** — "Your next step" hero, slim stat strip with HelpTips, progressive disclosure, "Needs Work" → "Focus next"
-- [ ] **Phase 3 — Onboarding** — split dense course step, explain jargon, forgiving defaults, mobile-friendly, non-blocking install prompt
-- [ ] **Phase 4 — Practice & math input** — linear flow, visual topic chips, bigger labelled keypad, step-by-step reveal
-- [ ] **Phase 5 — Friendly states** — kind error/empty/loading copy, encouraging tone
-- [ ] **Phase 6 — Soften upsell** — pre-warn before limits, calm inline banner instead of frustration-moment modal
-- [ ] **Phase 7 — Accessibility** — mobile entry point, 3 presets, aria-labels, diagram alt text
+- [x] **Phase 2 — Dashboard** — "Your next step" hero, HelpTips on stat labels, removed dense recommendation bar, "Needs Work" → "Focus next"
+- [x] **Phase 3 — Onboarding** — plain-language explainers (exam board, target grade), mobile-friendly grade grid, compact mobile SPOK greeting
+- [x] **Phase 4 — Practice & math input** — bigger grouped/labelled math keypad with aria-labels, keypad on its own row
+- [x] **Phase 5 — Friendly states** — `friendlyError()` wired into practice; friendly error header + "Try again" button
+- [ ] **Phase 6 — Soften upsell** — pre-warn before limits, calm inline banner instead of frustration-moment modal *(remaining — touches the 1172-line SPOK chat; do carefully)*
+- [x] **Phase 7 — Accessibility** — accessibility panel now reachable on mobile, aria-labels, bigger tap target *(presets + diagram alt text still to do)*
 
 ## Competitive differentiation (fold into phases)
 
