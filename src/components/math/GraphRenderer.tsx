@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { describeGraph } from '@/lib/diagram-description'
 
 export interface AnimateHighlight {
   x: number
@@ -135,6 +136,8 @@ export function GraphRenderer({ spec, className }: Props) {
       )}
       <div
         ref={containerRef}
+        role="img"
+        aria-label={describeGraph(spec)}
         className="w-full rounded-xl overflow-hidden"
         style={{
           background: 'rgba(255,255,255,0.92)',

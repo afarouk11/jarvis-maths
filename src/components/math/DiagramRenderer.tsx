@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { describeDiagram } from '@/lib/diagram-description'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -826,7 +827,7 @@ export function DiagramRenderer({ spec, className, onElementClick }: DiagramRend
             userSelect: 'none',
             pointerEvents: whiteboardActive ? 'none' : 'auto',
           }}
-          aria-label={spec.title ?? 'Geometry diagram'}
+          aria-label={describeDiagram(spec)}
           role="img"
           onWheel={onWheel}
           onMouseDown={onMouseDown}
