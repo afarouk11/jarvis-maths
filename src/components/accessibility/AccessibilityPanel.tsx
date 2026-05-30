@@ -15,17 +15,19 @@ export function AccessibilityPanel() {
 
   return (
     <>
-      {/* Floating trigger — desktop only */}
+      {/* Floating trigger — available on every screen size */}
       <button
         onClick={() => setOpen(o => !o)}
         title="Accessibility options"
-        className="hidden md:flex fixed top-6 right-6 z-50 w-9 h-9 rounded-xl items-center justify-center transition-all hover:scale-105"
+        aria-label="Accessibility options"
+        aria-expanded={open}
+        className="flex fixed top-4 right-4 md:top-6 md:right-6 z-50 w-10 h-10 rounded-xl items-center justify-center transition-all hover:scale-105"
         style={{
           background: anyActive ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.05)',
           border: `1px solid ${anyActive ? 'rgba(245,158,11,0.4)' : 'rgba(255,255,255,0.1)'}`,
           backdropFilter: 'blur(12px)',
         }}>
-        <SlidersHorizontal size={15} style={{ color: anyActive ? '#f59e0b' : '#5a7aaa' }} />
+        <SlidersHorizontal size={16} style={{ color: anyActive ? '#f59e0b' : '#7c98c4' }} />
       </button>
 
       {/* Panel */}
@@ -35,7 +37,7 @@ export function AccessibilityPanel() {
             initial={{ opacity: 0, scale: 0.9, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 10 }}
-            className="fixed top-16 right-6 z-50 rounded-2xl p-4 w-72"
+            className="fixed top-16 right-4 md:right-6 z-50 rounded-2xl p-4 w-72 max-w-[calc(100vw-2rem)]"
             style={{
               background: 'rgba(8,13,25,0.97)',
               border: '1px solid rgba(59,130,246,0.2)',
