@@ -43,7 +43,7 @@ WHAT STUDENTS GET
 
 WHAT WE ASK IN RETURN
 Only two things:
-1. Students complete a short baseline assessment before they start (15–20 minutes)
+1. Students complete a baseline assessment before they start (50 minutes — we provide it)
 2. Students complete the same assessment at the end of term
 
 That's it. We want to prove — with real data — that this works. No testimonials, no publicity, no financial commitment.
@@ -138,7 +138,7 @@ To opt out permanently, reply with "unsubscribe" and we will remove you immediat
       <div style="background:#fffbeb;border-left:4px solid #f59e0b;border-radius:0 8px 8px 0;padding:18px 22px;margin:24px 0;">
         <p style="margin:0 0 10px;font-weight:700;color:#111827;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;">What we ask in return</p>
         <ol style="margin:0;padding-left:18px;color:#374151;font-size:14px;line-height:2.1;">
-          <li>Students complete a <strong>short baseline assessment before</strong> they start (15–20 min)</li>
+          <li>Students complete a <strong>baseline assessment before</strong> they start (50 min — we provide it)</li>
           <li>Students complete the <strong>same assessment at the end of term</strong> to measure real progress</li>
         </ol>
         <p style="margin:12px 0 0;font-size:13px;color:#92400e;">We want rigorous evidence, not anecdotes. If the data doesn't show results, we'd rather know.</p>

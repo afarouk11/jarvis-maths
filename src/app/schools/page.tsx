@@ -47,7 +47,7 @@ const FEATURES = [
 ]
 
 const WHAT_WE_ASK = [
-  'Students complete a short baseline maths assessment before they start (15–20 min)',
+  'Students complete a baseline maths assessment before they start (50 min — we provide it)',
   'Students complete the same assessment at the end of term',
   'That\'s it — we use the data to measure whether StudiQ actually works',
 ]
