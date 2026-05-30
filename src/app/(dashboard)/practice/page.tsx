@@ -279,10 +279,10 @@ function PracticePageInner() {
               </div>
               <h2 className="text-lg font-bold text-white text-center mb-1"
                 style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                AI marking is Pro
+                Want SPOK to mark this?
               </h2>
-              <p className="text-sm text-center mb-5" style={{ color: '#5a7aaa' }}>
-                SPOK analyses your working, awards M/A/B marks, and gives AQA-style feedback. Upgrade to unlock it.
+              <p className="text-sm text-center mb-5" style={{ color: '#7c98c4' }}>
+                With Pro, SPOK checks your working line by line, awards M/A/B marks, and gives AQA-style feedback. No rush — you can still see the full worked answer for free.
               </p>
               <div className="rounded-2xl p-4 mb-5 text-center"
                 style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.15)' }}>
@@ -312,8 +312,14 @@ function PracticePageInner() {
                 {upgradeLoading ? 'Redirecting...' : 'Upgrade to Pro'}
               </button>
               <button
+                onClick={() => { setProRequired(false); setSubmitted(true); setRevealed(true) }}
+                className="w-full text-center text-sm mt-3 py-2 rounded-xl transition-colors hover:text-white"
+                style={{ color: '#9fb6d9', border: '1px solid rgba(255,255,255,0.08)' }}>
+                See the worked answer instead
+              </button>
+              <button
                 onClick={() => setProRequired(false)}
-                className="w-full text-center text-xs mt-3 hover:text-white transition-colors"
+                className="w-full text-center text-xs mt-2 hover:text-white transition-colors"
                 style={{ color: '#4a6070' }}>
                 Maybe later
               </button>
