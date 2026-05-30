@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { RotateCw } from 'lucide-react'
 import dynamic from 'next/dynamic'
-import { masteryLabel } from '@/lib/bkt/bayesian-knowledge-tracing'
+import { masteryLabel, masteryCaption } from '@/lib/bkt/bayesian-knowledge-tracing'
 import { createClient } from '@/lib/supabase/client'
 import type { StudentProgress, Topic } from '@/types'
 
@@ -518,6 +518,10 @@ export function BrainMap({ progress, avgPKnown, grade, topicsActive, totalTopics
                   style={{ height: '100%', borderRadius: 99, background: pHex(selected.pKnown) }}
                 />
               </div>
+              {/* Plain-English explanation of what this score means + next step */}
+              <p style={{ fontSize: 12, lineHeight: 1.5, color: '#8fa6c9', marginTop: 8 }}>
+                {masteryCaption(selected.pKnown, selected.name)}
+              </p>
             </div>
 
             {selected.prog && (
