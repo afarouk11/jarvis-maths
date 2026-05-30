@@ -57,18 +57,33 @@ export function useAccessibility() {
     } catch {}
   }, [prefs, loaded])
 
+  function persistProfile(next: AccessibilityPrefs): void {
+    fetch('/api/profile/setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dyslexiaMode: next.dyslexia, adhdMode: next.adhd }),
+    }).catch(() => {})
+  }
+
   function toggle(key: keyof AccessibilityPrefs) {
     const next = { ...prefs, [key]: !prefs[key] }
     setPrefs(next)
     // Persist dyslexia/adhd to profile DB; new prefs are localStorage-only
-    if (key === 'dyslexia' || key === 'adhd') {
-      fetch('/api/profile/setup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dyslexiaMode: next.dyslexia, adhdMode: next.adhd }),
-      }).catch(() => {})
-    }
+    if (key === 'dyslexia' || key === 'adhd') persistProfile(next)
   }
 
-  return { prefs, toggle, loaded }
+  /** Apply a full set of prefs at once (used by the accessibility presets). */
+  function applyPreset(preset: AccessibilityPrefs): void {
+    setPrefs(preset)
+    persistProfile(preset)
+  }
+
+  return { prefs, toggle, applyPreset, loaded }
 }
+
+/** One-tap presets that bundle the granular toggles into clear modes. */
+export const ACCESSIBILITY_PRESETS = {
+  standard: { dyslexia: false, adhd: false, visual: false, slowPace: false, encouragement: false },
+  dyslexia: { dyslexia: true, adhd: false, visual: true, slowPace: false, encouragement: true },
+  adhd: { dyslexia: false, adhd: true, visual: false, slowPace: true, encouragement: true },
+} as const satisfies Record<string, AccessibilityPrefs>
