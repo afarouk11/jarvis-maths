@@ -89,7 +89,7 @@ export default function SchoolsPage() {
         </div>
       </nav>
 
-      <div className="pt-24 pb-32 px-6 max-w-5xl mx-auto">
+      <div className="pt-24 pb-32 px-4 md:px-6 max-w-5xl mx-auto">
 
         {/* Hero */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-16">
@@ -99,8 +99,8 @@ export default function SchoolsPage() {
             Summer Programme + Autumn Term — no budget required
           </div>
 
-          <h1 className="text-white mb-5"
-            style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 52, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1 }}>
+          <h1 className="text-white mb-5 text-4xl md:text-[52px]"
+            style={{ fontFamily: 'var(--font-space-grotesk)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1 }}>
             The AI maths tutor your<br />
             <span style={{ background: 'linear-gradient(135deg,#60a5fa,#818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
               students actually need
@@ -113,17 +113,17 @@ export default function SchoolsPage() {
             Free for your school this summer and next term.
           </p>
 
-          <div className="flex gap-4 justify-center flex-wrap">
-            <Link href="/guest">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/guest" className="w-full sm:w-auto">
               <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-                className="px-8 py-3.5 rounded-xl font-semibold text-white"
+                className="w-full sm:w-auto px-8 py-4 rounded-xl font-semibold text-white"
                 style={{ background: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', boxShadow: '0 0 40px rgba(59,130,246,0.35)', fontSize: 15 }}>
                 Try it free now →
               </motion.button>
             </Link>
-            <a href="mailto:admin@studiq.org?subject=School trial enquiry">
+            <a href="mailto:admin@studiq.org?subject=School trial enquiry" className="w-full sm:w-auto">
               <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-                className="px-8 py-3.5 rounded-xl font-semibold"
+                className="w-full sm:w-auto px-8 py-4 rounded-xl font-semibold"
                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', color: '#94a3b8', fontSize: 15 }}>
                 Book a call with Muhammad
               </motion.button>
@@ -257,17 +257,17 @@ export default function SchoolsPage() {
             Sign up free and explore the full platform — or get in touch directly and
             Muhammad will set everything up for you personally.
           </p>
-          <div className="flex gap-4 justify-center flex-wrap">
-            <Link href="/guest">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/guest" className="w-full sm:w-auto">
               <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-                className="px-8 py-3.5 rounded-xl font-semibold text-white"
+                className="w-full sm:w-auto px-8 py-4 rounded-xl font-semibold text-white"
                 style={{ background: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', fontSize: 15 }}>
                 Try it free now →
               </motion.button>
             </Link>
-            <a href="mailto:admin@studiq.org?subject=School trial enquiry — summer + autumn">
+            <a href="mailto:admin@studiq.org?subject=School trial enquiry — summer + autumn" className="w-full sm:w-auto">
               <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-                className="px-8 py-3.5 rounded-xl font-semibold"
+                className="w-full sm:w-auto px-8 py-4 rounded-xl font-semibold"
                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', color: '#94a3b8', fontSize: 15 }}>
                 Email Muhammad directly
               </motion.button>

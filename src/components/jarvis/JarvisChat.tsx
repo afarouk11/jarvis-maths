@@ -186,7 +186,7 @@ export function JarvisChat({ topicContext }: Props) {
 
   return (
     <>
-      {/* Floating trigger */}
+      {/* Floating trigger — desktop only */}
       <AnimatePresence>
         {!open && (
           <motion.button
@@ -194,7 +194,7 @@ export function JarvisChat({ topicContext }: Props) {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             onClick={() => { setOpen(true); setJarvisState('idle') }}
-            className="fixed bottom-6 right-6 z-50"
+            className="hidden md:flex fixed bottom-6 right-6 z-50"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}>
             <JarvisAvatar state={jarvisState} size={56} />
@@ -210,7 +210,7 @@ export function JarvisChat({ topicContext }: Props) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-            className="fixed bottom-6 right-6 z-50 flex flex-col rounded-2xl overflow-hidden"
+            className="hidden md:flex fixed bottom-6 right-6 z-50 flex-col rounded-2xl overflow-hidden"
             style={{
               width: panelWidth,
               height: panelHeight,

@@ -246,12 +246,11 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
 }
 
 const MOBILE_NAV = [
-  { href: '/dashboard',   icon: LayoutDashboard, label: 'Home' },
-  { href: '/practice',    icon: Zap,             label: 'Practice' },
-  { href: '/jarvis',      icon: Bot,             label: 'SPOK' },
-  { href: '/leaderboard', icon: Trophy,          label: 'Ranks' },
-  { href: '/topics',      icon: BookOpen,        label: 'Topics' },
-  { href: '/profile',     icon: User,            label: 'Profile' },
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Home'     },
+  { href: '/practice',  icon: Zap,             label: 'Practice' },
+  { href: '/jarvis',    icon: Bot,             label: 'SPOK'     },
+  { href: '/topics',    icon: BookOpen,        label: 'Topics'   },
+  { href: '/profile',   icon: User,            label: 'Profile'  },
 ]
 
 export function MobileNav() {
@@ -259,31 +258,40 @@ export function MobileNav() {
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around px-2 py-2"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50"
       style={{
-        background: 'rgba(7,12,26,0.97)',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-        backdropFilter: 'blur(20px)',
+        background: 'rgba(7,12,26,0.98)',
+        borderTop: '1px solid rgba(255,255,255,0.07)',
+        backdropFilter: 'blur(24px)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
-      {MOBILE_NAV.map(({ href, icon: Icon, label }) => {
-        const active = pathname.startsWith(href)
-        return (
-          <Link
-            key={href}
-            href={href}
-            className="flex flex-col items-center gap-1 px-2 py-1.5 rounded-xl"
-          >
-            <Icon size={20} style={{ color: active ? '#3b82f6' : '#3a4a5c' }} />
-            <span
-              className="text-[10px] font-medium"
-              style={{ color: active ? '#3b82f6' : '#3a4a5c' }}
+      <div className="flex items-center justify-around px-1 pt-2 pb-3">
+        {MOBILE_NAV.map(({ href, icon: Icon, label }) => {
+          const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
+          return (
+            <Link
+              key={href}
+              href={href}
+              className="flex flex-col items-center gap-1 min-w-[56px] px-3 py-1 rounded-2xl transition-all active:scale-95"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
             >
-              {label}
-            </span>
-          </Link>
-        )
-      })}
+              <div className="relative flex items-center justify-center w-8 h-8 rounded-xl transition-all"
+                style={{ background: active ? 'rgba(59,130,246,0.15)' : 'transparent' }}>
+                <Icon size={18} style={{ color: active ? '#60a5fa' : '#3a4a5c' }} />
+                {active && (
+                  <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+                    style={{ background: '#3b82f6' }} />
+                )}
+              </div>
+              <span className="text-[10px] font-medium tracking-wide"
+                style={{ color: active ? '#60a5fa' : '#3a4a5c' }}>
+                {label}
+              </span>
+            </Link>
+          )
+        })}
+      </div>
     </nav>
   )
 }

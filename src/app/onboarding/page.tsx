@@ -340,8 +340,8 @@ export default function OnboardingPage() {
                   {/* Learning needs */}
                   <div className="space-y-3">
                     {[
-                      { key: 'dyslexia', active: dyslexia, toggle: () => setDyslexia(d => !d), label: 'Dyslexia', desc: 'Clearer font, shorter sentences, bullet points over paragraphs', emoji: '📖' },
-                      { key: 'adhd',     active: adhd,     toggle: () => setAdhd(a => !a),     label: 'ADHD',    desc: 'Bite-sized steps, frequent check-ins, focused explanations',  emoji: '⚡' },
+                      { key: 'dyslexia', active: dyslexia, toggle: () => { setDyslexia(d => !d) }, label: 'Dyslexia', desc: 'Clearer font, shorter sentences, bullet points over paragraphs', emoji: '📖' },
+                      { key: 'adhd',     active: adhd,     toggle: () => { setAdhd(a => !a) },     label: 'ADHD / Dyscalculia', desc: 'Bite-sized steps, frequent check-ins, focused explanations', emoji: '⚡' },
                     ].map(opt => (
                       <button key={opt.key} onClick={opt.toggle}
                         className="w-full flex items-center gap-4 px-4 py-4 rounded-xl text-left transition-all hover:scale-[1.01]"
@@ -360,6 +360,23 @@ export default function OnboardingPage() {
                         </div>
                       </button>
                     ))}
+                    <button
+                      onClick={() => { setDyslexia(false); setAdhd(false) }}
+                      className="w-full flex items-center gap-4 px-4 py-4 rounded-xl text-left transition-all hover:scale-[1.01]"
+                      style={{
+                        background: !dyslexia && !adhd ? 'rgba(99,102,241,0.08)' : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${!dyslexia && !adhd ? 'rgba(99,102,241,0.35)' : 'rgba(255,255,255,0.08)'}`,
+                      }}>
+                      <span className="text-2xl">✓</span>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold" style={{ color: !dyslexia && !adhd ? '#818cf8' : '#e2e8f0' }}>N/A — none of these apply</p>
+                        <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>SPOK will use standard settings</p>
+                      </div>
+                      <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all"
+                        style={{ borderColor: !dyslexia && !adhd ? '#818cf8' : 'rgba(255,255,255,0.2)', background: !dyslexia && !adhd ? '#818cf8' : 'transparent' }}>
+                        {!dyslexia && !adhd && <Check size={10} strokeWidth={3} className="text-black" />}
+                      </div>
+                    </button>
                   </div>
 
                   {/* Summary */}

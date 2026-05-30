@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Type, Brain, Timer, Eye, Gauge, Heart } from 'lucide-react'
+import { X, Type, Brain, Timer, Eye, Gauge, Heart, SlidersHorizontal } from 'lucide-react'
 import { useAccessibility } from '@/hooks/useAccessibility'
 import { ADHDTimer } from './ADHDTimer'
 
@@ -15,22 +15,17 @@ export function AccessibilityPanel() {
 
   return (
     <>
-      {/* Floating trigger */}
+      {/* Floating trigger — desktop only */}
       <button
         onClick={() => setOpen(o => !o)}
         title="Accessibility options"
-        className="fixed top-6 right-6 z-50 w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-105"
+        className="hidden md:flex fixed top-6 right-6 z-50 w-9 h-9 rounded-xl items-center justify-center transition-all hover:scale-105"
         style={{
-          background: prefs.encouragement
-            ? 'rgba(251,146,60,0.2)'
-            : anyActive ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.06)',
-          border: `1px solid ${prefs.encouragement
-            ? 'rgba(251,146,60,0.6)'
-            : anyActive ? 'rgba(245,158,11,0.5)' : 'rgba(255,255,255,0.12)'}`,
-          boxShadow: prefs.encouragement ? '0 0 16px rgba(251,146,60,0.25)' : undefined,
+          background: anyActive ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.05)',
+          border: `1px solid ${anyActive ? 'rgba(245,158,11,0.4)' : 'rgba(255,255,255,0.1)'}`,
           backdropFilter: 'blur(12px)',
         }}>
-        <span style={{ fontSize: 16 }}>♿</span>
+        <SlidersHorizontal size={15} style={{ color: anyActive ? '#f59e0b' : '#5a7aaa' }} />
       </button>
 
       {/* Panel */}
@@ -46,6 +41,9 @@ export function AccessibilityPanel() {
               border: '1px solid rgba(59,130,246,0.2)',
               boxShadow: '0 0 30px rgba(59,130,246,0.1), 0 20px 40px rgba(0,0,0,0.4)',
               backdropFilter: 'blur(20px)',
+              maxHeight: 'calc(100vh - 100px)',
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
             }}>
 
             {/* Header */}
