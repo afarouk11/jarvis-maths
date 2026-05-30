@@ -563,7 +563,7 @@ export default function PapersPage() {
                             <a href={p.pdf_url} target="_blank" rel="noopener noreferrer"
                               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-[1.02]"
                               style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)', color: '#818cf8' }}>
-                              <FileText size={11} /> Paper PDF
+                              <FileText size={11} /> View on {p.board}
                             </a>
                           ) : (
                             <span className="px-3 py-1.5 rounded-lg text-xs"
