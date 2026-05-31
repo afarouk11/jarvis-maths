@@ -46,7 +46,7 @@ export function ProfileSettings({ initialFullName, initialExamBoard, initialTarg
 
   async function signOut() {
     await createClient().auth.signOut()
-    router.push('/sign-in')
+    router.push('/')
   }
 
   async function deleteAccount() {

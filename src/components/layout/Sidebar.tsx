@@ -86,7 +86,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
 
   async function signOut() {
     await createClient().auth.signOut()
-    router.push('/sign-in')
+    router.push('/')
   }
 
   return (
