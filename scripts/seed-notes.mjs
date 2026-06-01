@@ -97,13 +97,23 @@ function emitSql(rows) {
 
 async function insertToSupabase(rows) {
   const { createClient } = await import('@supabase/supabase-js')
-  const env = Object.fromEntries(
-    readFileSync(new URL('../.env.local', import.meta.url), 'utf8')
-      .split('\n')
-      .filter(l => l.includes('=') && !l.startsWith('#'))
-      .map(l => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).trim()])
-  )
-  const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
+  // Credentials come from the environment if provided, otherwise from .env.local.
+  let env = { ...process.env }
+  try {
+    const fileEnv = Object.fromEntries(
+      readFileSync(new URL('../.env.local', import.meta.url), 'utf8')
+        .split('\n')
+        .filter(l => l.includes('=') && !l.startsWith('#'))
+        .map(l => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).trim()])
+    )
+    env = { ...fileEnv, ...env }
+  } catch { /* no .env.local — rely on process.env */ }
+
+  const url = env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL
+  const key = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_KEY
+    || env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  if (!url || !key) throw new Error('Missing Supabase URL or key (set SUPABASE_URL and SUPABASE_KEY).')
+  const supabase = createClient(url, key)
 
   let embed = null
   if (env.OPENAI_API_KEY) {
@@ -116,12 +126,26 @@ async function insertToSupabase(rows) {
   }
 
   let added = 0
-  for (const r of rows) {
-    const record = { topic_slug: r.topic_slug, type: r.type, title: r.title, content: r.content }
-    if (embed) record.embedding = await embed(`${r.title}\n\n${r.content}`)
-    const { error } = await supabase.from('knowledge_base').insert(record)
-    if (error) console.error(`✗ ${r.topic_slug} / ${r.title}: ${error.message}`)
-    else added++
+  if (embed) {
+    // One at a time so we can attach an embedding per row.
+    for (const r of rows) {
+      const record = { topic_slug: r.topic_slug, type: r.type, title: r.title, content: r.content }
+      record.embedding = await embed(`${r.title}\n\n${r.content}`)
+      const { error } = await supabase.from('knowledge_base').insert(record)
+      if (error) console.error(`✗ ${r.topic_slug} / ${r.title}: ${error.message}`)
+      else added++
+    }
+  } else {
+    // Bulk insert in chunks (no embeddings).
+    const CHUNK = 25
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const chunk = rows.slice(i, i + CHUNK).map(r => ({
+        topic_slug: r.topic_slug, type: r.type, title: r.title, content: r.content,
+      }))
+      const { error } = await supabase.from('knowledge_base').insert(chunk)
+      if (error) console.error(`✗ chunk ${i}-${i + chunk.length}: ${error.message}`)
+      else added += chunk.length
+    }
   }
   console.log(`Done — ${added}/${rows.length} notes inserted.`)
 }
