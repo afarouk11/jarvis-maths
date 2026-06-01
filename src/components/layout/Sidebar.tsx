@@ -7,7 +7,7 @@ import {
   LayoutDashboard, BookOpen, Zap, FileText,
   User, LogOut, Brain, Bot,
   TrendingUp, Trophy, CalendarDays, Sparkles,
-  PanelLeftClose, type LucideIcon,
+  NotebookText, PanelLeftClose, type LucideIcon,
 } from 'lucide-react'
 import { StudiQLogo } from '@/components/ui/StudiQLogo'
 import { createClient } from '@/lib/supabase/client'
@@ -24,6 +24,7 @@ const PRIMARY_NAV = [
 
 // Secondary tools — tucked under "More" so they don't compete for attention.
 const MORE_NAV = [
+  { href: '/notes',       icon: NotebookText, label: 'Notes' },
   { href: '/brain',       icon: Brain,        label: 'Brain Map' },
   { href: '/timetable',   icon: CalendarDays, label: 'Timetable' },
   { href: '/papers',      icon: FileText,     label: 'Past Papers' },

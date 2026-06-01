@@ -6,7 +6,7 @@ import { masteryColor, masteryLabel } from '@/lib/bkt/bayesian-knowledge-tracing
 import { JarvisChat } from '@/components/jarvis/JarvisChat'
 import { GenerateLessonButton } from '@/components/lessons/GenerateLessonButton'
 import Link from 'next/link'
-import { CheckCircle, XCircle, Clock, Zap, BookOpen } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, Zap, BookOpen, NotebookText } from 'lucide-react'
 
 interface Props { params: Promise<{ slug: string }> }
 
@@ -64,16 +64,28 @@ export default async function TopicPage({ params }: Props) {
                 {topic.year_group} · {isGCSE ? `${examBoard} GCSE Mathematics` : `${examBoard} A-level Mathematics`}
               </p>
             </div>
-            <Link href={`/practice?topic=${slug}`}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shrink-0 transition-all hover:scale-105"
-              style={{
-                background: isDue ? 'rgba(245,158,11,0.2)' : 'rgba(59,130,246,0.2)',
-                border: `1px solid ${isDue ? 'rgba(245,158,11,0.4)' : 'rgba(59,130,246,0.35)'}`,
-                color: isDue ? '#f59e0b' : '#60a5fa',
-              }}>
-              <Zap size={14} />
-              {isDue ? 'Due — Practice Now' : 'Practice'}
-            </Link>
+            <div className="flex items-center gap-2 shrink-0">
+              <Link href={`/notes/${slug}`}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105"
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#c7d6f0',
+                }}>
+                <NotebookText size={14} />
+                Notes
+              </Link>
+              <Link href={`/practice?topic=${slug}`}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105"
+                style={{
+                  background: isDue ? 'rgba(245,158,11,0.2)' : 'rgba(59,130,246,0.2)',
+                  border: `1px solid ${isDue ? 'rgba(245,158,11,0.4)' : 'rgba(59,130,246,0.35)'}`,
+                  color: isDue ? '#f59e0b' : '#60a5fa',
+                }}>
+                <Zap size={14} />
+                {isDue ? 'Due — Practice Now' : 'Practice'}
+              </Link>
+            </div>
           </div>
 
           {/* Mastery bar */}

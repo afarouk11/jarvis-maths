@@ -43,3 +43,6 @@ next-env.d.ts
 # claude code
 .agents/
 skills-lock.json
+
+# Generated notes SQL (regenerate with: node scripts/seed-notes.mjs --sql)
+scripts/notes-data/sql/
