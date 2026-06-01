@@ -97,28 +97,44 @@ function emitSql(rows) {
 
 async function insertToSupabase(rows) {
   const { createClient } = await import('@supabase/supabase-js')
-  // Credentials come from the environment if provided, otherwise from .env.local.
+  // Credentials: env vars take priority, then .env.local, then hardcoded defaults.
   let env = { ...process.env }
   try {
     const fileEnv = Object.fromEntries(
       readFileSync(new URL('../.env.local', import.meta.url), 'utf8')
         .split('\n')
         .filter(l => l.includes('=') && !l.startsWith('#'))
-        .map(l => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).trim()])
+        .map(l => {
+          const eq = l.indexOf('=')
+          const k = l.slice(0, eq)
+          let v = l.slice(eq + 1).trim()
+          if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+            v = v.slice(1, -1)
+          }
+          return [k, v]
+        })
     )
     env = { ...fileEnv, ...env }
-  } catch { /* no .env.local — rely on process.env */ }
+  } catch (err) {
+    if (err.code !== 'ENOENT') console.warn(`Warning: could not parse .env.local: ${err.message}`)
+  }
 
   const url = env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL
   const key = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_KEY
-    || env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-  if (!url || !key) throw new Error('Missing Supabase URL or key (set SUPABASE_URL and SUPABASE_KEY).')
+  if (!url || !key) throw new Error('Missing Supabase credentials. Ensure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set in .env.local.')
   const supabase = createClient(url, key)
 
+  const openaiKey = env.OPENAI_API_KEY
+
+  // Delete existing rows for all topic slugs we're about to seed — ensures idempotency.
+  const slugs = [...new Set(rows.map(r => r.topic_slug))]
+  const { error: delErr } = await supabase.from('knowledge_base').delete().in('topic_slug', slugs)
+  if (delErr) console.warn(`Warning: could not clear existing notes: ${delErr.message}`)
+
   let embed = null
-  if (env.OPENAI_API_KEY) {
+  if (openaiKey) {
     const OpenAI = (await import('openai')).default
-    const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY })
+    const openai = new OpenAI({ apiKey: openaiKey })
     embed = async (text) => {
       const res = await openai.embeddings.create({ model: 'text-embedding-3-small', input: text.slice(0, 8000) })
       return res.data[0].embedding

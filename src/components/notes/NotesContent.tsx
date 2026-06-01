@@ -1,5 +1,3 @@
-'use client'
-
 import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
@@ -53,13 +51,17 @@ export function NotesContent({ content }: Props) {
           h3: ({ children }) => (
             <h3 className="text-sm font-semibold mt-4 mb-1.5" style={{ color: '#93c5fd' }}>{children}</h3>
           ),
+          // pre handles the fenced-code block wrapper; code just renders inline or the inner element.
+          pre: ({ children }) => (
+            <pre className="my-3 p-3 rounded-lg text-xs overflow-x-auto"
+              style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.08)', color: '#86efac' }}>
+              {children}
+            </pre>
+          ),
           code: ({ children, className }) => {
             const isBlock = className?.includes('language-')
             return isBlock ? (
-              <pre className="my-3 p-3 rounded-lg text-xs overflow-x-auto"
-                style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.08)', color: '#86efac' }}>
-                <code>{children}</code>
-              </pre>
+              <code>{children}</code>
             ) : (
               <code className="px-1.5 py-0.5 rounded text-[13px]"
                 style={{ background: 'rgba(0,0,0,0.3)', color: '#86efac' }}>{children}</code>

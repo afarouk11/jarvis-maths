@@ -13,7 +13,7 @@ export default async function NotesPage() {
 
   const [{ data: profile }, { data: notes }] = await Promise.all([
     supabase.from('profiles').select('level, exam_board').eq('id', user.id).single(),
-    supabase.from('knowledge_base').select('topic_slug, type'),
+    supabase.from('knowledge_base').select('topic_slug, type').limit(5000),
   ])
 
   const level = (profile?.level ?? 'A-Level') as Level
