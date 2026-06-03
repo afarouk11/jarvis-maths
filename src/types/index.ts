@@ -122,6 +122,8 @@ export interface Question {
   difficulty: number
   marks: number
   source: string | null
+  /** Optional first-line nudge for the hint ladder. */
+  hint?: string
 }
 
 export interface BKTState {

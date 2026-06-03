@@ -10,7 +10,10 @@ import Link from 'next/link'
 import { BookOpen, Zap, Bot, FileText, Trophy, Flame } from 'lucide-react'
 import { StudyPlan } from '@/components/dashboard/StudyPlan'
 import { DueNotification } from '@/components/dashboard/DueNotification'
-import { SpokRecommendation } from '@/components/dashboard/SpokRecommendation'
+import { NextStepHero, type NextStep } from '@/components/dashboard/NextStepHero'
+import { ExamBoardSwitcher } from '@/components/dashboard/ExamBoardSwitcher'
+import { HelpTip } from '@/components/ui/HelpTip'
+import type { GlossaryTerm } from '@/lib/glossary'
 import { ExamReadinessCard } from '@/components/dashboard/ExamReadinessCard'
 import { MasteryHeatMap } from '@/components/dashboard/MasteryHeatMap'
 import { UpgradedBanner } from '@/components/dashboard/UpgradedBanner'
@@ -47,13 +50,31 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const progressMap = new Map((progress ?? []).map(p => [p.topic_id, p]))
   const pKnownMap   = new Map((progress ?? []).map(p => [p.topic_id, p.p_known]))
-  const dueTopics   = (progress ?? []).filter(p => new Date(p.next_review_at) <= new Date()).slice(0, 4)
+  const dueAll      = (progress ?? []).filter(p => new Date(p.next_review_at) <= new Date())
+  const dueTopics   = dueAll.slice(0, 4)
   const avgPKnown          = allTopics.length > 0 ? (progress ?? []).reduce((s, p) => s + p.p_known, 0) / allTopics.length : 0
   const attemptedAvgPKnown = (progress ?? []).length > 0 ? (progress ?? []).reduce((s, p) => s + p.p_known, 0) / (progress ?? []).length : 0
   const grade       = predictedGrade(avgPKnown)
   const name        = profile?.full_name?.split(' ')[0] ?? 'Student'
   const weakTopics  = [...(progress ?? [])].sort((a, b) => a.p_known - b.p_known).slice(0, 3)
   const xpLevel     = getXPLevel(profile?.xp ?? 0)
+
+  // The single most important action for this student right now.
+  const nextStep: NextStep = (() => {
+    if ((progress ?? []).length === 0) {
+      return { emoji: '🚀', title: 'Start your first lesson', subtitle: 'Pick a topic and SPOK will start mapping what you know.', href: '/topics', cta: 'Browse topics' }
+    }
+    if (dueAll.length > 0) {
+      return { emoji: '🔁', title: `Review ${dueAll.length} topic${dueAll.length > 1 ? 's' : ''} due today`, subtitle: 'A quick review now keeps these locked in for your exam.', href: '/practice', cta: 'Start review' }
+    }
+    const weakest = weakTopics[0]
+    if (weakest && weakest.p_known < 0.5) {
+      const slug = slugById.get(weakest.topic_id) ?? weakest.topic_id
+      const topic = allTopics.find(t => t.slug === slug)
+      return { emoji: topic?.icon ?? '🎯', title: `Strengthen ${topic?.name ?? 'your weakest topic'}`, subtitle: 'This is the topic costing you the most marks. Let’s close the gap.', href: `/practice?topic=${slug}`, cta: 'Practise now' }
+    }
+    return { emoji: '⭐', title: "You're on track — keep it up", subtitle: 'Practise a few questions to push toward your target grade.', href: '/practice', cta: 'Keep practising' }
+  })()
 
   // Exam readiness
   const readiness = computeExamReadiness({
@@ -88,15 +109,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <MorningBriefing />
       <DueNotification dueCount={dueTopics.length} />
 
-      {/* SPOK recommendation bar */}
-      <SpokRecommendation
-        progress={progress ?? []}
-        examDate={profile?.exam_date ?? null}
-        targetGrade={profile?.target_grade ?? 'A*'}
-        examBoard={profile?.exam_board ?? 'AQA'}
-        topicsRows={topicsRows ?? []}
-      />
-
       {/* Creators reel */}
       <CreatorsReel />
 
@@ -107,9 +119,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 26, letterSpacing: '-0.02em' }}>
             {greeting}, {name}
           </h1>
-          <p className="text-sm mt-1" style={{ color: '#5a7aaa' }}>
-            {profile?.exam_board} {profile?.level === 'GCSE' ? 'GCSE' : 'A-level'} Maths · Target {profile?.target_grade}
-          </p>
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            <ExamBoardSwitcher current={profile?.exam_board ?? 'AQA'} />
+            <p className="text-sm" style={{ color: '#7c98c4' }}>
+              {profile?.level === 'GCSE' ? 'GCSE' : 'A-level'} Maths · Target {profile?.target_grade}
+            </p>
+          </div>
         </div>
         <ShareButton
           name={name}
@@ -119,12 +134,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         />
       </div>
 
+      {/* Your next step — the one thing to do now */}
+      <NextStepHero step={nextStep} />
+
       {/* Key stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon={<Trophy size={16} />} label="Predicted Grade" value={grade} sub={`${Math.round(avgPKnown * 100)}% across all topics`} sub2={`${Math.round(attemptedAvgPKnown * 100)}% within studied topics`} color={gradeColor} />
-        <StatCard icon={<Flame size={16} />}  label="Study Streak"   value={`${profile?.streak_days ?? 0}d`} sub="days in a row" color="#f97316" />
+        <StatCard icon={<Trophy size={16} />} label="Predicted Grade" helpTerm="predicted-grade" value={grade} sub={`${Math.round(avgPKnown * 100)}% across all topics`} sub2={`${Math.round(attemptedAvgPKnown * 100)}% within studied topics`} color={gradeColor} />
+        <StatCard icon={<Flame size={16} />}  label="Study Streak"   helpTerm="streak" value={`${profile?.streak_days ?? 0}d`} sub="days in a row" color="#f97316" />
         <XPCard xp={profile?.xp ?? 0} />
-        <StatCard icon={<BookOpen size={16} />} label="Topics Studied" value={`${progress?.length ?? 0}`} sub={`of ${allTopics.length} total`} color="#22c55e" />
+        <StatCard icon={<BookOpen size={16} />} label="Topics Studied" helpTerm="mastery" value={`${progress?.length ?? 0}`} sub={`of ${allTopics.length} total`} color="#22c55e" />
       </div>
 
       {/* Exam countdown (full card) — only when exam date set */}
@@ -214,7 +232,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
           {/* Weak topics */}
           {weakTopics.length > 0 && (
-            <Section title="Needs Work">
+            <Section title="Focus next">
               <div className="space-y-3">
                 {weakTopics.map(p => {
                   const slug  = slugById.get(p.topic_id) ?? p.topic_id
@@ -260,15 +278,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   )
 }
 
-function StatCard({ icon, label, value, sub, sub2, color }: {
-  icon: React.ReactNode; label: string; value: string; sub: string; sub2?: string; color: string
+function StatCard({ icon, label, value, sub, sub2, color, helpTerm }: {
+  icon: React.ReactNode; label: string; value: string; sub: string; sub2?: string; color: string; helpTerm?: GlossaryTerm
 }) {
   return (
     <div className="p-4 rounded-xl"
       style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
       <div className="flex items-center gap-2 mb-3">
         <div className="p-1.5 rounded-lg" style={{ background: `${color}18`, color }}>{icon}</div>
-        <p className="text-xs font-medium" style={{ color: '#5a7aaa' }}>{label}</p>
+        <p className="text-xs font-medium flex items-center gap-1" style={{ color: '#7c98c4' }}>
+          {label}
+          {helpTerm && <HelpTip term={helpTerm} />}
+        </p>
       </div>
       <p className="font-bold mb-0.5" style={{ color, fontFamily: 'var(--font-space-grotesk)', fontSize: 28, lineHeight: 1 }}>
         {value}

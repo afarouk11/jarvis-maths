@@ -463,10 +463,10 @@ export default function SpokPage() {
 
               <h2 className="text-lg font-bold text-white text-center mb-1"
                 style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                Daily limit reached
+                That’s your 5 free chats for today
               </h2>
-              <p className="text-sm text-center mb-5" style={{ color: '#5a7aaa' }}>
-                You&apos;ve used your 5 free SPOK messages today. Upgrade for unlimited access, voice tutor, and more.
+              <p className="text-sm text-center mb-5" style={{ color: '#7c98c4' }}>
+                Nice work today! Your free messages refresh tomorrow — or go Pro for unlimited chats, the voice tutor, and more whenever you like.
               </p>
 
               {/* Price */}
@@ -688,6 +688,19 @@ export default function SpokPage() {
               style={{ color: '#f59e0b', border: '1px solid rgba(245,158,11,0.2)', background: 'rgba(245,158,11,0.05)' }}>
               Upgrade
             </button>
+          </div>
+        )}
+
+        {/* Pre-warning — gentle heads-up on the last free message, before the wall */}
+        {messagesUsedToday !== null && FREE_LIMIT - messagesUsedToday === 1 && !limitReached && (
+          <div className="px-6 pt-2 shrink-0">
+            <div className="rounded-xl px-3 py-2 flex items-center gap-2"
+              style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+              <span aria-hidden>👋</span>
+              <p className="text-xs" style={{ color: '#fcd34d' }}>
+                Last free message for today — make it count! Pro gives you unlimited chats whenever you’re ready.
+              </p>
+            </div>
           </div>
         )}
 

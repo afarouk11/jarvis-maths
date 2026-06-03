@@ -52,6 +52,10 @@ function PracticePageInner() {
   const [marking, setMarking] = useState(false)
   const [markResult, setMarkResult] = useState<MarkResult | null>(null)
   const [revealed, setRevealed] = useState(false)
+  // Anti-answer hint ladder: how far up the scaffold the student has climbed.
+  // 0 = nothing shown, 1 = nudge/hint, 2 = first worked step, 3 = full answer unlocked.
+  const [hintLevel, setHintLevel] = useState(0)
+  const [hasAttempted, setHasAttempted] = useState(false)
   const [startTime, setStartTime] = useState(Date.now())
   const [submitted, setSubmitted] = useState(false)
   const [xpGain,    setXpGain]    = useState<number | null>(null)
@@ -124,6 +128,8 @@ function PracticePageInner() {
     setDrawingImage('')
     setMarkResult(null)
     setSubmitted(false)
+    setHintLevel(0)
+    setHasAttempted(false)
     setStartTime(Date.now())
 
     const topic = allTopics.find(t => t.slug === slug)!
@@ -183,6 +189,7 @@ function PracticePageInner() {
   async function submitAnswer() {
     const hasAnswer = drawMode ? !!drawingImage : !!studentAnswer.trim()
     if (!question || !hasAnswer) return
+    setHasAttempted(true)
     setMarking(true)
     setSubmitted(true)
 
@@ -566,14 +573,57 @@ function PracticePageInner() {
                       <span className="flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Marking...</span>
                     ) : 'Submit for marking'}
                   </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                    onClick={() => { setSubmitted(true); setRevealed(true) }}
-                    className="px-4 py-2.5 rounded-xl text-sm"
-                    style={{ color: '#5a7aaa' }}>
-                    Skip — show answer
-                  </motion.button>
+                  {/* Hint ladder: nudge first, only reveal the answer after a real try */}
+                  {hintLevel < 3 && (
+                    <motion.button
+                      whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                      onClick={() => setHintLevel(l => Math.min(3, l + 1))}
+                      className="px-4 py-2.5 rounded-xl text-sm font-medium"
+                      style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: '#fbbf24' }}>
+                      {hintLevel === 0 ? 'Stuck? Get a hint' : hintLevel === 1 ? 'Show me the first step' : 'Still stuck?'}
+                    </motion.button>
+                  )}
+                  {(hintLevel >= 3 || hasAttempted) && (
+                    <motion.button
+                      whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                      onClick={() => { setSubmitted(true); setRevealed(true) }}
+                      className="px-4 py-2.5 rounded-xl text-sm"
+                      style={{ color: '#7c98c4' }}>
+                      Show answer
+                    </motion.button>
+                  )}
                 </div>
+
+                {/* Tiered scaffolding revealed by the hint ladder */}
+                <AnimatePresence>
+                  {hintLevel >= 1 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                      className="mt-3 rounded-xl p-3"
+                      style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                      <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#fbbf24' }}>💡 Hint</p>
+                      <div className="text-sm" style={{ color: '#e8d9b8' }}>
+                        {question.hint
+                          ? <MixedMath content={question.hint} />
+                          : 'Start by writing down what you know and the formula that connects it to what you need to find.'}
+                      </div>
+                      {hintLevel >= 2 && question.worked_solution?.[0] && (
+                        <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(245,158,11,0.15)' }}>
+                          <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#fbbf24' }}>First step</p>
+                          <div className="text-sm" style={{ color: '#e8d9b8' }}>
+                            <MixedMath content={question.worked_solution[0].content} />
+                            {question.worked_solution[0].math && <MixedMath content={`$$${question.worked_solution[0].math}$$`} />}
+                          </div>
+                        </div>
+                      )}
+                      {hintLevel >= 2 && (
+                        <p className="text-xs mt-2" style={{ color: '#9a8050' }}>
+                          Have a go now — you learn most by trying before seeing the full answer.
+                        </p>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             )}
 

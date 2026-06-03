@@ -38,7 +38,7 @@ export default async function TeacherDashboard() {
         .in('id', studentIds),
       supabase
         .from('student_progress')
-        .select('student_id, topic_id, p_known')
+        .select('student_id, topic_id, p_known, questions_attempted, questions_correct')
         .in('student_id', studentIds),
     ])
 
@@ -52,6 +52,12 @@ export default async function TeacherDashboard() {
       const today = new Date().toISOString().slice(0, 10)
       const studiedToday = p.last_active_at ? p.last_active_at.slice(0, 10) === today : false
 
+      // Independence score — how often the student answers correctly under their
+      // own steam. The "anti-Photomath" signal: real learning, not copied answers.
+      const attempted = prog.reduce((s, pr) => s + (pr.questions_attempted ?? 0), 0)
+      const correct   = prog.reduce((s, pr) => s + (pr.questions_correct ?? 0), 0)
+      const independence = attempted > 0 ? Math.round((correct / attempted) * 100) : null
+
       return {
         id: p.id,
         name: p.full_name ?? 'Unknown',
@@ -64,6 +70,7 @@ export default async function TeacherDashboard() {
         grade,
         studiedToday,
         targetGrade: p.target_grade ?? 'A*',
+        independence,
       }
     })
   }
@@ -170,11 +177,13 @@ interface StudentRow {
   grade: string
   studiedToday: boolean
   targetGrade: string
+  independence: number | null
 }
 
 function StudentRow({ student: s }: { student: StudentRow }) {
   const gradeColor = s.grade === 'A*' ? '#fbbf24' : s.grade === 'A' ? '#4ade80' : s.grade === 'B' ? '#60a5fa' : '#94a3b8'
   const atTarget = s.grade === s.targetGrade || (s.grade === 'A*' && s.targetGrade === 'A*')
+  const indepColor = s.independence === null ? '#5a7aaa' : s.independence >= 70 ? '#4ade80' : s.independence >= 45 ? '#f59e0b' : '#f87171'
 
   return (
     <div className="flex items-center gap-4 px-4 py-3.5 rounded-xl"
@@ -219,6 +228,14 @@ function StudentRow({ student: s }: { student: StudentRow }) {
         <p className="text-[10px]" style={{ color: atTarget ? '#4ade80' : '#5a7aaa' }}>
           {atTarget ? 'on track' : `target ${s.targetGrade}`}
         </p>
+      </div>
+
+      {/* Independence — solved on their own, the anti-Photomath signal */}
+      <div className="text-center shrink-0 hidden lg:block" title="How often this student answers correctly on their own — a sign of real learning, not copied answers.">
+        <p className="text-sm font-bold" style={{ color: indepColor }}>
+          {s.independence === null ? '—' : `${s.independence}%`}
+        </p>
+        <p className="text-[10px]" style={{ color: '#5a7aaa' }}>independent</p>
       </div>
 
       {/* Streak */}

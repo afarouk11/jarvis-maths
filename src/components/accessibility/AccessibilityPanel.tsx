@@ -3,11 +3,21 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Type, Brain, Timer, Eye, Gauge, Heart, SlidersHorizontal } from 'lucide-react'
-import { useAccessibility } from '@/hooks/useAccessibility'
+import { useAccessibility, ACCESSIBILITY_PRESETS, type AccessibilityPrefs } from '@/hooks/useAccessibility'
 import { ADHDTimer } from './ADHDTimer'
 
+const PRESETS: ReadonlyArray<{ id: keyof typeof ACCESSIBILITY_PRESETS; emoji: string; label: string; desc: string }> = [
+  { id: 'standard', emoji: '✨', label: 'Standard',         desc: 'Default StudiQ settings' },
+  { id: 'dyslexia', emoji: '📖', label: 'Dyslexia-friendly', desc: 'Clearer font, more visuals, extra encouragement' },
+  { id: 'adhd',     emoji: '⚡', label: 'ADHD-focused',      desc: 'Bite-sized steps, slower pace, frequent check-ins' },
+]
+
+function presetMatches(prefs: AccessibilityPrefs, preset: AccessibilityPrefs): boolean {
+  return (Object.keys(preset) as Array<keyof AccessibilityPrefs>).every(k => prefs[k] === preset[k])
+}
+
 export function AccessibilityPanel() {
-  const { prefs, toggle } = useAccessibility()
+  const { prefs, toggle, applyPreset } = useAccessibility()
   const [open,      setOpen]      = useState(false)
   const [showTimer, setShowTimer] = useState(false)
 
@@ -56,6 +66,36 @@ export function AccessibilityPanel() {
               </button>
             </div>
 
+            {/* Quick presets — one tap to set a sensible bundle */}
+            <div className="mb-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: '#5a7aaa' }}>Quick presets</p>
+              <div className="grid grid-cols-3 gap-2">
+                {PRESETS.map(p => {
+                  const active = presetMatches(prefs, ACCESSIBILITY_PRESETS[p.id])
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => applyPreset({ ...ACCESSIBILITY_PRESETS[p.id] })}
+                      title={p.desc}
+                      aria-label={`${p.label}: ${p.desc}`}
+                      aria-pressed={active}
+                      className="flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl text-center transition-all"
+                      style={{
+                        background: active ? 'rgba(59,130,246,0.14)' : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${active ? 'rgba(59,130,246,0.45)' : 'rgba(255,255,255,0.07)'}`,
+                      }}>
+                      <span className="text-base" aria-hidden>{p.emoji}</span>
+                      <span className="text-[11px] font-medium leading-tight" style={{ color: active ? '#e8f0fe' : '#94a3b8' }}>{p.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-[11px] mt-2 leading-relaxed" style={{ color: '#5a7aaa' }}>
+                {PRESETS.find(p => presetMatches(prefs, ACCESSIBILITY_PRESETS[p.id]))?.desc ?? 'Custom — fine-tune the options below.'}
+              </p>
+            </div>
+
+            <p className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: '#5a7aaa' }}>Fine-tune</p>
             <div className="space-y-2">
 
               {/* Dyslexia toggle */}

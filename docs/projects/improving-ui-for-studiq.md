@@ -42,6 +42,19 @@ contrast/text-size (no new light theme). Delivered in independently-shippable ph
 - [x] **Phase 6 — Soften upsell** — reframed AI-marking paywall ("Want SPOK to mark this?"), reassures the worked answer is always free, added a free "See the worked answer instead" path. *(SPOK-chat message-limit pre-warning still to do.)*
 - [x] **Phase 7 — Accessibility** — accessibility panel now reachable on mobile, aria-labels, bigger tap target *(presets + diagram alt text still to do)*
 
+## Follow-ups (PR #9)
+
+- [x] **1. SPOK-chat limit pre-warning** — gentle "last free message" banner; softened daily-limit modal
+- [x] **2. Accessibility presets** — Standard / Dyslexia-friendly / ADHD-focused one-tap modes
+- [x] **3. Diagram alt text** — `describeGraph`/`describeDiagram` screen-reader descriptions
+- [x] **4. Open mastery model** — `masteryCaption`/`masteryDelta`; surfaced in Brain Map
+- [x] **5. Anti-answer hint ladder** — hint → first step → answer, gated behind a real attempt
+- [x] **6. Exam-board switcher** — persistent AQA/Edexcel/OCR switcher in dashboard header
+- [x] **7. Independence score** — per-student correct/attempted column in teacher portal
+- [x] **Fix:** re-applied Phase 2 dashboard work (hero/HelpTips/"Focus next") that was accidentally reverted before the PR #8 commit
+
+Remaining future work: hint-usage-aware independence score (needs a DB column), full practice-flow linearisation + visual topic chips, MathLive editor, Tier 2/3 competitive moves.
+
 ## Competitive differentiation (fold into phases)
 
 **Tier 1 (do first):** open student-facing mastery model ("Brain Map"); structural (non-bypassable)
