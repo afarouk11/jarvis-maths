@@ -42,6 +42,28 @@ export async function POST(req: Request) {
     }
   }
 
+  // ── Question bank / cache ─────────────────────────────────────────────────
+  // Most of the time, reuse a previously generated question for this exact
+  // topic+difficulty that the student hasn't seen yet. This cuts model calls and
+  // latency dramatically on popular topics, while fresh generation the rest of
+  // the time keeps growing the bank. Only reuse questions with a worked solution.
+  const REUSE_PROBABILITY = 0.6
+  try {
+    const [{ data: attemptedRows }, { data: bank }] = await Promise.all([
+      supabase.from('question_attempts').select('question_id').eq('student_id', user.id),
+      supabase.from('questions').select('*').eq('topic_id', topic.id).eq('difficulty', difficulty).limit(50),
+    ])
+    const attemptedIds = new Set((attemptedRows ?? []).map((a: { question_id: string }) => a.question_id))
+    const unseen = (bank ?? []).filter((q: { id: string; worked_solution: unknown }) =>
+      !attemptedIds.has(q.id) && Array.isArray(q.worked_solution) && q.worked_solution.length > 0)
+    if (unseen.length > 0 && Math.random() < REUSE_PROBABILITY) {
+      const pick = unseen[Math.floor(Math.random() * unseen.length)]
+      return Response.json(pick)
+    }
+  } catch {
+    // Cache lookup failed — fall through to fresh generation.
+  }
+
   let kbContext = ''
   if (process.env.OPENAI_API_KEY) {
     try {
