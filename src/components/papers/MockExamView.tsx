@@ -6,6 +6,18 @@ import { MixedMath } from '@/components/math/MathRenderer'
 import { MathKeypad } from '@/components/math/MathKeypad'
 import { X, ChevronDown, ChevronUp, CheckCircle, XCircle, Loader2, Trophy, BookmarkPlus, BookmarkCheck, Pen, Type } from 'lucide-react'
 import { DrawingCanvas } from '@/components/ui/DrawingCanvas'
+import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
+import { GCSE_TOPICS } from '@/lib/curriculum/gcse-topics'
+
+// Map a mock question's topic NAME (e.g. "Differentiation") to a curriculum slug
+// so mock results can be fed back into the student's mastery model.
+function slugForTopicName(name: string): string | null {
+  const lc = name.toLowerCase().trim()
+  const all = [...AQA_TOPICS, ...GCSE_TOPICS]
+  return all.find(t => t.name.toLowerCase() === lc)?.slug
+    ?? all.find(t => t.name.toLowerCase().includes(lc) || lc.includes(t.name.toLowerCase()))?.slug
+    ?? null
+}
 
 interface WorkedStep { label: string; content: string }
 interface MockQuestion {
@@ -112,6 +124,25 @@ export function MockExamView({ paper, focusTopics, onClose }: {
         ? Math.round(q.marks * (result.quality / 5))
         : 0
     updateState(q.number, { marking: false, result, marksEarned, revealed: false })
+
+    // Feedback loop: fold this question's result into the student's mastery
+    // model so a mock paper updates BKT, the predicted grade and the brain map.
+    const slug = slugForTopicName(q.topic)
+    if (slug) {
+      fetch('/api/progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topicId: slug,
+          correct: result.correct,
+          quality: result.quality,
+          marksEarned,
+          marksAvailable: q.marks,
+          timeSeconds: 90,
+          source: 'mock-paper',
+        }),
+      }).catch(() => {})
+    }
   }
 
   function toggleSolution(num: number) {
