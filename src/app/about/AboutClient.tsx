@@ -120,7 +120,7 @@ export default function AboutPage() {
             <div className="p-8">
               <p className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: '#6366f1' }}>Our Mission</p>
               <p style={{ fontSize: 20, color: '#e8f0fe', fontFamily: 'var(--font-space-grotesk)', fontWeight: 500, lineHeight: 1.6 }}>
-                Anyone and everyone should be able to learn anything they want, with confidence, at their own pace. Not the classroom's pace. Not the curriculum's pace. Theirs. StudiQ exists to make that possible for every student who has ever felt left behind.
+                Anyone and everyone should be able to learn anything they want, with confidence, at their own pace. Not the classroom&apos;s pace. Not the curriculum&apos;s pace. Theirs. StudiQ exists to make that possible for every student who has ever felt left behind.
               </p>
             </div>
           </GradientCard>

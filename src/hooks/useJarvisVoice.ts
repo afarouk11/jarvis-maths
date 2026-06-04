@@ -272,28 +272,54 @@ export function createSentenceBuffer() {
   return { feedText, flush }
 }
 
+// Minimal Web Speech API surface — the DOM lib doesn't ship these types.
+interface SpeechRecognitionAlternativeLike {
+  readonly transcript: string
+}
+interface SpeechRecognitionEventLike {
+  readonly results: ArrayLike<ArrayLike<SpeechRecognitionAlternativeLike>>
+}
+interface SpeechRecognitionErrorEventLike {
+  readonly error: string
+}
+interface SpeechRecognitionLike {
+  continuous: boolean
+  interimResults: boolean
+  lang: string
+  onresult: ((e: SpeechRecognitionEventLike) => void) | null
+  onend: (() => void) | null
+  onerror: ((e: SpeechRecognitionErrorEventLike) => void) | null
+  start: () => void
+  stop: () => void
+}
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike
+
 export function useSpeechToText(onResult: (text: string) => void) {
-  const recognitionRef = useRef<any>(null)
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const [listening, setListening] = useState(false)
 
   const startListening = useCallback(() => {
-    const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition
+    const speechWindow = window as unknown as {
+      SpeechRecognition?: SpeechRecognitionConstructor
+      webkitSpeechRecognition?: SpeechRecognitionConstructor
+    }
+    const SR = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition
     if (!SR) {
       alert('Speech recognition is not supported in this browser. Please use Chrome or Edge.')
       return
     }
 
-    const rec = new SR() as any
+    const rec = new SR()
     rec.continuous     = false
     rec.interimResults = false
     rec.lang           = 'en-GB'
 
-    rec.onresult = (e: any) => {
-      const result = e.results?.[0]?.[0]
-      if (result?.transcript) onResult(result.transcript as string)
+    rec.onresult = (e: SpeechRecognitionEventLike) => {
+      const result = e.results[0]?.[0]
+      if (result?.transcript) onResult(result.transcript)
     }
     rec.onend   = () => setListening(false)
-    rec.onerror = (e: any) => {
+    rec.onerror = (e: SpeechRecognitionErrorEventLike) => {
       setListening(false)
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
         alert('Microphone access was denied. Please allow microphone permission in your browser settings and try again.')

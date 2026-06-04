@@ -5,9 +5,7 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, Line, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { createNoise3D } from 'simplex-noise'
-import { motion } from 'framer-motion'
 import { TOPIC_EDGES } from '@/lib/curriculum/topic-graph'
-import { masteryLabel } from '@/lib/bkt/bayesian-knowledge-tracing'
 import type { Topic } from '@/types'
 
 // Red (0%) → blue (50%) → green (100%)
@@ -31,7 +29,7 @@ class CanvasErrorBoundary extends Component<
   { children: ReactNode; fallback: ReactNode },
   { crashed: boolean; key: number }
 > {
-  constructor(props: any) {
+  constructor(props: { children: ReactNode; fallback: ReactNode }) {
     super(props)
     this.state = { crashed: false, key: 0 }
   }
@@ -225,8 +223,10 @@ function BrainMesh() {
 // ── Synapse pulse travelling along a line ─────────────────────────────────────
 function InstancedPulses({ arcs, colors }: { arcs: THREE.Vector3[][]; colors: string[] }) {
   const meshRef = useRef<THREE.InstancedMesh>(null)
-  const progresses = useRef(arcs.map(() => Math.random()))
-  const speeds = useRef(arcs.map(() => 0.3 + Math.random() * 0.4))
+  const [progressesInitial] = useState<number[]>(() => arcs.map(() => Math.random()))
+  const [speedsInitial] = useState<number[]>(() => arcs.map(() => 0.3 + Math.random() * 0.4))
+  const progresses = useRef(progressesInitial)
+  const speeds = useRef(speedsInitial)
   const dummy = useMemo(() => new THREE.Object3D(), [])
 
   useEffect(() => {
@@ -495,8 +495,14 @@ export default function BrainScene({ progress, onHover, onClick, sectionFilter, 
   topics: Omit<Topic, 'id' | 'parent_id'>[]
   topicCategories: Record<string, string[]>
 }) {
-  const handleHover = useCallback(onHover, [onHover])
-  const handleClick = useCallback(onClick, [onClick])
+  const handleHover = useCallback(
+    (info: { name: string; slug: string; pKnown: number } | null) => onHover(info),
+    [onHover],
+  )
+  const handleClick = useCallback(
+    (slug: string) => onClick(slug),
+    [onClick],
+  )
   const [h, setH] = useState(0)
 
   useEffect(() => {

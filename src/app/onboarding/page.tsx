@@ -211,7 +211,7 @@ export default function OnboardingPage() {
                 <>
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-widest text-amber-400 mb-3">Welcome</p>
-                    <h1 className="text-3xl font-bold text-white">I'm SPOK.</h1>
+                    <h1 className="text-3xl font-bold text-white">I&apos;m SPOK.</h1>
                     <p className="text-slate-400 mt-3 leading-relaxed">
                       Your personal Maths tutor for GCSE and A-level. I track exactly what you know, find the gaps, and build sessions that get you to your target grade.
                     </p>
@@ -260,7 +260,7 @@ export default function OnboardingPage() {
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-widest text-amber-400 mb-3">Your Course</p>
                     <h2 className="text-2xl font-bold text-white">A few more details.</h2>
-                    <p className="text-slate-500 text-sm mt-1">I'll tailor every session to your exact syllabus and timeline.</p>
+                    <p className="text-slate-500 text-sm mt-1">I&apos;ll tailor every session to your exact syllabus and timeline.</p>
                   </div>
 
                   {/* Exam board */}
@@ -334,7 +334,7 @@ export default function OnboardingPage() {
                       className="w-full px-4 py-3 rounded-xl text-sm outline-none"
                       style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#e2e8f0' }}
                     />
-                    <p className="text-xs mt-1" style={{ color: '#475569' }}>I'll count down and intensify sessions as it approaches.</p>
+                    <p className="text-xs mt-1" style={{ color: '#475569' }}>I&apos;ll count down and intensify sessions as it approaches.</p>
                   </div>
                 </>
               )}
@@ -347,7 +347,7 @@ export default function OnboardingPage() {
                     <h2 className="text-2xl font-bold text-white">
                       {fullName ? `Almost there, ${fullName}.` : 'Almost there.'}
                     </h2>
-                    <p className="text-slate-500 text-sm mt-1">Any learning needs? I'll adapt everything for you.</p>
+                    <p className="text-slate-500 text-sm mt-1">Any learning needs? I&apos;ll adapt everything for you.</p>
                   </div>
 
                   {/* Learning needs */}
@@ -402,7 +402,7 @@ export default function OnboardingPage() {
                       { label: 'Year',        value: yearGroups.find(y => y.value === yearGroup)?.label },
                       examDate ? { label: 'Exam date', value: new Date(examDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) } : null,
                       (dyslexia || adhd) ? { label: 'Needs', value: [dyslexia && 'Dyslexia', adhd && 'ADHD'].filter(Boolean).join(', ') } : null,
-                    ].filter(Boolean).map((item: any) => (
+                    ].filter((item): item is { label: string; value: string | undefined } => item !== null).map((item) => (
                       <div key={item.label} className="flex justify-between text-sm">
                         <span style={{ color: '#5a7aaa' }}>{item.label}</span>
                         <span className="font-semibold text-white">{item.value}</span>

@@ -20,6 +20,7 @@ export function PushNotificationPrompt() {
 
   useEffect(() => {
     if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- browser capability detection can only run on the client after mount
       setState('unsupported'); return
     }
     if (Notification.permission === 'denied') { setState('denied'); return }

@@ -24,6 +24,8 @@ const GCSE_TYPES = [
   { type: 'calc'     as GcseType, label: 'Paper 2/3 — Calculator',   desc: 'All topics — calculator allowed',            icon: <FlaskConical size={18} />, color: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.35)', accent: '#fbbf24' },
 ]
 
+type PaperTypeOption = (typeof ALEVEL_TYPES)[number] | (typeof GCSE_TYPES)[number]
+
 interface FreqItem { slug: string; count: number; percent: number; lastYear?: number; due?: boolean }
 interface SavedPaperMeta { id: string; title: string; created_at: string; focus_topics: string[]; total_marks: number | null; time_minutes: number | null }
 
@@ -151,8 +153,8 @@ export default function PapersPage() {
         setFocus(json.focusTopics)
         setExamOpen(true)
       }
-    } catch (err: any) {
-      setGenerateError(err?.message ?? 'Network error — please try again')
+    } catch (err: unknown) {
+      setGenerateError(err instanceof Error ? err.message : 'Network error — please try again')
     } finally {
       setGenerating(false)
     }
@@ -164,11 +166,12 @@ export default function PapersPage() {
     return alevel ?? gcse ?? slug
   }
 
-  const paperTypes = level === 'GCSE' ? GCSE_TYPES : ALEVEL_TYPES
-  const selected   = (paperTypes as any[]).find(p => p.type === paperType) ?? paperTypes[0]
+  const paperTypes: PaperTypeOption[] = level === 'GCSE' ? GCSE_TYPES : ALEVEL_TYPES
+  const selected   = paperTypes.find(p => p.type === paperType) ?? paperTypes[0]
 
   useEffect(() => {
     if (activeTab !== 'official' || officialPapers.length > 0) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading flag for an on-demand data fetch; a proper fix would move this to a data-fetching layer
     setOfficialLoading(true)
     fetch('/api/papers/official')
       .then(r => r.json())

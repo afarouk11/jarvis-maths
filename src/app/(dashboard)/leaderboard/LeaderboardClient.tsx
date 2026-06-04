@@ -33,6 +33,7 @@ export default function LeaderboardClient() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading flag for a tab-driven data fetch; a proper fix would move this to a data-fetching layer
     setLoading(true)
     fetch(`/api/leaderboard?tab=${tab}`)
       .then(r => r.json())

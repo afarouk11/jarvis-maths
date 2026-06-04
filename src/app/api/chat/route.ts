@@ -87,8 +87,15 @@ export async function POST(req: Request) {
   // RAG: embed the latest user message and find relevant past paper chunks
   let ragContext = ''
   let graphImageUrls: string[] = []
-  const lastUserMsg = [...messages].reverse().find((m: any) => m.role === 'user')
-  const lastText = lastUserMsg?.parts?.find((p: any) => p.type === 'text')?.text
+
+  interface ChatMessagePart { type: string; text?: string }
+  interface ChatMessage { role: string; parts?: ChatMessagePart[]; content?: string }
+  interface PaperChunk { paper_id: string; content: string; similarity: number }
+  interface PastPaper { id: string; exam_board: string; year?: string | number | null; paper_number?: string | number | null }
+  interface KnowledgeItem { type: string; title: string; content: string; image_url?: string | null }
+
+  const lastUserMsg = ([...messages] as ChatMessage[]).reverse().find(m => m.role === 'user')
+  const lastText = lastUserMsg?.parts?.find(p => p.type === 'text')?.text
     ?? lastUserMsg?.content ?? ''
 
   if (lastText && process.env.OPENAI_API_KEY) {
@@ -104,12 +111,12 @@ export async function POST(req: Request) {
         const { data: papers } = await supabase
           .from('past_papers')
           .select('id, title, year, exam_board, paper_number')
-          .in('id', chunks.map((c: any) => c.paper_id))
+          .in('id', (chunks as PaperChunk[]).map(c => c.paper_id))
 
-        const paperMap = new Map((papers ?? []).map((p: any) => [p.id, p]))
+        const paperMap = new Map((papers as PastPaper[] ?? []).map(p => [p.id, p]))
 
         ragContext = '\n\n---\nRelevant past paper extracts (use these to ground your answer and cite the source):\n'
-        ragContext += chunks.map((c: any) => {
+        ragContext += (chunks as PaperChunk[]).map(c => {
           const paper = paperMap.get(c.paper_id)
           const src   = paper
             ? `${paper.exam_board} ${paper.year ?? ''} Paper ${paper.paper_number ?? ''}`
@@ -128,7 +135,7 @@ export async function POST(req: Request) {
 
       if (knowledge && knowledge.length > 0) {
         ragContext += '\n\n---\nCurated knowledge base (prioritise these worked examples and concepts in your answer):\n'
-        ragContext += knowledge.map((k: any) => {
+        ragContext += (knowledge as KnowledgeItem[]).map(k => {
           const imageNote = k.image_url ? ' [Reference graph image injected as vision context above]' : ''
           return `[${k.type.replace('_', ' ')} — ${k.title}]${imageNote}\n${k.content}`
         }).join('\n\n')
@@ -136,8 +143,8 @@ export async function POST(req: Request) {
 
         // Collect image URLs from graph reference entries for vision injection.
         // URL is embedded as "IMAGE_URL: <url>" on the first line of content.
-        graphImageUrls = (knowledge as any[])
-          .map(k => (k.content as string).match(/^IMAGE_URL:\s*(.+)$/m)?.[1]?.trim() ?? '')
+        graphImageUrls = (knowledge as KnowledgeItem[])
+          .map(k => k.content.match(/^IMAGE_URL:\s*(.+)$/m)?.[1]?.trim() ?? '')
           .filter(Boolean)
       }
     } catch {

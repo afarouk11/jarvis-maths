@@ -70,6 +70,7 @@ export function LandingPage() {
     const year = now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear()
     const examDate = new Date(`${year}-06-10`)
     const diff = examDate.getTime() - now.getTime()
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- computed from the client clock on mount to avoid an SSR hydration mismatch
     setExamDays(Math.max(0, Math.ceil(diff / 86400000)))
   }, [])
 
@@ -388,7 +389,7 @@ export function LandingPage() {
               <GradientCard style={{ height: '100%' }}>
                 <div className="p-7 flex flex-col">
                   {/* Quote mark */}
-                  <div style={{ fontFamily: 'Georgia, serif', fontSize: 56, lineHeight: 1, color: '#1e3a5f', marginBottom: 8, marginTop: -8 }}>"</div>
+                  <div style={{ fontFamily: 'Georgia, serif', fontSize: 56, lineHeight: 1, color: '#1e3a5f', marginBottom: 8, marginTop: -8 }}>&quot;</div>
                   <div className="flex gap-0.5 mb-4">
                     {Array.from({ length: t.stars }).map((_, j) => (
                       <Star key={j} size={12} fill="#f59e0b" style={{ color: '#f59e0b' }} />
@@ -453,7 +454,7 @@ export function LandingPage() {
                 <JarvisAvatar state="idle" size={100} transparent />
                 <h2 className="text-white mt-7 mb-3"
                   style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 36, fontWeight: 700, letterSpacing: '-0.02em' }}>
-                  Your exam won't wait.
+                  Your exam won&apos;t wait.
                 </h2>
                 <p className="text-sm mb-2" style={{ color: '#5a7aaa' }}>
                   Free to start. No credit card. SPOK finds your gaps in minutes.

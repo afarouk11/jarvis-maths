@@ -52,7 +52,7 @@ function PracticePageInner() {
   const [marking, setMarking] = useState(false)
   const [markResult, setMarkResult] = useState<MarkResult | null>(null)
   const [revealed, setRevealed] = useState(false)
-  const [startTime, setStartTime] = useState(Date.now())
+  const [startTime, setStartTime] = useState(() => Date.now())
   const [submitted, setSubmitted] = useState(false)
   const [xpGain,    setXpGain]    = useState<number | null>(null)
   const [proRequired, setProRequired] = useState(false)
@@ -70,11 +70,6 @@ function PracticePageInner() {
   const [dueQueue, setDueQueue] = useState<string[]>([])
   const [dueIdx, setDueIdx] = useState(0)
   const studyNowRef = useRef(false)
-
-  useEffect(() => {
-    if (topicParam) generateQuestion()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   async function startStudyNow() {
     const res = await fetch('/api/progress')
@@ -163,6 +158,12 @@ function PracticePageInner() {
     generateQuestionForSlug(selectedSlug)
   }
 
+  // Generate an initial question on mount when a topic is pre-selected via the URL.
+  useEffect(() => {
+    if (topicParam) generateQuestion()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   async function handleUpgrade() {
     setUpgradeLoading(true)
     try {
@@ -215,6 +216,7 @@ function PracticePageInner() {
 
   async function recordAndNext(quality: number) {
     if (!question) return
+    // eslint-disable-next-line react-hooks/purity -- Date.now() measures answer time inside an event handler, not during render
     const timeSeconds = Math.round((Date.now() - startTime) / 1000)
     const res = await fetch('/api/progress', {
       method: 'POST',

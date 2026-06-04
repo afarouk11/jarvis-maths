@@ -12,7 +12,6 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: 'portrait',
     categories: ['education'],
     lang: 'en-GB',
-    // @ts-ignore — not yet in MetadataRoute.Manifest type
     prefer_related_applications: false,
     icons: [
       {
@@ -32,7 +31,6 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: 'maskable',
       },
     ],
-    // @ts-ignore — shortcuts not yet in MetadataRoute.Manifest type
     shortcuts: [
       {
         name: 'Practice',
@@ -61,7 +59,6 @@ export default function manifest(): MetadataRoute.Manifest {
         src: '/opengraph-image',
         sizes: '1200x630',
         type: 'image/png',
-        // @ts-ignore — not yet in the type definition
         form_factor: 'wide',
         label: 'StudiQ dashboard',
       },

@@ -326,7 +326,7 @@ function HookBlock({ block, completed, onComplete }: { block: { type: 'hook'; qu
           ))}
         </div>
         {completed && (
-          <p className="text-xs text-blue-400">Good — let's explore this together.</p>
+          <p className="text-xs text-blue-400">Good — let&apos;s explore this together.</p>
         )}
       </div>
     </div>

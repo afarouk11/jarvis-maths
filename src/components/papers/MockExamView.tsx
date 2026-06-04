@@ -62,8 +62,8 @@ export function MockExamView({ paper, focusTopics, onClose }: {
         const json = await res.json().catch(() => ({}))
         setSaveErr(json.error ?? `Error ${res.status}`)
       }
-    } catch (err: any) {
-      setSaveErr(err.message ?? 'Network error')
+    } catch (err: unknown) {
+      setSaveErr(err instanceof Error ? err.message : 'Network error')
     }
     setSaving(false)
   }

@@ -107,7 +107,7 @@ export default function NotFound() {
           className="font-bold text-white mb-3"
           style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 22, letterSpacing: '-0.02em' }}
         >
-          SPOK couldn't find this page.
+          SPOK couldn&apos;t find this page.
         </motion.h2>
 
         <motion.p
@@ -117,8 +117,8 @@ export default function NotFound() {
           className="text-sm mb-10"
           style={{ color: '#5a7aaa', lineHeight: 1.7 }}
         >
-          The page you're looking for doesn't exist or has been moved.
-          Let's get you back on track.
+          The page you&apos;re looking for doesn&apos;t exist or has been moved.
+          Let&apos;s get you back on track.
         </motion.p>
 
         {/* CTAs */}

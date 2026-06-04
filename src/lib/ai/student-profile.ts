@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
 import { GCSE_TOPICS } from '@/lib/curriculum/gcse-topics'
-import { masteryLabel, predictedGrade } from '@/lib/bkt/bayesian-knowledge-tracing'
+import { predictedGrade } from '@/lib/bkt/bayesian-knowledge-tracing'
 
 const ALL_TOPICS = [...AQA_TOPICS, ...GCSE_TOPICS]
 
@@ -71,7 +71,9 @@ export async function buildStudentProfile(userId: string): Promise<string> {
     : null
 
   // Spok notes
-  const notes = (insights?.jarvis_notes as any[] ?? []).slice(-5).map((n: any) => n.note)
+  const notes = ((insights?.jarvis_notes as { note: string }[] | null) ?? [])
+    .slice(-5)
+    .map(n => n.note)
 
   // Build profile string
   const lines = [

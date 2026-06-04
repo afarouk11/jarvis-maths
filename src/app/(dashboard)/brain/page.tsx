@@ -21,7 +21,7 @@ export default async function BrainPage() {
 
   const progressList = progress ?? []
   const avgPKnown = progressList.length
-    ? progressList.reduce((s: number, p: any) => s + p.p_known, 0) / progressList.length
+    ? progressList.reduce((s: number, p: { p_known: number }) => s + p.p_known, 0) / progressList.length
     : 0
 
   return (

@@ -13,6 +13,7 @@ export function SidebarShell({ children }: Props) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount flag + localStorage read for SSR-safe hydration; can only run on the client
     setMounted(true)
     setCollapsed(localStorage.getItem('sidebar-collapsed') === 'true')
   }, [])
