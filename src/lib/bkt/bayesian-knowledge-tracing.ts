@@ -15,6 +15,21 @@ export function updateBKT(state: BKTState, correct: boolean): BKTState {
   return { ...state, pKnown: newPKnown }
 }
 
+/**
+ * Proportional BKT update. Real answers aren't binary — a 3/5 should move
+ * mastery part-way. We interpolate p_known between the fully-wrong and
+ * fully-correct Bayesian updates by `score` (marks earned, or self-assessed
+ * quality), in [0, 1].
+ */
+export function updateBKTPartial(state: BKTState, score: number): BKTState {
+  const s = Math.max(0, Math.min(1, score))
+  if (s >= 0.999) return updateBKT(state, true)
+  if (s <= 0.001) return updateBKT(state, false)
+  const hi = updateBKT(state, true).pKnown
+  const lo = updateBKT(state, false).pKnown
+  return { ...state, pKnown: lo + s * (hi - lo) }
+}
+
 export function masteryLabel(pKnown: number): string {
   if (pKnown >= 0.85) return 'Mastered'
   if (pKnown >= 0.65) return 'Proficient'
