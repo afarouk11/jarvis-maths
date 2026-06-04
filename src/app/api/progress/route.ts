@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { updateBKT } from '@/lib/bkt/bayesian-knowledge-tracing'
+import { decayedPKnown } from '@/lib/bkt/forgetting'
 import { computeGradeSummary } from '@/lib/grade'
 import { updateSM2, qualityFromCorrect } from '@/lib/sm2/spaced-repetition'
 import { getTopics } from '@/lib/curriculum'
@@ -41,8 +42,20 @@ export async function POST(req: Request) {
     .eq('topic_id', topicUUID)
     .single()
 
+  // Decay the prior toward "forgotten" based on how overdue this topic was, so
+  // a student returning after a long gap starts from an honest, lower mastery
+  // before the new answer is folded in.
+  const priorPKnown = existing
+    ? decayedPKnown({
+        p_known: existing.p_known,
+        last_attempted_at: existing.last_attempted_at,
+        ease_factor: existing.ease_factor,
+        interval_days: existing.interval_days,
+      })
+    : 0.3
+
   const bktState: BKTState = existing
-    ? { pKnown: existing.p_known, pTransit: existing.p_transit, pSlip: existing.p_slip, pGuess: existing.p_guess }
+    ? { pKnown: priorPKnown, pTransit: existing.p_transit, pSlip: existing.p_slip, pGuess: existing.p_guess }
     : { pKnown: 0.3, pTransit: 0.09, pSlip: 0.1, pGuess: 0.2 }
 
   const newBKT = updateBKT(bktState, correct)

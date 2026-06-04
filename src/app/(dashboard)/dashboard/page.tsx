@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { masteryColor } from '@/lib/bkt/bayesian-knowledge-tracing'
+import { applyDecay } from '@/lib/bkt/forgetting'
 import { computeGradeSummary } from '@/lib/grade'
 import { computeExamReadiness } from '@/lib/exam-readiness'
 import { getTopics } from '@/lib/curriculum'
@@ -33,12 +34,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const { data: profileCheck } = await supabase.from('profiles').select('onboarding_complete').eq('id', user.id).single()
   if (!profileCheck?.onboarding_complete) redirect('/onboarding')
 
-  const [{ data: profile }, { data: progress }, { data: recentLessons }, { data: topicsRows }] = await Promise.all([
+  const [{ data: profile }, { data: progressRows }, { data: recentLessons }, { data: topicsRows }] = await Promise.all([
     supabase.from('profiles').select().eq('id', user.id).single(),
     supabase.from('student_progress').select().eq('student_id', user.id),
     supabase.from('lessons').select('id, title, topic_id, difficulty, created_at').order('created_at', { ascending: false }).limit(4),
     supabase.from('topics').select('id, slug'),
   ])
+
+  // Apply forgetting decay so mastery reflects real retention across every
+  // surface below (grade, readiness, heat map, weak topics).
+  const progress = applyDecay(progressRows ?? [])
 
   const level = ((profile?.level as Level) ?? 'A-Level')
   const allTopics = getTopics(level)
