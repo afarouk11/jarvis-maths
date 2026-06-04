@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { masteryColor } from '@/lib/bkt/bayesian-knowledge-tracing'
 import { applyDecay } from '@/lib/bkt/forgetting'
-import { computeGradeSummary } from '@/lib/grade'
+import { computeGradeSummary, computeGradeTrend } from '@/lib/grade'
 import { computeExamReadiness } from '@/lib/exam-readiness'
 import { getTopics } from '@/lib/curriculum'
 import type { Level } from '@/lib/curriculum'
@@ -34,12 +34,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const { data: profileCheck } = await supabase.from('profiles').select('onboarding_complete').eq('id', user.id).single()
   if (!profileCheck?.onboarding_complete) redirect('/onboarding')
 
-  const [{ data: profile }, { data: progressRows }, { data: recentLessons }, { data: topicsRows }] = await Promise.all([
+  const fourteenDaysAgo = new Date(Date.now() - 14 * 86400000).toISOString()
+  const [{ data: profile }, { data: progressRows }, { data: recentLessons }, { data: topicsRows }, { data: snapshots }] = await Promise.all([
     supabase.from('profiles').select().eq('id', user.id).single(),
     supabase.from('student_progress').select().eq('student_id', user.id),
     supabase.from('lessons').select('id, title, topic_id, difficulty, created_at').order('created_at', { ascending: false }).limit(4),
     supabase.from('topics').select('id, slug'),
+    supabase.from('grade_snapshots').select('avg_p_known, created_at').eq('student_id', user.id).gte('created_at', fourteenDaysAgo).order('created_at', { ascending: true }),
   ])
+
+  // Grade trend over the last two weeks ("B, trending up").
+  const gradeTrend = computeGradeTrend(snapshots ?? [])
 
   // Apply forgetting decay so mastery reflects real retention across every
   // surface below (grade, readiness, heat map, weak topics).
@@ -132,6 +137,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <StatCard icon={<Trophy size={16} />} label="Predicted Grade" value={grade}
           sub={gradeSummary.confident ? `${Math.round(avgPKnown * 100)}% across all topics` : 'Keep studying to unlock'}
           sub2={gradeSummary.confident ? `${Math.round(attemptedAvgPKnown * 100)}% within studied topics` : undefined}
+          trend={gradeSummary.confident ? gradeTrend ?? undefined : undefined}
           color={gradeColor} />
         <StatCard icon={<Flame size={16} />}  label="Study Streak"   value={`${profile?.streak_days ?? 0}d`} sub="days in a row" color="#f97316" />
         <XPCard xp={profile?.xp ?? 0} />
@@ -271,8 +277,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   )
 }
 
-function StatCard({ icon, label, value, sub, sub2, color }: {
+function StatCard({ icon, label, value, sub, sub2, color, trend }: {
   icon: React.ReactNode; label: string; value: string; sub: string; sub2?: string; color: string
+  trend?: { direction: 'up' | 'down' | 'flat'; deltaPoints: number }
 }) {
   return (
     <div className="p-4 rounded-xl"
@@ -281,9 +288,16 @@ function StatCard({ icon, label, value, sub, sub2, color }: {
         <div className="p-1.5 rounded-lg" style={{ background: `${color}18`, color }}>{icon}</div>
         <p className="text-xs font-medium" style={{ color: '#5a7aaa' }}>{label}</p>
       </div>
-      <p className="font-bold mb-0.5" style={{ color, fontFamily: 'var(--font-space-grotesk)', fontSize: 28, lineHeight: 1 }}>
-        {value}
-      </p>
+      <div className="flex items-baseline gap-2 mb-0.5">
+        <p className="font-bold" style={{ color, fontFamily: 'var(--font-space-grotesk)', fontSize: 28, lineHeight: 1 }}>
+          {value}
+        </p>
+        {trend && trend.direction !== 'flat' && (
+          <span className="text-xs font-semibold" style={{ color: trend.direction === 'up' ? '#4ade80' : '#f87171' }}>
+            {trend.direction === 'up' ? '▲' : '▼'} {Math.abs(trend.deltaPoints)}pts
+          </span>
+        )}
+      </div>
       <p className="text-xs" style={{ color: '#5a7aaa', position: 'relative' }}>{sub}</p>
       {sub2 && <p className="text-xs mt-0.5" style={{ color: '#374151', position: 'relative' }}>{sub2}</p>}
     </div>

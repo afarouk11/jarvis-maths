@@ -57,6 +57,31 @@ export function computeGradeSummary(
   }
 }
 
+export interface GradeTrend {
+  direction: 'up' | 'down' | 'flat'
+  /** Change in overall mastery, in percentage points, over the window. */
+  deltaPoints: number
+}
+
+/**
+ * Derives a trend ("B, trending up") from the grade snapshots written on each
+ * practice session. Compares the most recent snapshot's mastery to the earliest
+ * in the supplied window.
+ */
+export function computeGradeTrend(
+  snapshots: ReadonlyArray<{ avg_p_known: number; created_at: string }>,
+): GradeTrend | null {
+  if (snapshots.length < 2) return null
+  const sorted = [...snapshots].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+  )
+  const earliest = sorted[0].avg_p_known
+  const latest = sorted[sorted.length - 1].avg_p_known
+  const deltaPoints = Math.round((latest - earliest) * 100)
+  const direction = deltaPoints >= 2 ? 'up' : deltaPoints <= -2 ? 'down' : 'flat'
+  return { direction, deltaPoints }
+}
+
 /** Shared grade → colour mapping so every surface uses the same palette. */
 export function gradeColor(grade: string): string {
   switch (grade) {
