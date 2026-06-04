@@ -88,7 +88,7 @@ export default function PricingPage() {
           Less than one tutoring session.
         </h1>
         <p className="text-base" style={{ color: '#5a7aaa' }}>
-          Two private lessons a week costs £{TUTOR_MONTHLY}/month. SPOK is £{PRO_PRICE}.
+          Two private lessons a week cost £{TUTOR_MONTHLY}/month. SPOK is £{PRO_PRICE}.
         </p>
       </motion.div>
 

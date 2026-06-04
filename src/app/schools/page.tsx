@@ -11,7 +11,7 @@ const FEATURES = [
   {
     icon: <Brain size={20} />,
     title: 'Knows exactly what each student doesn\'t know',
-    desc: 'Bayesian Knowledge Tracing maps every student\'s gaps down to the subtopic — no wasted revision time.',
+    desc: 'Bayesian Knowledge Tracing maps every student\'s gaps down to the subtopic — with no wasted revision time.',
     color: '#3b82f6',
   },
   {

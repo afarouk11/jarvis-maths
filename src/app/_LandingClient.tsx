@@ -26,7 +26,7 @@ const FEATURES = [
 ]
 
 const STEPS = [
-  { num: '01', title: 'SPOK diagnoses you', desc: "Answer a short set of questions. SPOK builds a precise map of your knowledge — down to the exact subtopic you're weak on.", color: '#3b82f6' },
+  { num: '01', title: 'SPOK diagnoses you', desc: "Answer a short set of questions. SPOK builds a precise map of your knowledge — down to the exact subtopic where you're weakest.", color: '#3b82f6' },
   { num: '02', title: 'You learn what you actually need', desc: "Targeted lessons with step-by-step worked examples, KaTeX maths, and SPOK's voice. No fluff, no revision you've already done.", color: '#6366f1' },
   { num: '03', title: 'SPOK predicts your exam', desc: 'Past paper AI analyses 5 years of questions. SPOK generates a mock exam tailored to your weaknesses — and your exam board.', color: '#f59e0b' },
 ]
@@ -112,7 +112,7 @@ export function LandingPage() {
       {examDays > 0 && examDays < 60 && (
         <div className="text-center py-2 text-xs font-medium"
           style={{ background: 'rgba(239,68,68,0.1)', borderBottom: '1px solid rgba(239,68,68,0.18)', color: '#f87171' }}>
-          ⏰ A-level exams in {examDays} days — start now, not later
+          ⏰ A-level exams in {examDays} days — start now, not later.
         </div>
       )}
 
@@ -275,7 +275,7 @@ export function LandingPage() {
 
           <p className="mb-10 max-w-xl mx-auto leading-relaxed" style={{ fontSize: 18, color: '#6b8cba' }}>
             SPOK builds a precise map of what you know, finds the exact gaps costing you marks,
-            and closes them before your exam. Voice tutoring, spaced repetition, past paper AI. Free to start.
+            and closes them before your exam. Voice tutoring, spaced repetition, and past paper AI. Free to start.
           </p>
           <p className="text-xs mb-6" style={{ color: '#3a5060' }}>
             No revision guide knows you. SPOK does.
@@ -329,7 +329,7 @@ export function LandingPage() {
           <h2 style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 38, fontWeight: 700, letterSpacing: '-0.02em', color: '#fff' }} className="mb-3">
             How SPOK works
           </h2>
-          <p style={{ color: '#5a7aaa', fontSize: 15 }}>Three steps from signup to A*</p>
+          <p style={{ color: '#5a7aaa', fontSize: 15 }}>Three steps from sign-up to an A*</p>
         </motion.div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {STEPS.map((step, i) => (
