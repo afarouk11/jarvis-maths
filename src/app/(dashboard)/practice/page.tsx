@@ -137,14 +137,16 @@ function PracticePageInner() {
           res = await fetch('/api/generate-question', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ topicId: slug, topicName: topic.name, difficulty: 3 }),
+            // No difficulty sent — the server picks it adaptively from current mastery
+          body: JSON.stringify({ topicId: slug, topicName: topic.name }),
           })
         }
       } else {
         res = await fetch('/api/generate-question', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topicId: slug, topicName: topic.name, difficulty: 3 }),
+          // No difficulty sent — the server picks it adaptively from current mastery
+          body: JSON.stringify({ topicId: slug, topicName: topic.name }),
         })
       }
       if (!res.ok) {
@@ -508,7 +510,8 @@ function PracticePageInner() {
                     </span>
                   )}
                 </div>
-                <span className="text-xs" style={{ color: '#5a7aaa' }}>
+                <span className="text-xs flex items-center gap-1.5" style={{ color: '#5a7aaa' }}>
+                  <span title="Difficulty adapts to your mastery" style={{ color: '#f59e0b', fontSize: 10, fontWeight: 600 }}>ADAPTIVE</span>
                   {'★'.repeat(question.difficulty)}{'☆'.repeat(5 - question.difficulty)}
                 </span>
               </div>

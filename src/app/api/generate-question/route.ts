@@ -1,6 +1,7 @@
 import { anthropic } from '@ai-sdk/anthropic'
 import { generateText } from 'ai'
 import { buildQuestionPrompt } from '@/lib/ai/prompts'
+import { difficultyForMastery } from '@/lib/bkt/adaptive'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 
@@ -15,7 +16,31 @@ export async function POST(req: Request) {
     .eq('id', user.id)
     .single()
 
-  const { topicId, topicName, difficulty = 3 } = await req.json()
+  const { topicId, topicName, difficulty: requestedDifficulty } = await req.json()
+
+  // Resolve the topic up front — needed for both adaptive difficulty and the insert.
+  const { data: topic } = await supabase
+    .from('topics').select('id').eq('slug', topicId).single()
+  if (!topic) return Response.json({ error: 'Topic not found — run /api/seed-topics first' }, { status: 404 })
+
+  // ── Adaptive difficulty ──────────────────────────────────────────────────
+  // Difficulty is driven by the student's live mastery of this topic, unless a
+  // caller explicitly pins it. After each answer p_known updates, so the next
+  // question naturally gets harder or easier — the core adaptive loop.
+  let difficulty = typeof requestedDifficulty === 'number' ? requestedDifficulty : 3
+  if (typeof requestedDifficulty !== 'number') {
+    const { data: prog } = await supabase
+      .from('student_progress')
+      .select('p_known, questions_attempted, questions_correct')
+      .eq('student_id', user.id)
+      .eq('topic_id', topic.id)
+      .maybeSingle()
+    if (prog) {
+      difficulty = difficultyForMastery(prog.p_known, prog.questions_attempted ?? 0, prog.questions_correct ?? 0)
+    } else {
+      difficulty = 2 // brand-new topic: start gently
+    }
+  }
 
   let kbContext = ''
   if (process.env.OPENAI_API_KEY) {
@@ -58,10 +83,8 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Failed to parse question', raw: text }, { status: 500 })
   }
 
-  // Look up topic UUID from slug
-  const { data: topic } = await supabase
-    .from('topics').select('id').eq('slug', topicId).single()
-  if (!topic) return Response.json({ error: 'Topic not found — run /api/seed-topics first' }, { status: 404 })
+  // The adaptive difficulty is authoritative — override whatever the model echoed.
+  question.difficulty = difficulty
 
   const adminSupabase = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
