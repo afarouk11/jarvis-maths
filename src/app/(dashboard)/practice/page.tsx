@@ -228,6 +228,7 @@ function PracticePageInner() {
         correct: quality >= 3,
         timeSeconds,
         quality,
+        format: 'written',
       }),
     })
     const data = await res.json()

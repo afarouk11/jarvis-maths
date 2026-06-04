@@ -139,6 +139,7 @@ export function MockExamView({ paper, focusTopics, onClose }: {
           marksEarned,
           marksAvailable: q.marks,
           timeSeconds: 90,
+          format: 'written',
           source: 'mock-paper',
         }),
       }).catch(() => {})

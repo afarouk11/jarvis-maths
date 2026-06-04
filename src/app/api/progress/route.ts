@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { updateBKTPartial } from '@/lib/bkt/bayesian-knowledge-tracing'
+import { updateBKTPartial, pGuessForFormat } from '@/lib/bkt/bayesian-knowledge-tracing'
 import { decayedPKnown } from '@/lib/bkt/forgetting'
 import { computeGradeSummary } from '@/lib/grade'
 import { updateSM2, qualityFromCorrect } from '@/lib/sm2/spaced-repetition'
@@ -23,7 +23,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const body = await req.json()
-  const { topicId, questionId, correct, timeSeconds, quality: qualityOverride, timeTakenSeconds, marksEarned, marksAvailable } = body
+  const { topicId, questionId, correct, timeSeconds, quality: qualityOverride, timeTakenSeconds, marksEarned, marksAvailable, format } = body
   const effectiveTimeSeconds = timeTakenSeconds ?? timeSeconds
 
   const supabase = await createClient()
@@ -55,9 +55,12 @@ export async function POST(req: Request) {
       })
     : 0.3
 
+  // Guess probability depends on the question format — written answers are far
+  // harder to fluke than multiple choice.
+  const pGuess = pGuessForFormat(format)
   const bktState: BKTState = existing
-    ? { pKnown: priorPKnown, pTransit: existing.p_transit, pSlip: existing.p_slip, pGuess: existing.p_guess }
-    : { pKnown: 0.3, pTransit: 0.09, pSlip: 0.1, pGuess: 0.2 }
+    ? { pKnown: priorPKnown, pTransit: existing.p_transit, pSlip: existing.p_slip, pGuess }
+    : { pKnown: 0.3, pTransit: 0.09, pSlip: 0.1, pGuess }
 
   const quality = qualityOverride ?? qualityFromCorrect(correct, effectiveTimeSeconds ?? 60)
 
