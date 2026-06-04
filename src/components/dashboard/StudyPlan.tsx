@@ -45,13 +45,21 @@ export function StudyPlan() {
     setLoading(false)
   }
 
-  useEffect(() => { fetchPlan() }, [])
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/study-plan')
+      .then(res => res.json())
+      .then((data: Plan) => { if (!cancelled && data?.sessions) setPlan(data) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
 
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#f59e0b' }}>
-          Today's Plan
+          Today&apos;s Plan
         </h2>
         <button onClick={fetchPlan} disabled={loading}
           className="text-xs flex items-center gap-1 transition-colors disabled:opacity-40"
@@ -98,7 +106,7 @@ export function StudyPlan() {
           {plan.tip && (
             <div className="mt-3 p-3 rounded-xl text-xs leading-relaxed italic"
               style={{ background: 'rgba(245,158,11,0.04)', border: '1px solid rgba(245,158,11,0.1)', color: '#94a3b8' }}>
-              "{plan.tip}"
+              &quot;{plan.tip}&quot;
             </div>
           )}
 

@@ -206,7 +206,7 @@ export default function OutreachPage() {
       )}
 
       <p className="text-xs" style={{ color: '#3a4a5c' }}>
-        Tip: Run "Dry run" first to confirm batch size without sending. Max 50 emails per click to protect sender reputation.
+        Tip: Run &quot;Dry run&quot; first to confirm batch size without sending. Max 50 emails per click to protect sender reputation.
         Seed the table by running <code>npx ts-node scripts/seed-london-schools.ts</code> locally.
       </p>
     </div>

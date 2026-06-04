@@ -139,8 +139,8 @@ export default function AdminPage() {
       setEntries(prev => [newEntry, ...prev])
       setForm({ topic_slug: '', type: 'worked_example', title: '', content: '' })
       showToast('Saved and embedded.')
-    } catch (err: any) {
-      showToast('Error: ' + err.message)
+    } catch (err: unknown) {
+      showToast('Error: ' + (err instanceof Error ? err.message : String(err)))
     } finally {
       setSaving(false)
     }
@@ -176,8 +176,8 @@ export default function AdminPage() {
       // reload
       const { data } = await createClient().from('creator_videos').select('id, creator_name, creator_handle, title, youtube_id, topic_tag, approved, created_at').order('created_at', { ascending: false })
       setVideos(data ?? [])
-    } catch (err: any) {
-      showToast('Error: ' + err.message)
+    } catch (err: unknown) {
+      showToast('Error: ' + (err instanceof Error ? err.message : String(err)))
     } finally {
       setVideoSaving(false)
     }
@@ -462,8 +462,8 @@ export default function AdminPage() {
               setOfficialPapers(prev => [row, ...prev])
               setPaperForm({ title: '', board: 'Edexcel', year: new Date().getFullYear(), paper: 1, pdf_url: '', mark_scheme_url: '' })
               showToast('Paper added.')
-            } catch (err: any) {
-              showToast('Error: ' + err.message)
+            } catch (err: unknown) {
+              showToast('Error: ' + (err instanceof Error ? err.message : String(err)))
             } finally {
               setPaperSaving(false)
             }

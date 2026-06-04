@@ -98,7 +98,7 @@ export default function ForgotPasswordPage() {
             ) : (
               <div className="rounded-xl px-4 py-4 text-center text-sm"
                 style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', color: '#4ade80' }}>
-                Reset link sent to <strong>{email}</strong>. Check your spam folder if you don't see it.
+                Reset link sent to <strong>{email}</strong>. Check your spam folder if you don&apos;t see it.
               </div>
             )}
 

@@ -8,6 +8,12 @@ import { getXPLevel } from '@/lib/xp-levels'
 import { masteryColor } from '@/lib/bkt/bayesian-knowledge-tracing'
 import { getTopics } from '@/lib/curriculum'
 import type { Level } from '@/lib/curriculum'
+import type { StudentProgress } from '@/types'
+
+interface TopicRow {
+  id: string
+  slug: string
+}
 
 const GRADE_IDX: Record<string, number> = { 'A*': 0, 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5 }
 const GRADE_COLOR: Record<string, string> = {
@@ -28,30 +34,30 @@ export default async function ProgressPage() {
     supabase.from('topics').select('id, slug'),
   ])
 
-  const progressData = (progress ?? []) as any[]
+  const progressData = (progress ?? []) as StudentProgress[]
   const snapshotsData = snapshots ?? []
 
-  const totalAttempted = progressData.reduce((s: number, p: any) => s + (p.questions_attempted ?? 0), 0)
-  const totalCorrect = progressData.reduce((s: number, p: any) => s + (p.questions_correct ?? 0), 0)
+  const totalAttempted = progressData.reduce((s: number, p: StudentProgress) => s + (p.questions_attempted ?? 0), 0)
+  const totalCorrect = progressData.reduce((s: number, p: StudentProgress) => s + (p.questions_correct ?? 0), 0)
   const accuracy = totalAttempted > 0 ? Math.round((totalCorrect / totalAttempted) * 100) : 0
 
   const level = ((profile?.level as Level) ?? 'A-Level')
   const allTopics = getTopics(level)
 
   const avgPKnown = allTopics.length > 0
-    ? progressData.reduce((s: number, p: any) => s + p.p_known, 0) / allTopics.length
+    ? progressData.reduce((s: number, p: StudentProgress) => s + p.p_known, 0) / allTopics.length
     : 0
   const attemptedAvgPKnown = progressData.length > 0
-    ? progressData.reduce((s: number, p: any) => s + p.p_known, 0) / progressData.length
+    ? progressData.reduce((s: number, p: StudentProgress) => s + p.p_known, 0) / progressData.length
     : 0
 
-  const slugById    = new Map((topicsRows ?? []).map((t: any) => [t.id, t.slug]))
+  const slugById    = new Map((topicsRows ?? []).map((t: TopicRow) => [t.id, t.slug]))
   const topicNameMap = new Map(allTopics.map(t => [t.slug, t.name]))
   const topicIconMap = new Map(allTopics.map(t => [t.slug, t.icon]))
 
   const enriched = progressData
-    .filter((p: any) => p.p_known > 0)
-    .map((p: any) => {
+    .filter((p: StudentProgress) => p.p_known > 0)
+    .map((p: StudentProgress) => {
       const slug = slugById.get(p.topic_id) ?? p.topic_id
       return {
         ...p,
@@ -60,15 +66,16 @@ export default async function ProgressPage() {
         icon: topicIconMap.get(slug) ?? '📚',
       }
     })
-    .sort((a: any, b: any) => b.p_known - a.p_known)
+    .sort((a, b) => b.p_known - a.p_known)
 
   const strengths = enriched.slice(0, 5)
   const focusAreas = [...enriched].reverse().slice(0, 5)
 
   const xpLevel = getXPLevel(profile?.xp ?? 0)
 
+  // eslint-disable-next-line react-hooks/purity -- server component: Date.now() is safe in an async server function
   const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-  const activeThisWeek = progressData.filter((p: any) =>
+  const activeThisWeek = progressData.filter((p: StudentProgress) =>
     p.last_attempted_at && new Date(p.last_attempted_at) >= oneWeekAgo
   ).length
 
@@ -217,7 +224,7 @@ export default async function ProgressPage() {
               <h2 className="text-sm font-semibold text-white">Strengths</h2>
             </div>
             <div className="space-y-2">
-              {strengths.map((topic: any) => {
+              {strengths.map((topic) => {
                 const color = masteryColor(topic.p_known)
                 const pct = Math.round(topic.p_known * 100)
                 return (
@@ -249,7 +256,7 @@ export default async function ProgressPage() {
                   Start practising topics to see your focus areas here.
                 </p>
               ) : (
-                focusAreas.map((topic: any) => {
+                focusAreas.map((topic) => {
                   const color = masteryColor(topic.p_known)
                   const pct = Math.round(topic.p_known * 100)
                   return (

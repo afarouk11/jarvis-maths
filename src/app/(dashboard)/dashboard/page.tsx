@@ -22,6 +22,12 @@ import { ExamCountdown } from '@/components/dashboard/ExamCountdown'
 import { DailyChallenge } from '@/components/dashboard/DailyChallenge'
 import { PushNotificationPrompt } from '@/components/dashboard/PushNotificationPrompt'
 
+/** Whole days from now until the given date (clamped at 0). */
+function daysUntil(dateStr: string): number {
+  const diff = new Date(dateStr).getTime() - Date.now()
+  return Math.max(0, Math.ceil(diff / 86400000))
+}
+
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ upgraded?: string }> }) {
   const params = await searchParams
   const justUpgraded = params.upgraded === '1'
@@ -42,7 +48,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const level = ((profile?.level as Level) ?? 'A-Level')
   const allTopics = getTopics(level)
 
-  const slugById   = new Map((topicsRows ?? []).map((t: any) => [t.id,   t.slug]))
+  const slugById   = new Map((topicsRows ?? []).map((t: { id: string; slug: string }) => [t.id,   t.slug]))
   const topicNames = new Map(allTopics.map(t => [t.slug, t.name]))
 
   const progressMap = new Map((progress ?? []).map(p => [p.topic_id, p]))
@@ -66,11 +72,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   })
 
   // Exam countdown
-  let daysToExam: number | null = null
-  if (profile?.exam_date) {
-    const diff = new Date(profile.exam_date).getTime() - Date.now()
-    daysToExam = Math.max(0, Math.ceil(diff / 86400000))
-  }
+  const daysToExam: number | null = profile?.exam_date ? daysUntil(profile.exam_date) : null
 
   const gradeColor = grade === 'A*' ? '#fbbf24' : grade === 'A' ? '#4ade80' : grade === 'B' ? '#60a5fa' : '#94a3b8'
   const greeting   = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening'
@@ -239,7 +241,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           {recentLessons && recentLessons.length > 0 && (
             <Section title="Recent Lessons">
               <div className="space-y-2">
-                {recentLessons.map((l: any) => {
+                {recentLessons.map((l: { id: string; topic_id: string; title: string; difficulty: number }) => {
                   const topic = allTopics.find(t => t.slug === l.topic_id)
                   return (
                     <div key={l.id} className="p-3 rounded-xl"

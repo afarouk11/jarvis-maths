@@ -54,6 +54,7 @@ function useTypewriter(text: string, started: boolean, speed = 22) {
   const [done, setDone] = useState(false)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets the typewriter animation when its input text or start flag changes
     if (!started) { setDisplayed(''); setDone(false); return }
     setDisplayed('')
     setDone(false)
@@ -176,6 +177,7 @@ function DemoInner() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- starts the scripted demo playback timeline on mount
     play()
     return clearAll
     // eslint-disable-next-line react-hooks/exhaustive-deps

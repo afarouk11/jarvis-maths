@@ -47,8 +47,8 @@ export default function UploadPaperPage() {
       } else {
         setResult({ ok: false, message: data.error ?? 'Upload failed' })
       }
-    } catch (err: any) {
-      setResult({ ok: false, message: err.message ?? 'Network error' })
+    } catch (err: unknown) {
+      setResult({ ok: false, message: err instanceof Error ? err.message : 'Network error' })
     }
     setUploading(false)
   }

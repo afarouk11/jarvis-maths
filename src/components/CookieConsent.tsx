@@ -11,6 +11,7 @@ export default function CookieConsent() {
 
   useEffect(() => {
     try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage is unavailable during SSR, so consent must be read on the client after mount
       if (!localStorage.getItem(STORAGE_KEY)) setVisible(true)
     } catch {
       // localStorage blocked (private browsing etc.) — don't show banner

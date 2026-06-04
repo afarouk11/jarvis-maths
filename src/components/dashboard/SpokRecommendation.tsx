@@ -53,7 +53,7 @@ export function SpokRecommendation({ progress, examDate, targetGrade, examBoard,
           🧠
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-white">SPOK doesn't know your gaps yet.</p>
+          <p className="text-sm font-semibold text-white">SPOK doesn&apos;t know your gaps yet.</p>
           <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>
             Start a topic to let SPOK build your knowledge map.
           </p>

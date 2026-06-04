@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createAdmin } from '@supabase/supabase-js'
+import { createClient as createAdmin, SupabaseClient } from '@supabase/supabase-js'
 import { anthropic } from '@ai-sdk/anthropic'
 import { generateText } from 'ai'
 import { AQA_TOPICS, TOPIC_CATEGORIES } from '@/lib/curriculum/aqa-topics'
@@ -79,10 +79,19 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// ── Shared context type ───────────────────────────────────────────────────────
+interface GeneratorContext {
+  body: Record<string, unknown>
+  board: string
+  admin: SupabaseClient
+  userId: string
+  supabase: SupabaseClient
+}
+
 // ── A-Level generator ─────────────────────────────────────────────────────────
-async function generateALevelPaper({ body, board, admin, userId, supabase }: any) {
+async function generateALevelPaper({ body, board, admin, userId, supabase }: GeneratorContext) {
   type PaperType = 'pure' | 'stats' | 'mechanics'
-  const paperType: PaperType = (['pure', 'stats', 'mechanics'].includes(body.paperType) ? body.paperType : 'pure') as PaperType
+  const paperType: PaperType = (['pure', 'stats', 'mechanics'].includes(body.paperType as string) ? body.paperType : 'pure') as PaperType
   const cfg = ALEVEL_CONFIG[paperType]
 
   const { data: progress } = await supabase
@@ -97,10 +106,10 @@ async function generateALevelPaper({ body, board, admin, userId, supabase }: any
     .eq('level', 'A-Level')
     .eq('processed', true)
 
-  const topicFreq = await buildTopicFrequency(admin, (boardPapers ?? []).map((p: any) => p.id))
+  const topicFreq = await buildTopicFrequency(admin, (boardPapers ?? []).map((p: { id: string }) => p.id))
   const categorySlugs = new Set(TOPIC_CATEGORIES[cfg.categoryKey])
   const categoryTopics = AQA_TOPICS.filter(t => categorySlugs.has(t.slug))
-  const masteryMap = new Map((progress ?? []).map((p: any) => [p.topic.toLowerCase(), p.mastery_level ?? 0]))
+  const masteryMap = new Map((progress ?? []).map((p: { topic: string; mastery_level: number | null }) => [p.topic.toLowerCase(), p.mastery_level ?? 0]))
 
   const scored = categoryTopics.map(t => {
     const mastery = masteryMap.get(t.name.toLowerCase()) ?? masteryMap.get(t.slug) ?? 0
@@ -126,8 +135,9 @@ async function generateALevelPaper({ body, board, admin, userId, supabase }: any
       prompt: buildALevelPrompt(board, cfg, selected, qPH, seed, diff),
     })
     text = result.text
-  } catch (err: any) {
-    return NextResponse.json({ error: 'AI generation failed', details: String(err?.message ?? err) }, { status: 500 })
+  } catch (err: unknown) {
+    const details = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: 'AI generation failed', details }, { status: 500 })
   }
 
   const paper = parseJson(text)
@@ -136,8 +146,8 @@ async function generateALevelPaper({ body, board, admin, userId, supabase }: any
 }
 
 // ── GCSE generator ────────────────────────────────────────────────────────────
-async function generateGcsePaper({ body, board, admin, userId, supabase }: any) {
-  const paperType: GcseType = body.paperType === 'calc' ? 'calc' : 'non-calc'
+async function generateGcsePaper({ body, board, admin, userId, supabase }: GeneratorContext) {
+  const paperType: GcseType = (body.paperType as string) === 'calc' ? 'calc' : 'non-calc'
   const cfg = GCSE_CONFIG[paperType]
 
   const { data: progress } = await supabase
@@ -152,8 +162,8 @@ async function generateGcsePaper({ body, board, admin, userId, supabase }: any) 
     .eq('level', 'GCSE')
     .eq('processed', true)
 
-  const topicFreq  = await buildTopicFrequency(admin, (boardPapers ?? []).map((p: any) => p.id))
-  const masteryMap = new Map((progress ?? []).map((p: any) => [p.topic.toLowerCase(), p.mastery_level ?? 0]))
+  const topicFreq  = await buildTopicFrequency(admin, (boardPapers ?? []).map((p: { id: string }) => p.id))
+  const masteryMap = new Map((progress ?? []).map((p: { topic: string; mastery_level: number | null }) => [p.topic.toLowerCase(), p.mastery_level ?? 0]))
 
   // Pull topics from all GCSE categories with scoring
   const allGcseTopics = cfg.categories.flatMap(cat =>
@@ -186,8 +196,9 @@ async function generateGcsePaper({ body, board, admin, userId, supabase }: any) 
       prompt: buildGcsePrompt(board, cfg, paperType, selected, qPH, seed, diff),
     })
     text = result.text
-  } catch (err: any) {
-    return NextResponse.json({ error: 'AI generation failed', details: String(err?.message ?? err) }, { status: 500 })
+  } catch (err: unknown) {
+    const details = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: 'AI generation failed', details }, { status: 500 })
   }
 
   const paper = parseJson(text)
@@ -196,7 +207,7 @@ async function generateGcsePaper({ body, board, admin, userId, supabase }: any) 
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-async function buildTopicFrequency(admin: any, paperIds: string[]) {
+async function buildTopicFrequency(admin: SupabaseClient, paperIds: string[]) {
   const BATCH = 50
   const allChunks: { topic_slug: string | null; paper_id: string }[] = []
   for (let i = 0; i < paperIds.length; i += BATCH) {
@@ -258,7 +269,26 @@ function parseJson(text: string) {
   } catch { return null }
 }
 
-function buildALevelPrompt(board: string, cfg: any, selected: any[], qPH: any[], seed: number, diff: string) {
+interface PaperCfg {
+  boardLabel: string
+  sectionName: string
+  totalMarks: number
+  timeMinutes: number
+}
+
+interface ScoredTopic {
+  slug: string
+  name: string
+  score: number
+}
+
+interface QuestionPlaceholder {
+  number: number
+  topic: string
+  marks: number
+}
+
+function buildALevelPrompt(board: string, cfg: PaperCfg, selected: ScoredTopic[], qPH: QuestionPlaceholder[], seed: number, diff: string) {
   return `Generate a UNIQUE mock A-level ${board} Maths ${cfg.boardLabel} exam paper. Seed: ${seed}. Difficulty: ${diff}.
 
 This paper must closely mirror a real ${board} A-Level Mathematics exam. Follow these requirements precisely:
@@ -279,7 +309,7 @@ Respond with ONLY this exact JSON structure (use LaTeX: \\(...\\) for inline, \\
 {"title":"SPOK Mock — ${board} ${cfg.sectionName}","totalMarks":${cfg.totalMarks},"timeMinutes":${cfg.timeMinutes},"sections":[{"name":"${cfg.sectionName}","questions":[${qPH.map(q => `{"number":${q.number},"topic":"${q.topic}","marks":${q.marks},"stem":"FULL QUESTION STEM WITH PARTS IF APPLICABLE","answer":"FULL ANSWER COVERING ALL PARTS","worked_solution":[{"label":"Step 1 [M1]","content":"WORKING"}]}`).join(',')}]}]}`
 }
 
-function buildGcsePrompt(board: string, cfg: any, paperType: GcseType, selected: any[], qPH: any[], seed: number, diff: string) {
+function buildGcsePrompt(board: string, cfg: PaperCfg, paperType: GcseType, selected: ScoredTopic[], qPH: QuestionPlaceholder[], seed: number, diff: string) {
   const calcNote = paperType === 'non-calc'
     ? 'NON-CALCULATOR paper — do NOT include questions requiring a calculator. All arithmetic must be doable by hand.'
     : 'CALCULATOR paper — questions may involve decimals, standard form, and calculations requiring a calculator.'

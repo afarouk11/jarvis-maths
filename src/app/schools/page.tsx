@@ -148,7 +148,7 @@ export default function SchoolsPage() {
 
         {/* Two offers */}
         <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} className="mb-20">
-          <p className="text-center text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: '#4ade80' }}>What we're offering</p>
+          <p className="text-center text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: '#4ade80' }}>What we&apos;re offering</p>
           <h2 className="text-center text-white mb-8"
             style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 28, fontWeight: 700 }}>
             Two free programmes — starting this summer
@@ -178,7 +178,7 @@ export default function SchoolsPage() {
               <p className="text-white font-semibold mb-2" style={{ fontSize: 17 }}>From September</p>
               <p style={{ color: '#6b8cba', fontSize: 14, lineHeight: 1.7 }}>
                 Free access for all your GCSE &amp; A-level Maths students for the entire autumn term,
-                with the teacher dashboard so you can track every student's predicted grade
+                with the teacher dashboard so you can track every student&apos;s predicted grade
                 and progress from day one.
               </p>
             </div>

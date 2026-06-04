@@ -25,10 +25,10 @@ export default async function ProfilePage() {
   const progressData = progress ?? []
   const allTopics = getTopics(((profile?.level as Level) ?? 'A-Level'))
   const avgPKnown = allTopics.length > 0
-    ? progressData.reduce((s: number, p: any) => s + p.p_known, 0) / allTopics.length
+    ? progressData.reduce((s: number, p: { p_known: number }) => s + p.p_known, 0) / allTopics.length
     : 0
   const attemptedAvgPKnown = progressData.length > 0
-    ? progressData.reduce((s: number, p: any) => s + p.p_known, 0) / progressData.length
+    ? progressData.reduce((s: number, p: { p_known: number }) => s + p.p_known, 0) / progressData.length
     : 0
 
   return (

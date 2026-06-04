@@ -10,6 +10,14 @@ import { CheckCircle, XCircle, Clock, Zap, BookOpen } from 'lucide-react'
 
 interface Props { params: Promise<{ slug: string }> }
 
+interface RecentAttempt {
+  id: string
+  correct: boolean
+  time_taken_seconds: number | null
+  created_at: string
+  questions: { stem: string } | null
+}
+
 export default async function TopicPage({ params }: Props) {
   const { slug } = await params
   const topic = AQA_TOPICS.find(t => t.slug === slug) ?? GCSE_TOPICS.find(t => t.slug === slug)
@@ -150,7 +158,7 @@ export default async function TopicPage({ params }: Props) {
           </div>
           {recentAttempts && recentAttempts.length > 0 ? (
             <div className="space-y-2">
-              {recentAttempts.map((a: any) => (
+              {(recentAttempts as RecentAttempt[]).map((a) => (
                 <div key={a.id}
                   className="flex items-start gap-3 p-3 rounded-xl"
                   style={{
@@ -165,8 +173,8 @@ export default async function TopicPage({ params }: Props) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-white truncate leading-relaxed">
-                      {(a.questions as any)?.stem
-                        ? (a.questions as any).stem.replace(/\$\$?/g, '').slice(0, 80) + ((a.questions as any).stem.length > 80 ? '…' : '')
+                      {a.questions?.stem
+                        ? a.questions.stem.replace(/\$\$?/g, '').slice(0, 80) + (a.questions.stem.length > 80 ? '…' : '')
                         : 'Question'}
                     </p>
                     <div className="flex items-center gap-2 mt-1">

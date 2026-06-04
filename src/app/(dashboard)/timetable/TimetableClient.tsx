@@ -239,6 +239,7 @@ export function TimetableClient({ profile }: Props) {
 
   // Auto-generate on mount
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- generates the initial timetable on mount; setState here is intentional
     generate(hoursPerDay)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

@@ -97,7 +97,7 @@ export default async function OGImage() {
               AI A-Level Maths tutoring that knows
             </span>
             <span style={{ fontSize: 40, fontWeight: 400, color: '#4a6a9a', lineHeight: 1.25 }}>
-              exactly what you don't know — and fixes it.
+              exactly what you don&apos;t know — and fixes it.
             </span>
           </div>
         </div>

@@ -9,9 +9,14 @@ interface Props {
   examBoard: string
 }
 
+/** Whole days from now until the given date (clamped at 0). */
+function daysUntil(dateStr: string): number {
+  const diff = new Date(dateStr).getTime() - Date.now()
+  return Math.max(0, Math.ceil(diff / 86400000))
+}
+
 export function ExamCountdown({ examDate, targetGrade, examBoard }: Props) {
-  const diff = new Date(examDate).getTime() - Date.now()
-  const days = Math.max(0, Math.ceil(diff / 86400000))
+  const days = daysUntil(examDate)
   const weeks = Math.floor(days / 7)
 
   const urgency = days <= 14 ? 'critical' : days <= 30 ? 'high' : days <= 60 ? 'medium' : 'low'

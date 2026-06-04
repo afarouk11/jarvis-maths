@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Standalone vanilla browser promo scripts — not part of the app build.
+    "public/promo/**",
+    // The reel/ video sub-project has its own ESLint config.
+    "reel/**",
   ]),
 ]);
 

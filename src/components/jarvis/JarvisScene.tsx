@@ -11,7 +11,7 @@ class CanvasErrorBoundary extends Component<
   { children: ReactNode; fallback: ReactNode },
   { crashed: boolean; key: number }
 > {
-  constructor(props: any) {
+  constructor(props: { children: ReactNode; fallback: ReactNode }) {
     super(props)
     this.state = { crashed: false, key: 0 }
   }
@@ -59,7 +59,7 @@ function OrbitalRing({
 
   return (
     <group ref={ref} rotation={[rx * DEG, ry * DEG, rz * DEG]}>
-      {/* @ts-ignore */}
+      {/* @ts-expect-error -- `line` is a valid R3F intrinsic not yet typed in JSX namespace */}
       <line geometry={geo}>
         <lineBasicMaterial color={color} transparent opacity={opacity} />
       </line>
@@ -88,7 +88,6 @@ function RingTicks({
 
   return (
     <group rotation={[rx * DEG, ry * DEG, rz * DEG]}>
-      {/* @ts-ignore */}
       <lineSegments geometry={geo}>
         <lineBasicMaterial color={color} transparent opacity={0.5} />
       </lineSegments>
@@ -168,7 +167,6 @@ function NeuralNet({ amplitude, color }: { amplitude: number; color: string }) {
       <points ref={pointsRef} geometry={pointGeo}>
         <pointsMaterial color={color} size={0.03} sizeAttenuation transparent opacity={0.8} />
       </points>
-      {/* @ts-ignore */}
       <lineSegments ref={linesRef} geometry={lineGeo}>
         <lineBasicMaterial color={color} transparent opacity={0.25} />
       </lineSegments>
@@ -255,31 +253,34 @@ function Corona({ state }: { state: JarvisState }) {
 // ── Particle dust shell ───────────────────────────────────────────────────────
 // ~250 points in a shell between r=2.2 and r=3.5 slowly rotating
 
+function buildParticleGeo(): THREE.BufferGeometry {
+  const COUNT = 250
+  const positions = new Float32Array(COUNT * 3)
+
+  for (let i = 0; i < COUNT; i++) {
+    // Random point in shell r ∈ [2.2, 3.5] using rejection sampling approach
+    // Use uniform distribution over sphere surface then random radius in shell
+    const u     = Math.random()
+    const v     = Math.random()
+    const theta = Math.acos(2 * u - 1)
+    const phi   = 2 * Math.PI * v
+    const r     = 2.2 + Math.random() * 1.3  // [2.2, 3.5]
+
+    positions[i * 3]     = r * Math.sin(theta) * Math.cos(phi)
+    positions[i * 3 + 1] = r * Math.sin(theta) * Math.sin(phi)
+    positions[i * 3 + 2] = r * Math.cos(theta)
+  }
+
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+  return geometry
+}
+
 function ParticleDust({ state }: { state: JarvisState }) {
   const ref = useRef<THREE.Points>(null)
 
-  const geo = useMemo(() => {
-    const COUNT = 250
-    const positions = new Float32Array(COUNT * 3)
-
-    for (let i = 0; i < COUNT; i++) {
-      // Random point in shell r ∈ [2.2, 3.5] using rejection sampling approach
-      // Use uniform distribution over sphere surface then random radius in shell
-      const u     = Math.random()
-      const v     = Math.random()
-      const theta = Math.acos(2 * u - 1)
-      const phi   = 2 * Math.PI * v
-      const r     = 2.2 + Math.random() * 1.3  // [2.2, 3.5]
-
-      positions[i * 3]     = r * Math.sin(theta) * Math.cos(phi)
-      positions[i * 3 + 1] = r * Math.sin(theta) * Math.sin(phi)
-      positions[i * 3 + 2] = r * Math.cos(theta)
-    }
-
-    const geometry = new THREE.BufferGeometry()
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-    return geometry
-  }, [])
+  // useState lazy initializer runs once (not during render), so Math.random() is safe here
+  const [geo] = useState<THREE.BufferGeometry>(() => buildParticleGeo())
 
   useFrame((_, dt) => {
     if (ref.current) {
