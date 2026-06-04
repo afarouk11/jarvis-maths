@@ -56,8 +56,9 @@ function cleanForTTS(text: string): string {
     .replace(/\[KEYPOINTS\][\s\S]*?\[\/KEYPOINTS\]/g, '')
     .replace(/\[QUICKREPLIES\][\s\S]*?\[\/QUICKREPLIES\]/g, '')
     .replace(/\[TRYIT\][\s\S]*?\[\/TRYIT\]/g, '')
-    // [TOPIC:slug|Name] → just say the topic name
+    // [TOPIC:slug|Name] / [NAV:/path|Name] → just say the label
     .replace(/\[TOPIC:[^\]|]+\|([^\]]+)\]/g, '$1')
+    .replace(/\[NAV:[^\]|]+\|([^\]]+)\]/g, '$1')
     // Markdown cleanup — leave LaTeX intact for the API route's stripLatex
     .replace(/#{1,6}\s+/g, '')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
@@ -273,13 +274,69 @@ export function createSentenceBuffer() {
 }
 
 export function useSpeechToText(onResult: (text: string) => void) {
-  const recognitionRef = useRef<any>(null)
-  const [listening, setListening] = useState(false)
+  const recognitionRef    = useRef<any>(null)
+  const mediaRecorderRef  = useRef<MediaRecorder | null>(null)
+  const chunksRef         = useRef<Blob[]>([])
+  const [listening, setListening]       = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
+
+  // Fallback path for browsers without the Web Speech API (Safari, Firefox,
+  // most mobile browsers): record with MediaRecorder, transcribe via /api/stt.
+  const startRecording = useCallback(async () => {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      alert('Voice input is not supported on this browser. Please type your message.')
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      chunksRef.current = []
+
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop())
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' })
+        if (blob.size === 0) { setListening(false); return }
+
+        setTranscribing(true)
+        try {
+          const fd = new FormData()
+          fd.append('audio', blob, 'speech.webm')
+          const res = await fetch('/api/stt', { method: 'POST', body: fd })
+          if (res.ok) {
+            const d = await res.json()
+            if (d.text?.trim()) onResult(d.text.trim())
+          } else if (res.status === 503) {
+            alert('Voice input is not available right now. Please type your message.')
+          } else {
+            alert('Could not transcribe your audio. Please try again or type your message.')
+          }
+        } catch {
+          alert('Voice input failed. Please type your message.')
+        } finally {
+          setTranscribing(false)
+          setListening(false)
+        }
+      }
+
+      mediaRecorderRef.current = recorder
+      recorder.start()
+      setListening(true)
+    } catch (err: any) {
+      setListening(false)
+      if (err?.name === 'NotAllowedError' || err?.name === 'SecurityError') {
+        alert('Microphone access was denied. Please allow microphone permission in your browser settings and try again.')
+      } else {
+        alert('Could not access the microphone. Please check it is connected and allowed for this site.')
+      }
+    }
+  }, [onResult])
 
   const startListening = useCallback(() => {
     const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition
     if (!SR) {
-      alert('Speech recognition is not supported in this browser. Please use Chrome or Edge.')
+      // No Web Speech API — use the MediaRecorder + Whisper fallback instead of failing.
+      startRecording()
       return
     }
 
@@ -294,8 +351,14 @@ export function useSpeechToText(onResult: (text: string) => void) {
     }
     rec.onend   = () => setListening(false)
     rec.onerror = (e: any) => {
+      // If the browser advertises Web Speech but the service fails, fall back.
+      if (e.error === 'service-not-allowed' || e.error === 'language-not-supported') {
+        recognitionRef.current = null
+        startRecording()
+        return
+      }
       setListening(false)
-      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      if (e.error === 'not-allowed') {
         alert('Microphone access was denied. Please allow microphone permission in your browser settings and try again.')
       } else if (e.error !== 'no-speech' && e.error !== 'aborted') {
         alert(`Microphone error: ${e.error}. Please check your microphone and try again.`)
@@ -308,14 +371,27 @@ export function useSpeechToText(onResult: (text: string) => void) {
       setListening(true)
     } catch (err) {
       console.error('Failed to start speech recognition:', err)
-      setListening(false)
+      // Web Speech threw synchronously — try the recorder fallback.
+      recognitionRef.current = null
+      startRecording()
     }
-  }, [onResult])
+  }, [onResult, startRecording])
 
   const stopListening = useCallback(() => {
-    recognitionRef.current?.stop()
-    setListening(false)
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop() } catch { /* already stopped */ }
+      recognitionRef.current = null
+      setListening(false)
+      return
+    }
+    const recorder = mediaRecorderRef.current
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.stop() // transcription + setListening(false) happen in onstop
+      mediaRecorderRef.current = null
+    } else {
+      setListening(false)
+    }
   }, [])
 
-  return { startListening, stopListening, listening }
+  return { startListening, stopListening, listening, transcribing }
 }

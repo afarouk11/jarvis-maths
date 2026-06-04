@@ -131,6 +131,13 @@ function resolveTopicLinks(text: string): string {
   )
 }
 
+// [NAV:/path|Label] → a markdown link to an in-app page, styled as a pill below.
+function resolveNavLinks(text: string): string {
+  return text.replace(/\[NAV:([^\]|]+)\|([^\]]+)\]/g, (_, path, name) =>
+    `[${name}](${path})`
+  )
+}
+
 function normaliseDelimiters(text: string): string {
   return text
     // \[...\] → block $$...$$ (must be on its own line for remark-math to parse as mathFlow)
@@ -195,25 +202,42 @@ function MarkdownMath({ content, color }: { content: string; color: string }) {
         hr: () => <hr style={{ borderColor: 'rgba(255,255,255,0.08)' }} className="my-3" />,
         a: ({ href, children }) => {
           const isTopicLink = href?.startsWith('/topics/')
-          return isTopicLink ? (
-            <a
-              href={href}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold no-underline transition-all hover:scale-[1.03]"
-              style={{
-                background: 'rgba(59,130,246,0.15)',
-                border: '1px solid rgba(59,130,246,0.35)',
-                color: '#93c5fd',
-              }}>
-              <span style={{ fontSize: 10 }}>→</span>
-              {children}
-            </a>
-          ) : (
-            <a href={href} className="underline" style={{ color: '#93c5fd' }}>{children}</a>
-          )
+          const isNavLink = !isTopicLink && href?.startsWith('/')
+          if (isTopicLink) {
+            return (
+              <a
+                href={href}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold no-underline transition-all hover:scale-[1.03]"
+                style={{
+                  background: 'rgba(59,130,246,0.15)',
+                  border: '1px solid rgba(59,130,246,0.35)',
+                  color: '#93c5fd',
+                }}>
+                <span style={{ fontSize: 10 }}>→</span>
+                {children}
+              </a>
+            )
+          }
+          if (isNavLink) {
+            return (
+              <a
+                href={href}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold no-underline transition-all hover:scale-[1.03]"
+                style={{
+                  background: 'rgba(245,158,11,0.14)',
+                  border: '1px solid rgba(245,158,11,0.35)',
+                  color: '#fbbf24',
+                }}>
+                <span style={{ fontSize: 10 }}>↗</span>
+                {children}
+              </a>
+            )
+          }
+          return <a href={href} className="underline" style={{ color: '#93c5fd' }}>{children}</a>
         },
       }}
     >
-      {resolveTopicLinks(normaliseDelimiters(content))}
+      {resolveTopicLinks(resolveNavLinks(normaliseDelimiters(content)))}
     </ReactMarkdown>
   )
 }

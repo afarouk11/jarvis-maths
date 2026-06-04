@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, isReasoningUIPart, isTextUIPart } from 'ai'
-import { Send, X, Maximize2, Minimize2, RefreshCw } from 'lucide-react'
+import { Send, X, Maximize2, Minimize2, RefreshCw, Camera } from 'lucide-react'
 import { JarvisAvatar } from './JarvisAvatar'
 import { JarvisVoice } from './JarvisVoice'
 import { ThinkingBlock } from './ThinkingBlock'
@@ -26,6 +26,9 @@ export function JarvisChat({ topicContext }: Props) {
   const [greeting, setGreeting] = useState<string | null>(null)
   const [greetingLoading, setGreetingLoading] = useState(false)
   const [conversationHistory, setConversationHistory] = useState('')
+  // Photo of a past-paper question the student wants help with (full data URL).
+  const [pendingImage, setPendingImage] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const greetingFetchedRef = useRef(false)
   const historyLoadedRef   = useRef(false)
   const pendingUserMsgRef  = useRef('')
@@ -38,7 +41,7 @@ export function JarvisChat({ topicContext }: Props) {
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/chat',
-      body: { topicContext, accessibilityPrefs, conversationHistory },
+      body: { topicContext, accessibilityPrefs, conversationHistory, imageData: pendingImage || undefined },
     }),
     onError: (err) => {
       if (err.message?.includes('429') || err.message?.includes('daily_limit_reached')) {
@@ -168,17 +171,33 @@ export function JarvisChat({ topicContext }: Props) {
     sendMessage({ text: msg })
   }
 
+  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-selecting the same file
+    if (!file) return
+    if (!file.type.startsWith('image/')) return
+    if (file.size > 8 * 1024 * 1024) {
+      alert('That image is too large — please use one under 8MB.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => setPendingImage(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
   function handleSend(e: React.FormEvent) {
     e.preventDefault()
-    if (!inputValue.trim() || isLoading) return
+    if ((!inputValue.trim() && !pendingImage) || isLoading) return
     unlockAudio()
     stopListening()
     stopSpeaking()
     sentenceBufferRef.current = createSentenceBuffer()
     spokenLengthRef.current = 0
-    pendingUserMsgRef.current = inputValue.trim()
-    sendMessage({ text: inputValue.trim() })
+    const text = inputValue.trim() || 'Here is a past paper question — can you help me work through it?'
+    pendingUserMsgRef.current = text
+    sendMessage({ text })
     setInputValue('')
+    setPendingImage('') // image was sent via the transport body for this request
   }
 
   const panelWidth = expanded ? 520 : 380
@@ -343,30 +362,52 @@ export function JarvisChat({ topicContext }: Props) {
                 <p className="text-xs" style={{ color: '#374151' }}>Resets midnight · Cancel anytime</p>
               </div>
             ) : (
-              <form onSubmit={handleSend}
-                className="flex items-center gap-2 p-3 shrink-0"
-                style={{ borderTop: '1px solid rgba(59,130,246,0.12)' }}>
-                <input
-                  value={inputValue}
-                  onChange={e => setInputValue(e.target.value)}
-                  placeholder={listening ? 'Listening...' : 'Ask Spok anything...'}
-                  disabled={isLoading}
-                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-slate-600"
-                  style={{ color: '#e8f0fe' }}
-                />
-                <JarvisVoice
-                  listening={listening}
-                  speaking={speaking}
-                  voiceEnabled={voiceEnabled}
-                  onMicClick={handleMicClick}
-                  onToggleVoice={() => setVoiceEnabled(v => !v)}
-                />
-                <button type="submit" disabled={isLoading || !inputValue.trim()}
-                  className="p-2 rounded-lg transition-colors disabled:opacity-30"
-                  style={{ background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.3)' }}>
-                  <Send size={14} className="text-blue-400" />
-                </button>
-              </form>
+              <div className="shrink-0" style={{ borderTop: '1px solid rgba(59,130,246,0.12)' }}>
+                {/* Attached past-paper photo preview */}
+                {pendingImage && (
+                  <div className="flex items-center gap-2 px-3 pt-3">
+                    <div className="relative">
+                      <div className="rounded-lg"
+                        style={{ width: 48, height: 48, border: '1px solid rgba(59,130,246,0.3)', backgroundImage: `url(${pendingImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                      <button type="button" onClick={() => setPendingImage('')}
+                        className="absolute -top-1.5 -right-1.5 rounded-full p-0.5"
+                        style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.15)' }}>
+                        <X size={10} className="text-slate-300" />
+                      </button>
+                    </div>
+                    <span className="text-xs" style={{ color: '#5a7aaa' }}>Photo attached — SPOK will read it</span>
+                  </div>
+                )}
+                <form onSubmit={handleSend} className="flex items-center gap-2 p-3">
+                  <input ref={fileInputRef} type="file" accept="image/*" capture="environment"
+                    onChange={handleImageSelect} className="hidden" />
+                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isLoading}
+                    title="Upload a photo of a past paper question"
+                    className="p-2 rounded-lg transition-colors disabled:opacity-30 hover:bg-blue-500/10">
+                    <Camera size={14} className="text-blue-400" />
+                  </button>
+                  <input
+                    value={inputValue}
+                    onChange={e => setInputValue(e.target.value)}
+                    placeholder={listening ? 'Listening...' : pendingImage ? 'Add a note (optional)…' : 'Ask Spok anything...'}
+                    disabled={isLoading}
+                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-slate-600"
+                    style={{ color: '#e8f0fe' }}
+                  />
+                  <JarvisVoice
+                    listening={listening}
+                    speaking={speaking}
+                    voiceEnabled={voiceEnabled}
+                    onMicClick={handleMicClick}
+                    onToggleVoice={() => setVoiceEnabled(v => !v)}
+                  />
+                  <button type="submit" disabled={isLoading || (!inputValue.trim() && !pendingImage)}
+                    className="p-2 rounded-lg transition-colors disabled:opacity-30"
+                    style={{ background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.3)' }}>
+                    <Send size={14} className="text-blue-400" />
+                  </button>
+                </form>
+              </div>
             )}
           </motion.div>
         )}
