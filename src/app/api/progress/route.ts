@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
-import { updateBKT, predictedGrade } from '@/lib/bkt/bayesian-knowledge-tracing'
+import { updateBKT } from '@/lib/bkt/bayesian-knowledge-tracing'
+import { computeGradeSummary } from '@/lib/grade'
 import { updateSM2, qualityFromCorrect } from '@/lib/sm2/spaced-repetition'
 import { getTopics } from '@/lib/curriculum'
 import { BKTState } from '@/types'
@@ -140,11 +141,11 @@ export async function POST(req: Request) {
       .eq('student_id', user.id)
     if (allProgress && allProgress.length > 0) {
       const totalTopics = getTopics(prof?.level ?? 'A-Level').length
-      const avg = allProgress.reduce((s, p) => s + p.p_known, 0) / totalTopics
+      const summary = computeGradeSummary(allProgress, totalTopics)
       await supabase.from('grade_snapshots').insert({
         student_id: user.id,
-        avg_p_known: avg,
-        grade: predictedGrade(avg),
+        avg_p_known: summary.overallPKnown,
+        grade: summary.grade,
       })
     }
   }

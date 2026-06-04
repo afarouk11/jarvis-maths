@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { predictedGrade, masteryColor } from '@/lib/bkt/bayesian-knowledge-tracing'
+import { masteryColor } from '@/lib/bkt/bayesian-knowledge-tracing'
+import { computeGradeSummary } from '@/lib/grade'
 import { computeExamReadiness } from '@/lib/exam-readiness'
 import { getTopics } from '@/lib/curriculum'
 import type { Level } from '@/lib/curriculum'
@@ -48,9 +49,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const progressMap = new Map((progress ?? []).map(p => [p.topic_id, p]))
   const pKnownMap   = new Map((progress ?? []).map(p => [p.topic_id, p.p_known]))
   const dueTopics   = (progress ?? []).filter(p => new Date(p.next_review_at) <= new Date()).slice(0, 4)
-  const avgPKnown          = allTopics.length > 0 ? (progress ?? []).reduce((s, p) => s + p.p_known, 0) / allTopics.length : 0
-  const attemptedAvgPKnown = (progress ?? []).length > 0 ? (progress ?? []).reduce((s, p) => s + p.p_known, 0) / (progress ?? []).length : 0
-  const grade       = predictedGrade(avgPKnown)
+  const gradeSummary       = computeGradeSummary(progress ?? [], allTopics.length)
+  const avgPKnown          = gradeSummary.overallPKnown
+  const attemptedAvgPKnown = gradeSummary.studiedPKnown
+  // Until the student has covered enough of the spec, a predicted grade is noise.
+  const grade              = gradeSummary.confident ? gradeSummary.grade : '—'
   const name        = profile?.full_name?.split(' ')[0] ?? 'Student'
   const weakTopics  = [...(progress ?? [])].sort((a, b) => a.p_known - b.p_known).slice(0, 3)
   const xpLevel     = getXPLevel(profile?.xp ?? 0)
@@ -121,7 +124,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       {/* Key stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon={<Trophy size={16} />} label="Predicted Grade" value={grade} sub={`${Math.round(avgPKnown * 100)}% across all topics`} sub2={`${Math.round(attemptedAvgPKnown * 100)}% within studied topics`} color={gradeColor} />
+        <StatCard icon={<Trophy size={16} />} label="Predicted Grade" value={grade}
+          sub={gradeSummary.confident ? `${Math.round(avgPKnown * 100)}% across all topics` : 'Keep studying to unlock'}
+          sub2={gradeSummary.confident ? `${Math.round(attemptedAvgPKnown * 100)}% within studied topics` : undefined}
+          color={gradeColor} />
         <StatCard icon={<Flame size={16} />}  label="Study Streak"   value={`${profile?.streak_days ?? 0}d`} sub="days in a row" color="#f97316" />
         <XPCard xp={profile?.xp ?? 0} />
         <StatCard icon={<BookOpen size={16} />} label="Topics Studied" value={`${progress?.length ?? 0}`} sub={`of ${allTopics.length} total`} color="#22c55e" />

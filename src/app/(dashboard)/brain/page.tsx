@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { BrainMap } from '@/components/progress/BrainMap'
-import { predictedGrade } from '@/lib/bkt/bayesian-knowledge-tracing'
+import { computeGradeSummary } from '@/lib/grade'
 import { getTopics, getTopicCategories } from '@/lib/curriculum'
 import type { Level } from '@/lib/curriculum'
 
@@ -20,15 +20,16 @@ export default async function BrainPage() {
   const topicCategories = getTopicCategories(level)
 
   const progressList = progress ?? []
-  const avgPKnown = progressList.length
-    ? progressList.reduce((s: number, p: any) => s + p.p_known, 0) / progressList.length
-    : 0
+  // Grade is now derived from mastery across ALL topics (unstudied = 0), matching
+  // the dashboard. Previously this page divided by studied topics only, so it
+  // reported a higher grade than the dashboard for the same student.
+  const gradeSummary = computeGradeSummary(progressList, topics.length)
 
   return (
     <BrainMap
       progress={progressList}
-      avgPKnown={avgPKnown}
-      grade={predictedGrade(avgPKnown)}
+      avgPKnown={gradeSummary.overallPKnown}
+      grade={gradeSummary.confident ? gradeSummary.grade : '—'}
       topicsActive={progressList.length}
       totalTopics={topics.length}
       topics={topics}
