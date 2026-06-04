@@ -3,6 +3,7 @@ import { updateBKT } from '@/lib/bkt/bayesian-knowledge-tracing'
 import { decayedPKnown } from '@/lib/bkt/forgetting'
 import { computeGradeSummary } from '@/lib/grade'
 import { updateSM2, qualityFromCorrect } from '@/lib/sm2/spaced-repetition'
+import { getPrerequisites } from '@/lib/curriculum/topic-graph'
 import { getTopics } from '@/lib/curriculum'
 import { BKTState } from '@/types'
 
@@ -95,6 +96,32 @@ export async function POST(req: Request) {
     topic: topicId,
     mastery_level: newBKT.pKnown * 5,
   }, { onConflict: 'user_id,topic' })
+
+  // Prerequisite evidence propagation: answering a dependent correctly is weak
+  // positive evidence that its prerequisites are solid, so nudge them upward
+  // (never downward — a wrong answer is too ambiguous to penalise prereqs).
+  if (correct) {
+    const prereqSlugs = getPrerequisites(topicId)
+    if (prereqSlugs.length > 0) {
+      const { data: preTopics } = await supabase
+        .from('topics').select('id, slug').in('slug', prereqSlugs)
+      const preIds = (preTopics ?? []).map((t: { id: string }) => t.id)
+      if (preIds.length > 0) {
+        const { data: preProgress } = await supabase
+          .from('student_progress')
+          .select('topic_id, p_known')
+          .eq('student_id', user.id)
+          .in('topic_id', preIds)
+        for (const pp of preProgress ?? []) {
+          const nudged = Math.min(0.99, pp.p_known + (1 - pp.p_known) * 0.04)
+          await supabase.from('student_progress')
+            .update({ p_known: nudged })
+            .eq('student_id', user.id)
+            .eq('topic_id', pp.topic_id)
+        }
+      }
+    }
+  }
 
   // Log the attempt
   if (questionId) {

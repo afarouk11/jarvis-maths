@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { RotateCw } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { masteryLabel } from '@/lib/bkt/bayesian-knowledge-tracing'
+import { weakPrerequisites } from '@/lib/curriculum/topic-graph'
 import { createClient } from '@/lib/supabase/client'
 import type { StudentProgress, Topic } from '@/types'
 
@@ -182,6 +183,9 @@ export function BrainMap({ progress, avgPKnown, grade, topicsActive, totalTopics
     setScanning(true)
   }
 
+  // Mastery keyed by slug — used for prerequisite-graph diagnostics below.
+  const pKnownBySlug = new Map(topics.map(t => [t.slug, liveProgress.find(p => p.topic_id === t.slug)?.p_known ?? 0]))
+
   // Build gap data: all non-mastered topics sorted by priority
   const gapTopics = topics.map(topic => {
     const prog = liveProgress.find(p => p.topic_id === topic.slug)
@@ -192,6 +196,9 @@ export function BrainMap({ progress, avgPKnown, grade, topicsActive, totalTopics
       pKnown: prog?.p_known ?? 0,
       attempted: prog?.questions_attempted ?? 0,
       section: (Object.entries(topicCategories) as [string, string[]][]).find(([, slugs]) => slugs.includes(topic.slug))?.[0] ?? '',
+      // Weaker prerequisites blocking this topic — "fix these first".
+      blockedBy: weakPrerequisites(topic.slug, pKnownBySlug)
+        .map(s => topics.find(t => t.slug === s)?.name ?? s),
     }
   })
     .filter(t => t.pKnown < 0.7)
@@ -758,6 +765,11 @@ export function BrainMap({ progress, avgPKnown, grade, topicsActive, totalTopics
                           <span style={{ fontSize: 13, minWidth: 20 }}>{t.icon}</span>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={{ fontSize: 11, color: '#e0e0e0', fontWeight: 600, lineHeight: 1.2 }}>{t.name}</p>
+                            {t.blockedBy.length > 0 && (
+                              <p style={{ fontSize: 9, color: '#f59e0b', marginTop: 2 }}>
+                                Fix first: {t.blockedBy.slice(0, 2).join(', ')}
+                              </p>
+                            )}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
                               <div style={{ flex: 1, height: 2, borderRadius: 99, background: 'rgba(255,255,255,0.06)' }}>
                                 <div style={{ width: `${Math.round(t.pKnown * 100)}%`, height: '100%', borderRadius: 99, background: pHex(t.pKnown) }} />
