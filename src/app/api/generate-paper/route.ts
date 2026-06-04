@@ -262,13 +262,13 @@ function buildALevelPrompt(board: string, cfg: any, selected: any[], qPH: any[],
   return `Generate a UNIQUE mock A-level ${board} Maths ${cfg.boardLabel} exam paper. Seed: ${seed}. Difficulty: ${diff}.
 
 This paper must closely mirror a real ${board} A-Level Mathematics exam. Follow these requirements precisely:
-- Questions progress from straightforward to demanding — Q1 is the easiest, the final question is the hardest
-- For questions worth 5 or more marks, split into labelled parts within the stem field: "(a) Find... [3 marks]\n(b) Hence show that... [4 marks]" — include individual mark allocations in square brackets
-- Use precise, formal mathematical language identical to real ${board} exam papers
-- Include at least one "Show that" or "Prove that" question
-- Use "Hence" to connect parts of multi-part questions where appropriate
-- Use realistic contexts: "A particle moves...", "Given that f(x) = ...", "The curve C has equation...", "A geometric series has..."
-- In worked_solution steps, use real mark scheme notation: M1 (method mark), A1 (accuracy mark), B1 (independent mark) — each step should state what mark it earns
+- Structure the ramp like a real paper: the first two or three questions are short (3-5 marks each), the middle builds steadily, and the final one or two questions are extended multi-part problems worth 10-15 marks.
+- The marks across all questions MUST sum to exactly ${cfg.totalMarks}. Do not exceed or fall short.
+- For questions worth 5 or more marks, split into labelled parts within the stem field using (a), (b), (c): "(a) Find... [3 marks]\n(b) Hence show that... [4 marks]" — include individual mark allocations in square brackets, and later parts should follow from earlier ones (use "Hence").
+- Use only standard ${board} command words: "Find", "Show that", "Prove that", "Hence", "Given that", "Solve", "Sketch", "Determine", "Express", "Deduce". Match the precise, formal register of real ${board} papers.
+- Assume the standard formulae booklet is provided: do not award marks for merely quoting a booklet formula, but DO require full derivations where the specification expects them ("show that", "prove", first principles).
+- Include at least one "Show that" or "Prove that" question, and at least one question set in a real-world context: "A particle moves...", "The curve C has equation...", "A geometric series has...".
+- In worked_solution steps, use real mark scheme notation: M1 (method mark), A1 (accuracy mark), B1 (independent mark), and "ft" for follow-through — each step states exactly what mark it earns, so the steps add up to that question's total.
 
 Topics and mark allocations (questions must appear in this order, easiest first):
 ${qPH.map(q => `Q${q.number}. ${q.topic} — ${q.marks} marks`).join('\n')}
@@ -288,12 +288,13 @@ function buildGcsePrompt(board: string, cfg: any, paperType: GcseType, selected:
 ${calcNote}
 
 This paper must closely mirror a real ${board} GCSE Higher Mathematics exam. Follow these requirements precisely:
-- Questions progress from accessible to challenging — Q1 is the easiest, the final question is the hardest
-- For questions worth 4 or more marks, split into labelled parts within the stem field: "(a) Work out... [2 marks]\n(b) Explain why... [2 marks]"
-- Use clear, age-appropriate language identical to real ${board} GCSE papers
-- Include real-world contexts: "A shop sells...", "The diagram shows a triangle...", "A car travels..."
-- Mix question types: calculate, show that, estimate, explain, sketch
-- In worked_solution steps, use mark scheme notation: M1 (method mark), A1 (accuracy mark), B1 (independent mark)
+- Structure the ramp like a real paper: open with short accessible questions (1-3 marks), build through the middle, and finish with the most demanding grade 8/9 questions (5-6 marks, multi-step).
+- The marks across all questions MUST sum to exactly ${cfg.totalMarks}. Do not exceed or fall short.
+- For questions worth 4 or more marks, split into labelled parts using (a), (b): "(a) Work out... [2 marks]\n(b) Explain why... [2 marks]".
+- Use clear, age-appropriate language and the standard ${board} GCSE command words: "Work out", "Calculate", "Show that", "Prove", "Estimate", "Explain", "Write down", "Sketch", "Solve".
+- Include real-world contexts: "A shop sells...", "The diagram shows a triangle...", "A car travels...".
+- Mix question types across the paper: calculate, show that, estimate, explain, sketch, and at least one reasoning/proof question typical of the higher grades.
+- In worked_solution steps, use mark scheme notation: M1 (method mark), A1 (accuracy mark), B1 (independent mark), so the steps add up to that question's total.
 
 Topics and mark allocations (questions must appear in this order, easiest first):
 ${qPH.map(q => `Q${q.number}. ${q.topic} — ${q.marks} marks`).join('\n')}
