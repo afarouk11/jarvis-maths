@@ -92,7 +92,7 @@ export function QuestionCard({ question, onAssess, startTime = Date.now() }: Pro
                     <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#5a7aaa' }}>
                       Worked Solution
                     </p>
-                    <StepByStepSolution steps={question.worked_solution} />
+                    <StepByStepSolution steps={question.worked_solution} marks={question.marks} />
                   </div>
                 )}
 

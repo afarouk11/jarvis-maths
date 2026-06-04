@@ -11,6 +11,7 @@ import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
 import { GCSE_TOPICS } from '@/lib/curriculum/gcse-topics'
 import { CheckCircle, XCircle, Loader2, Zap, Check, X, Pen, Type } from 'lucide-react'
 import { DrawingCanvas } from '@/components/ui/DrawingCanvas'
+import { VideoExplanation } from '@/components/math/VideoExplanation'
 import { Skeleton } from '@/components/ui/skeleton'
 import { friendlyError } from '@/lib/friendly-error'
 
@@ -424,8 +425,10 @@ function PracticePageInner() {
               value={selectedSlug}
               onChange={e => setSelectedSlug(e.target.value)}
               className="px-3 py-2 rounded-lg text-sm outline-none flex-1 min-w-0"
-              style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', color: '#e8f0fe', colorScheme: 'dark' }}>
-              {allTopics.map(t => <option key={t.slug} value={t.slug} style={{ background: '#1e3a5f', color: '#e8f0fe' }}>{t.name}</option>)}
+              // Solid (non-translucent) colours so the control and its option list
+              // never render white-on-white on light-theme browsers/OSes.
+              style={{ background: '#13233f', border: '1px solid rgba(59,130,246,0.35)', color: '#e8f0fe', colorScheme: 'dark' }}>
+              {allTopics.map(t => <option key={t.slug} value={t.slug} style={{ background: '#13233f', color: '#e8f0fe' }}>{t.name}</option>)}
             </select>
             <motion.button
               whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
@@ -642,7 +645,7 @@ function PracticePageInner() {
                   {question.worked_solution && question.worked_solution.length > 0 && (
                     <div className="mb-4">
                       <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-2">Worked Solution</p>
-                      <StepByStepSolution steps={question.worked_solution} />
+                      <StepByStepSolution steps={question.worked_solution} marks={question.marks} />
                     </div>
                   )}
                   <div className="p-3 rounded-lg"
@@ -650,6 +653,16 @@ function PracticePageInner() {
                     <p className="text-xs font-medium text-green-400 mb-1">Answer</p>
                     <div className="text-white text-sm"><MixedMath content={question.answer} /></div>
                   </div>
+
+                  {/* Video explanation — offered when the student didn't fully get it */}
+                  {(!markResult || !markResult.correct) && (
+                    <div className="mt-3">
+                      <VideoExplanation
+                        topicName={allTopics.find(t => t.slug === selectedSlug)?.name ?? selectedSlug}
+                        topicSlug={selectedSlug}
+                      />
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
