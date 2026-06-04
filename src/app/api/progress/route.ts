@@ -23,7 +23,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const body = await req.json()
-  const { topicId, questionId, correct, timeSeconds, quality: qualityOverride, timeTakenSeconds, marksEarned, marksAvailable, format } = body
+  const { topicId, questionId, correct, timeSeconds, quality: qualityOverride, timeTakenSeconds, marksEarned, marksAvailable, format, misconceptions } = body
   const effectiveTimeSeconds = timeTakenSeconds ?? timeSeconds
 
   const supabase = await createClient()
@@ -132,6 +132,28 @@ export async function POST(req: Request) {
         }
       }
     }
+  }
+
+  // Misconception tracking: record exam-technique slips against this topic so
+  // SPOK can name recurring patterns later. Non-fatal if the table isn't there.
+  if (Array.isArray(misconceptions) && misconceptions.length > 0) {
+    try {
+      for (const raw of misconceptions.slice(0, 5)) {
+        const tag = String(raw).slice(0, 200)
+        const { data: existingM } = await supabase
+          .from('student_misconceptions')
+          .select('count')
+          .eq('user_id', user.id).eq('topic_slug', topicId).eq('tag', tag)
+          .maybeSingle()
+        await supabase.from('student_misconceptions').upsert({
+          user_id: user.id,
+          topic_slug: topicId,
+          tag,
+          count: (existingM?.count ?? 0) + 1,
+          last_seen_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,topic_slug,tag' })
+      }
+    } catch { /* table may not be migrated yet — non-fatal */ }
   }
 
   // Log the attempt

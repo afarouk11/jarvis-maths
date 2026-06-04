@@ -229,6 +229,7 @@ function PracticePageInner() {
         timeSeconds,
         quality,
         format: 'written',
+        misconceptions: markResult?.exam_technique_flags ?? [],
       }),
     })
     const data = await res.json()
