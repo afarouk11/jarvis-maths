@@ -7,6 +7,7 @@ import { AQA_TOPICS, TOPIC_CATEGORIES } from '@/lib/curriculum/aqa-topics'
 import { GCSE_TOPICS, GCSE_TOPIC_CATEGORIES } from '@/lib/curriculum/gcse-topics'
 import { checkRateLimit, tooManyRequests } from '@/lib/api/rate-limit'
 import { decayedPKnown } from '@/lib/bkt/forgetting'
+import { logEvent } from '@/lib/analytics'
 
 export const maxDuration = 120
 
@@ -74,6 +75,8 @@ export async function POST(req: NextRequest) {
 
   const board     = prof?.exam_board ?? 'AQA'
   const isGcse    = (prof?.level ?? 'A-Level') === 'GCSE'
+
+  await logEvent(supabase, user.id, 'paper_generated', { paperType: body.paperType ?? null, board, level: isGcse ? 'GCSE' : 'A-Level' })
 
   const admin = createAdmin(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

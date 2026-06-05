@@ -6,6 +6,7 @@ import { embedText } from '@/lib/ai/embeddings'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { isPro, PLANS } from '@/lib/stripe'
+import { logEvent } from '@/lib/analytics'
 import { CHAT_SKILL_MODES } from '@/lib/spok-skills'
 import type { SkillModeId } from '@/lib/spok-skills'
 import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
@@ -105,6 +106,8 @@ export async function POST(req: Request) {
       }
     }
   }
+
+  await logEvent(supabase, user.id, 'chat_message', { skillMode: skillMode ?? null, hasImage: !!imageData })
 
   const profile = await buildStudentProfile(user.id)
 

@@ -6,6 +6,7 @@ import { updateSM2, qualityFromCorrect } from '@/lib/sm2/spaced-repetition'
 import { getPrerequisites } from '@/lib/curriculum/topic-graph'
 import { getTopics } from '@/lib/curriculum'
 import { xpForAnswer } from '@/lib/xp-levels'
+import { logEvent } from '@/lib/analytics'
 import { BKTState } from '@/types'
 
 export async function GET() {
@@ -283,6 +284,14 @@ export async function POST(req: Request) {
       })
     }
   }
+
+  await logEvent(supabase, user.id, 'answer_recorded', {
+    topic: topicId,
+    correct,
+    difficulty: difficulty ?? null,
+    source: body.source ?? 'practice',
+    skill: skill ?? null,
+  })
 
   return Response.json({ pKnown: newBKT.pKnown, nextReviewAt: sm2.nextReviewAt, xpGain })
 }
