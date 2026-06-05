@@ -9,6 +9,7 @@ import { InstallPrompt } from '@/components/InstallPrompt'
 import { isIOS, isInstalled, hasInstallPrompt } from '@/lib/pwa'
 import { validateName } from '@/lib/validate-name'
 import { LANGUAGES, type Lang } from '@/lib/i18n'
+import { getTopicCategories, type Level } from '@/lib/curriculum'
 
 const JarvisScene = dynamic(
   () => import('@/components/jarvis/JarvisScene').then(m => m.JarvisScene),
@@ -43,12 +44,24 @@ const SPOK_LINES = [
     body: "Your exam board, target grade, and year group let me load your exact syllabus and calibrate every session to push you toward that grade — nothing generic, nothing wasted.",
   },
   {
+    heading: 'Be honest here.',
+    body: "Tell me roughly how confident you feel in each area. I'll use it to draw your starting knowledge map and pick your first questions. It changes the moment you start practising, so no pressure.",
+  },
+  {
     heading: "You're ready.",
     body: "I know your level, your target, and your timeline. From here, every session is built around getting you to that grade. Let's not waste a minute.",
   },
 ]
 
-const STEPS = ['Language', 'About you', 'Your course', 'Wrap up']
+const STEPS = ['Language', 'About you', 'Your course', 'Confidence', 'Wrap up']
+
+const CONFIDENCE_LEVELS = [
+  { v: 0, label: 'New' },
+  { v: 1, label: 'Shaky' },
+  { v: 2, label: 'OK' },
+  { v: 3, label: 'Good' },
+  { v: 4, label: 'Strong' },
+]
 
 export default function OnboardingPage() {
   const router = useRouter()
@@ -62,6 +75,7 @@ export default function OnboardingPage() {
   const [fullName,    setFullName]    = useState('')
   const [dyslexia,    setDyslexia]    = useState(false)
   const [adhd,        setAdhd]        = useState(false)
+  const [ratings,     setRatings]     = useState<Record<string, number>>({})
   const [saving,      setSaving]      = useState(false)
   const [error,       setError]       = useState('')
   const [showInstall, setShowInstall] = useState(false)
@@ -70,6 +84,7 @@ export default function OnboardingPage() {
   const isLast = step === STEPS.length - 1
   const targetGrades = level === 'GCSE' ? GCSE_GRADES : ALEVEL_GRADES
   const yearGroups   = level === 'GCSE' ? GCSE_YEARS  : ALEVEL_YEARS
+  const categories   = Object.keys(getTopicCategories(level as Level))
 
   async function finish() {
     setSaving(true)
@@ -85,6 +100,14 @@ export default function OnboardingPage() {
         setError(json.error ?? 'Something went wrong. Please try again.')
         setSaving(false)
         return
+      }
+      // Seed the knowledge map from the baseline confidence ratings (non-fatal).
+      if (Object.keys(ratings).length > 0) {
+        await fetch('/api/profile/baseline', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ratings, level }),
+        }).catch(() => {})
       }
       if (!isInstalled()) {
         if (isIOS()) {
@@ -339,8 +362,42 @@ export default function OnboardingPage() {
                 </>
               )}
 
-              {/* ── Step 3 — Learning needs + confirmation ── */}
+              {/* ── Step 3 — Baseline confidence ── */}
               {step === 3 && (
+                <div className="space-y-5">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-widest text-amber-400 mb-3">Quick baseline</p>
+                    <h2 className="text-2xl font-bold text-white">How confident are you in each area?</h2>
+                    <p className="text-slate-500 text-sm mt-1">Rough is fine, and skip any you&apos;re unsure about. This draws your starting knowledge map.</p>
+                  </div>
+                  <div className="space-y-4">
+                    {categories.map(cat => (
+                      <div key={cat}>
+                        <label className="text-xs text-slate-400 mb-2 block">{cat}</label>
+                        <div className="grid grid-cols-5 gap-2">
+                          {CONFIDENCE_LEVELS.map(c => {
+                            const active = ratings[cat] === c.v
+                            return (
+                              <button key={c.v} onClick={() => setRatings(r => ({ ...r, [cat]: c.v }))}
+                                className="py-2 rounded-lg text-xs font-medium transition-all hover:scale-[1.02]"
+                                style={{
+                                  background: active ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.03)',
+                                  border: `1px solid ${active ? 'rgba(245,158,11,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                                  color: active ? '#f59e0b' : '#64748b',
+                                }}>
+                                {c.label}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Step 4 — Learning needs + confirmation ── */}
+              {step === 4 && (
                 <div className="space-y-5">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-widest text-amber-400 mb-3">Wrap Up</p>
