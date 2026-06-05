@@ -14,11 +14,19 @@ export async function GET(req: Request) {
   const now = new Date().toISOString()
 
   // Find users with due topics and an email
-  const { data: users } = await supabase
+  // Prefer the columns from migration 036; fall back if it isn't applied yet.
+  const full = await supabase
     .from('profiles')
-    .select('id, email, full_name, exam_date, exam_board, level, streak_days, last_active_at')
+    .select('id, email, full_name, exam_date, exam_board, level, streak_days, last_active_at, email_reminders, unsubscribe_token')
     .eq('onboarding_complete', true)
     .not('email', 'is', null)
+  const users = full.error
+    ? (await supabase
+        .from('profiles')
+        .select('id, email, full_name, exam_date, exam_board, level, streak_days, last_active_at')
+        .eq('onboarding_complete', true)
+        .not('email', 'is', null)).data
+    : full.data
 
   if (!users || users.length === 0) {
     return Response.json({ sent: 0 })
@@ -28,6 +36,9 @@ export async function GET(req: Request) {
   const errors: string[] = []
 
   for (const user of users) {
+    // Respect the unsubscribe preference (undefined ⇒ opted in).
+    if (user.email_reminders === false) continue
+
     const { data: dueProg } = await supabase
       .from('student_progress')
       .select('topic_id')
@@ -100,7 +111,7 @@ export async function GET(req: Request) {
             </a>
             <p style="font-size:11px;color:#374151;margin-top:32px;">
               You're receiving this because you have a StudiQ account.
-              <a href="https://studiq.org/settings" style="color:#5a7aaa;">Manage notifications</a>
+              <a href="https://studiq.org/api/unsubscribe?token=${user.unsubscribe_token ?? ''}" style="color:#5a7aaa;">Unsubscribe</a>
             </p>
           </div>
         `,
