@@ -3,6 +3,7 @@ import { generateText } from 'ai'
 import { createClient } from '@/lib/supabase/server'
 import { isPro } from '@/lib/stripe'
 import { checkRateLimit, tooManyRequests } from '@/lib/api/rate-limit'
+import { checkAnswerEquivalence } from '@/lib/math/equivalence'
 
 export async function POST(req: Request) {
   const supabase = await createClient()
@@ -27,6 +28,20 @@ export async function POST(req: Request) {
   const isMultiLine = typeof studentAnswer === 'string'
     && studentAnswer.includes('\n')
     && studentAnswer.split('\n').filter((l: string) => l.trim()).length > 1
+
+  // Deterministic CAS check on the student's FINAL answer (the last non-empty
+  // line) vs the mark scheme — grounds the LLM so 0.5 / 1/2 / \frac12 aren't
+  // mismarked. Only for typed answers; handwriting goes through vision.
+  let casNote = ''
+  if (typeof studentAnswer === 'string' && typeof correctAnswer === 'string') {
+    const finalLine = studentAnswer.split('\n').map((l: string) => l.trim()).filter(Boolean).pop() ?? ''
+    const verdict = checkAnswerEquivalence(finalLine, correctAnswer)
+    if (verdict === 'equivalent') {
+      casNote = `\n\n## Symbolic check (authoritative for the final value)\nA computer-algebra check confirms the student's final answer is mathematically EQUIVALENT to the mark scheme answer (e.g. 0.5 = 1/2). Treat the final value as correct; only withhold marks for missing required working or method on "show that"/proof questions.`
+    } else if (verdict === 'different') {
+      casNote = `\n\n## Symbolic check (authoritative for the final value)\nA computer-algebra check finds the student's final answer is NOT equivalent to the mark scheme answer, so the final value is wrong. Method (M) marks may still apply for correct working.`
+    }
+  }
 
   const instructions = `## Marking instructions
 Apply AQA mark scheme conventions:
@@ -73,7 +88,7 @@ ${stem}
 ## Mark scheme answer
 ${correctAnswer}
 
-${workedSolution ? `## Worked solution (mark scheme)\n${JSON.stringify(workedSolution, null, 2)}\n` : ''}`
+${workedSolution ? `## Worked solution (mark scheme)\n${JSON.stringify(workedSolution, null, 2)}\n` : ''}${casNote}`
 
   let text: string
 
