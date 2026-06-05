@@ -12,6 +12,7 @@ import { GCSE_TOPICS } from '@/lib/curriculum/gcse-topics'
 import { CheckCircle, XCircle, Loader2, Zap, Check, X, Pen, Type } from 'lucide-react'
 import { DrawingCanvas } from '@/components/ui/DrawingCanvas'
 import { VideoExplanation } from '@/components/math/VideoExplanation'
+import { sanitizeSvg } from '@/lib/math/sanitize-svg'
 import { Skeleton } from '@/components/ui/skeleton'
 import { friendlyError } from '@/lib/friendly-error'
 
@@ -532,6 +533,11 @@ function PracticePageInner() {
               <div className="text-white leading-relaxed">
                 <MixedMath content={question.stem} />
               </div>
+              {question.diagram && sanitizeSvg(question.diagram) && (
+                <div className="mt-4 rounded-lg p-3 flex justify-center overflow-x-auto"
+                  style={{ background: '#f8f9fa', border: '1px solid rgba(255,255,255,0.1)' }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeSvg(question.diagram) }} />
+              )}
             </div>
 
             {/* Answer input */}

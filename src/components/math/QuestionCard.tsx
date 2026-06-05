@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Eye, EyeOff } from 'lucide-react'
 import { MixedMath } from './MathRenderer'
+import { sanitizeSvg } from '@/lib/math/sanitize-svg'
 import { StepByStepSolution } from './StepByStepSolution'
 import type { Question } from '@/types'
 
@@ -56,6 +57,11 @@ export function QuestionCard({ question, onAssess, startTime = Date.now() }: Pro
         <div className="text-white text-sm leading-relaxed">
           <MixedMath content={question.stem} />
         </div>
+        {question.diagram && sanitizeSvg(question.diagram) && (
+          <div className="mt-3 rounded-lg p-3 flex justify-center overflow-x-auto"
+            style={{ background: '#f8f9fa', border: '1px solid rgba(255,255,255,0.1)' }}
+            dangerouslySetInnerHTML={{ __html: sanitizeSvg(question.diagram) }} />
+        )}
       </div>
 
       {/* Reveal answer */}

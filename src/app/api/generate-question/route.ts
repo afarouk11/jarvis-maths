@@ -135,18 +135,38 @@ export async function POST(req: Request) {
   // The adaptive difficulty is authoritative — override whatever the model echoed.
   question.difficulty = difficulty
 
+  // Keep the diagram aside: persist it if the column exists, but never let a
+  // missing column (un-migrated) break question generation.
+  const diagram = typeof question.diagram === 'string' && question.diagram.trim() ? question.diagram : null
+  delete question.diagram
+
   const adminSupabase = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
-  const { data, error } = await adminSupabase
+
+  let inserted: Record<string, unknown> | null = null
+  const first = await adminSupabase
     .from('questions')
-    .insert({ topic_id: topic.id, ...question })
+    .insert({ topic_id: topic.id, ...question, ...(diagram ? { diagram } : {}) })
     .select()
     .single()
+  if (first.error && diagram) {
+    // `diagram` column may not be migrated yet — retry without it.
+    const retry = await adminSupabase
+      .from('questions')
+      .insert({ topic_id: topic.id, ...question })
+      .select()
+      .single()
+    if (retry.error) return Response.json({ error: retry.error.message }, { status: 500 })
+    inserted = retry.data
+  } else if (first.error) {
+    return Response.json({ error: first.error.message }, { status: 500 })
+  } else {
+    inserted = first.data
+  }
 
-  if (error) return Response.json({ error: error.message }, { status: 500 })
-  // `skill` is returned (not stored on the question) so the client can report it
-  // back when recording progress, updating that sub-skill's mastery.
-  return Response.json({ ...data, skill: targetSkill })
+  // `diagram` and `skill` are returned even when not persisted, so the client can
+  // render the visual and report the sub-skill back when recording progress.
+  return Response.json({ ...inserted, diagram: diagram ?? (inserted?.diagram as string | undefined) ?? null, skill: targetSkill })
 }

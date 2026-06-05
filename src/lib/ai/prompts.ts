@@ -688,8 +688,9 @@ Return JSON with exactly this structure:
     ...
   ],
   "marks": number,
-  "difficulty": ${difficulty}
+  "difficulty": ${difficulty},
+  "diagram": "OPTIONAL — include ONLY when the question genuinely needs a visual (triangles, circles, vectors, bearings, transformations, or a graph to read). A complete self-contained <svg ...>...</svg> string with viewBox=\\"0 0 320 240\\". It will sit on a LIGHT background, so use dark strokes (#111827) and dark, readable text labels. Label every point, length and angle. OMIT this field entirely for purely algebraic questions — never include an empty or decorative diagram."
 }
 
-Make it exam-style, typical of ${boardLabel}. Return ONLY the JSON.`
+Make it exam-style, typical of ${boardLabel}. A geometric or graphical question MUST include a clear, correctly-labelled diagram. Return ONLY the JSON.`
 }

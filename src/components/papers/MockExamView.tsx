@@ -6,6 +6,7 @@ import { MixedMath } from '@/components/math/MathRenderer'
 import { MathKeypad } from '@/components/math/MathKeypad'
 import { X, ChevronDown, ChevronUp, CheckCircle, XCircle, Loader2, Trophy, BookmarkPlus, BookmarkCheck, Pen, Type } from 'lucide-react'
 import { DrawingCanvas } from '@/components/ui/DrawingCanvas'
+import { sanitizeSvg } from '@/lib/math/sanitize-svg'
 import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
 import { GCSE_TOPICS } from '@/lib/curriculum/gcse-topics'
 
@@ -310,7 +311,7 @@ export function MockExamView({ paper, focusTopics, onClose }: {
                               display: 'flex',
                               justifyContent: 'center',
                             }}
-                              dangerouslySetInnerHTML={{ __html: q.diagram }}
+                              dangerouslySetInnerHTML={{ __html: sanitizeSvg(q.diagram) }}
                             />
                           )}
 
