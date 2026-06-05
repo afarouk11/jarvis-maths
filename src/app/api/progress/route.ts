@@ -30,7 +30,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const body = await req.json()
-  const { topicId, questionId, correct, timeSeconds, quality: qualityOverride, timeTakenSeconds, marksEarned, marksAvailable, format, misconceptions, difficulty } = body
+  const { topicId, questionId, correct, timeSeconds, quality: qualityOverride, timeTakenSeconds, marksEarned, marksAvailable, format, misconceptions, difficulty, skill } = body
   const effectiveTimeSeconds = timeTakenSeconds ?? timeSeconds
 
   const supabase = await createClient()
@@ -165,6 +165,30 @@ export async function POST(req: Request) {
         }, { onConflict: 'user_id,topic_slug,tag' })
       }
     } catch { /* table may not be migrated yet — non-fatal */ }
+  }
+
+  // Per-sub-skill mastery: update the specific technique this question tested.
+  if (typeof skill === 'string' && skill) {
+    try {
+      const { data: sk } = await supabase
+        .from('student_skill_progress')
+        .select('p_known, attempts, correct')
+        .eq('student_id', user.id).eq('topic_slug', topicId).eq('skill', skill)
+        .maybeSingle()
+      const updated = updateBKTPartial(
+        { pKnown: sk?.p_known ?? 0.3, pTransit: 0.09, pSlip: 0.1, pGuess },
+        score,
+      ).pKnown
+      await supabase.from('student_skill_progress').upsert({
+        student_id: user.id,
+        topic_slug: topicId,
+        skill,
+        p_known: updated,
+        attempts: (sk?.attempts ?? 0) + 1,
+        correct: (sk?.correct ?? 0) + (correct ? 1 : 0),
+        last_attempted_at: new Date().toISOString(),
+      }, { onConflict: 'student_id,topic_slug,skill' })
+    } catch { /* table not migrated yet — non-fatal */ }
   }
 
   // Log the attempt

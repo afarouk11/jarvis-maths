@@ -2,6 +2,7 @@ import { anthropic } from '@ai-sdk/anthropic'
 import { generateText } from 'ai'
 import { buildQuestionPrompt } from '@/lib/ai/prompts'
 import { difficultyForMastery } from '@/lib/bkt/adaptive'
+import { getSubskills } from '@/lib/curriculum/subskills'
 import { checkRateLimit, tooManyRequests } from '@/lib/api/rate-limit'
 import { asString, badRequest } from '@/lib/api/validate'
 import { createClient } from '@/lib/supabase/server'
@@ -51,6 +52,23 @@ export async function POST(req: Request) {
     }
   }
 
+  // ── Target the weakest sub-skill ──────────────────────────────────────────
+  // Pick the sub-skill (technique) within this topic the student is weakest on,
+  // so practice drills the specific gap, not just the broad topic.
+  let targetSkill: string | null = null
+  const subskills = getSubskills(topicId)
+  if (subskills.length > 0) {
+    const { data: skillRows } = await supabase
+      .from('student_skill_progress')
+      .select('skill, p_known')
+      .eq('student_id', user.id)
+      .eq('topic_slug', topicId)
+    const pBySkill = new Map((skillRows ?? []).map((r: { skill: string; p_known: number }) => [r.skill, r.p_known]))
+    // Unseen sub-skills are treated as slightly weak so coverage is ensured.
+    targetSkill = subskills.reduce((weakest, s) =>
+      (pBySkill.get(s) ?? 0.25) < (pBySkill.get(weakest) ?? 0.25) ? s : weakest, subskills[0])
+  }
+
   // ── Question bank / cache ─────────────────────────────────────────────────
   // Most of the time, reuse a previously generated question for this exact
   // topic+difficulty that the student hasn't seen yet. This cuts model calls and
@@ -98,7 +116,7 @@ export async function POST(req: Request) {
   try {
     const result = await generateText({
       model: anthropic('claude-haiku-4-5-20251001'),
-      prompt: buildQuestionPrompt(topicName, difficulty, prof?.level ?? undefined, kbContext, prof?.exam_board ?? 'aqa'),
+      prompt: buildQuestionPrompt(topicName, difficulty, prof?.level ?? undefined, kbContext, prof?.exam_board ?? 'aqa', targetSkill),
     })
     text = result.text
   } catch (err: unknown) {
@@ -128,5 +146,7 @@ export async function POST(req: Request) {
     .single()
 
   if (error) return Response.json({ error: error.message }, { status: 500 })
-  return Response.json(data)
+  // `skill` is returned (not stored on the question) so the client can report it
+  // back when recording progress, updating that sub-skill's mastery.
+  return Response.json({ ...data, skill: targetSkill })
 }

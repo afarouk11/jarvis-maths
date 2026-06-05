@@ -229,6 +229,7 @@ function PracticePageInner() {
         timeSeconds,
         quality,
         difficulty: question.difficulty,
+        skill: (question as { skill?: string }).skill,
         format: 'written',
         misconceptions: markResult?.exam_technique_flags ?? [],
       }),
@@ -506,6 +507,12 @@ function PracticePageInner() {
                   <span className="text-xs font-medium text-blue-400">
                     {allTopics.find(t => t.slug === selectedSlug)?.name} · {question.marks} mark{question.marks !== 1 ? 's' : ''}
                   </span>
+                  {(question as { skill?: string }).skill && (
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                      style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.3)', color: '#c4b5fd' }}>
+                      Focus: {(question as { skill?: string }).skill}
+                    </span>
+                  )}
                   {(question as { source?: string }).source && (question as { source?: string }).source !== 'ai-generated' && (
                     <span className="text-xs px-2 py-0.5 rounded-full font-medium"
                       style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)', color: '#fbbf24' }}>

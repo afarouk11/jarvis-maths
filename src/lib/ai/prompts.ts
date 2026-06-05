@@ -672,11 +672,12 @@ function formatBoardName(board: string): string {
   }
 }
 
-export function buildQuestionPrompt(topicName: string, difficulty: number, level?: 'gcse' | 'alevel', kbContext: string = '', examBoard: string = 'aqa'): string {
+export function buildQuestionPrompt(topicName: string, difficulty: number, level?: 'gcse' | 'alevel', kbContext: string = '', examBoard: string = 'aqa', subskill?: string | null): string {
   const levelLabel = level === 'gcse' ? 'GCSE' : 'A-level'
   const boardDisplay = formatBoardName(examBoard)
   const boardLabel = level === 'gcse' ? `${boardDisplay} GCSE (Higher tier)` : `${boardDisplay} A-level`
-  return `Generate a ${levelLabel} maths exam question on "${topicName}" at difficulty ${difficulty}/5.
+  const focus = subskill ? `\nFocus this question specifically on the sub-skill: "${subskill}". The question must genuinely require that technique.` : ''
+  return `Generate a ${levelLabel} maths exam question on "${topicName}" at difficulty ${difficulty}/5.${focus}
 ${kbContext}
 Return JSON with exactly this structure:
 {
