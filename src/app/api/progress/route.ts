@@ -32,7 +32,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const body = await req.json()
-  const { topicId, questionId, correct, timeSeconds, quality: qualityOverride, timeTakenSeconds, marksEarned, marksAvailable, format, misconceptions, difficulty, skill } = body
+  const { topicId, questionId, correct, timeSeconds, quality: qualityOverride, timeTakenSeconds, marksEarned, marksAvailable, format, misconceptions, difficulty, skill, selfRating } = body
   const effectiveTimeSeconds = timeTakenSeconds ?? timeSeconds
 
   const supabase = await createClient()
@@ -209,6 +209,19 @@ export async function POST(req: Request) {
         last_attempted_at: new Date().toISOString(),
       }, { onConflict: 'student_id,topic_slug,skill' })
     } catch { /* table not migrated yet — non-fatal */ }
+  }
+
+  // Confidence calibration: compare the student's self-rating (0-5) with how
+  // they actually did. A persistent positive gap = overconfident. Non-fatal.
+  if (typeof selfRating === 'number') {
+    try {
+      const { data: c } = await supabase.from('profiles').select('calib_sum, calib_count').eq('id', user.id).single()
+      const gap = selfRating / 5 - score
+      await supabase.from('profiles').update({
+        calib_sum: (c?.calib_sum ?? 0) + gap,
+        calib_count: (c?.calib_count ?? 0) + 1,
+      }).eq('id', user.id)
+    } catch { /* columns not migrated yet — non-fatal */ }
   }
 
   // Log the attempt

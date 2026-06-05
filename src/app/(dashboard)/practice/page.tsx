@@ -219,7 +219,7 @@ function PracticePageInner() {
     setRevealed(true)
   }
 
-  async function recordAndNext(quality: number) {
+  async function recordAndNext(quality: number, selfRating?: number) {
     if (!question) return
     const timeSeconds = Math.round((Date.now() - startTime) / 1000)
     const res = await fetch('/api/progress', {
@@ -237,6 +237,7 @@ function PracticePageInner() {
         marksAvailable: markResult?.marksTotal,
         format: 'written',
         misconceptions: markResult?.exam_technique_flags ?? [],
+        selfRating,
       }),
     })
     const data = await res.json()
@@ -705,7 +706,7 @@ function PracticePageInner() {
                   ].map(opt => (
                     <motion.button key={opt.value}
                       whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                      onClick={() => recordAndNext(markResult?.quality ?? opt.value)}
+                      onClick={() => recordAndNext(markResult?.quality ?? opt.value, opt.value)}
                       className="py-2 rounded-lg text-xs font-medium"
                       style={{ background: `${opt.color}15`, border: `1px solid ${opt.color}40`, color: opt.color }}>
                       {opt.label}
