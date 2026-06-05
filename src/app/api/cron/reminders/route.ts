@@ -3,6 +3,19 @@ import { Resend } from 'resend'
 
 export const dynamic = 'force-dynamic'
 
+interface ReminderUser {
+  id: string
+  email: string | null
+  full_name: string | null
+  exam_date: string | null
+  exam_board: string | null
+  level: string | null
+  streak_days: number | null
+  last_active_at: string | null
+  email_reminders?: boolean
+  unsubscribe_token?: string
+}
+
 export async function GET(req: Request) {
   const resend = new Resend(process.env.RESEND_API_KEY)
   const secret = req.headers.get('x-cron-secret') ?? new URL(req.url).searchParams.get('secret')
@@ -20,13 +33,13 @@ export async function GET(req: Request) {
     .select('id, email, full_name, exam_date, exam_board, level, streak_days, last_active_at, email_reminders, unsubscribe_token')
     .eq('onboarding_complete', true)
     .not('email', 'is', null)
-  const users = full.error
+  const users = (full.error
     ? (await supabase
         .from('profiles')
         .select('id, email, full_name, exam_date, exam_board, level, streak_days, last_active_at')
         .eq('onboarding_complete', true)
         .not('email', 'is', null)).data
-    : full.data
+    : full.data) as ReminderUser[] | null
 
   if (!users || users.length === 0) {
     return Response.json({ sent: 0 })
