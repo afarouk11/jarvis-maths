@@ -5,6 +5,7 @@ import { computeGradeSummary } from '@/lib/grade'
 import { updateSM2, qualityFromCorrect } from '@/lib/sm2/spaced-repetition'
 import { getPrerequisites } from '@/lib/curriculum/topic-graph'
 import { getTopics } from '@/lib/curriculum'
+import { xpForAnswer } from '@/lib/xp-levels'
 import { BKTState } from '@/types'
 
 export async function GET() {
@@ -23,7 +24,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const body = await req.json()
-  const { topicId, questionId, correct, timeSeconds, quality: qualityOverride, timeTakenSeconds, marksEarned, marksAvailable, format, misconceptions } = body
+  const { topicId, questionId, correct, timeSeconds, quality: qualityOverride, timeTakenSeconds, marksEarned, marksAvailable, format, misconceptions, difficulty } = body
   const effectiveTimeSeconds = timeTakenSeconds ?? timeSeconds
 
   const supabase = await createClient()
@@ -72,6 +73,9 @@ export async function POST(req: Request) {
     : null
   const score = marksScore ?? quality / 5
   const newBKT = updateBKTPartial(bktState, score)
+
+  // Difficulty- and weakness-weighted XP (uses the prior, pre-update mastery).
+  const xpGain = xpForAnswer(correct, difficulty ?? 3, priorPKnown)
   const sm2 = updateSM2(
     existing
       ? { intervalDays: existing.interval_days, easeFactor: existing.ease_factor, repetitions: existing.repetitions, nextReviewAt: new Date(existing.next_review_at) }
@@ -171,8 +175,7 @@ export async function POST(req: Request) {
     .single()
 
   if (prof) {
-    const xpGain = correct ? 15 : 5
-    const now    = new Date()
+    const now = new Date()
 
     // Read streak freezes separately so a missing column (un-migrated) simply
     // disables the feature instead of breaking the profile read.
@@ -247,5 +250,5 @@ export async function POST(req: Request) {
     }
   }
 
-  return Response.json({ pKnown: newBKT.pKnown, nextReviewAt: sm2.nextReviewAt, xpGain: correct ? 15 : 5 })
+  return Response.json({ pKnown: newBKT.pKnown, nextReviewAt: sm2.nextReviewAt, xpGain })
 }

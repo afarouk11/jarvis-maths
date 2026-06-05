@@ -228,6 +228,7 @@ function PracticePageInner() {
         correct: quality >= 3,
         timeSeconds,
         quality,
+        difficulty: question.difficulty,
         format: 'written',
         misconceptions: markResult?.exam_technique_flags ?? [],
       }),

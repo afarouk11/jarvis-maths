@@ -19,6 +19,19 @@ const LEVELS: XPLevel[] = [
   { level: 10, title: 'J.A.R.V.I.S', minXP: 30000, maxXP: Infinity, color: '#fbbf24' },
 ]
 
+/**
+ * XP for answering a question. Harder questions and closing a weak topic earn
+ * more, so the points steer effort toward what actually lifts the grade rather
+ * than rewarding easy repetition equally.
+ */
+export function xpForAnswer(correct: boolean, difficulty: number, priorPKnown: number): number {
+  if (!correct) return 3
+  const d = Math.max(1, Math.min(5, difficulty || 3))
+  const difficultyBonus = (d - 3) * 3          // -6 (easy) … +6 (hardest)
+  const weaknessBonus = priorPKnown < 0.4 ? 8 : 0
+  return Math.max(2, 10 + difficultyBonus + weaknessBonus)
+}
+
 export function getXPLevel(xp: number): XPLevel & { progress: number; xpIntoLevel: number; xpToNext: number } {
   const lvl = LEVELS.findLast(l => xp >= l.minXP) ?? LEVELS[0]
   const isMax = lvl.level === 10

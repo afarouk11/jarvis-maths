@@ -139,6 +139,7 @@ export function MockExamView({ paper, focusTopics, onClose }: {
           marksEarned,
           marksAvailable: q.marks,
           timeSeconds: 90,
+          difficulty: q.marks >= 6 ? 5 : q.marks >= 4 ? 4 : 3,
           format: 'written',
           source: 'mock-paper',
         }),
