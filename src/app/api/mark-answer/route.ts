@@ -2,6 +2,7 @@ import { anthropic } from '@ai-sdk/anthropic'
 import { generateText } from 'ai'
 import { createClient } from '@/lib/supabase/server'
 import { isPro } from '@/lib/stripe'
+import { checkRateLimit, tooManyRequests } from '@/lib/api/rate-limit'
 
 export async function POST(req: Request) {
   const supabase = await createClient()
@@ -17,6 +18,9 @@ export async function POST(req: Request) {
   if (!isPro(prof?.stripe_subscription_status)) {
     return Response.json({ error: 'pro_required' }, { status: 403 })
   }
+
+  const rl = await checkRateLimit(supabase, user.id, 'mark-answer', 150, 3600)
+  if (!rl.allowed) return tooManyRequests(rl)
 
   const { stem, correctAnswer, studentAnswer, studentAnswerImage, workedSolution } = await req.json()
 

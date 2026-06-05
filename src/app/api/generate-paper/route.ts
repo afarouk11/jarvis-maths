@@ -5,6 +5,7 @@ import { anthropic } from '@ai-sdk/anthropic'
 import { generateText } from 'ai'
 import { AQA_TOPICS, TOPIC_CATEGORIES } from '@/lib/curriculum/aqa-topics'
 import { GCSE_TOPICS, GCSE_TOPIC_CATEGORIES } from '@/lib/curriculum/gcse-topics'
+import { checkRateLimit, tooManyRequests } from '@/lib/api/rate-limit'
 
 export const maxDuration = 120
 
@@ -55,6 +56,10 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // Paper generation is the most expensive route — limit it tightly.
+  const rl = await checkRateLimit(supabase, user.id, 'generate-paper', 12, 3600)
+  if (!rl.allowed) return tooManyRequests(rl)
 
   const body = await req.json().catch(() => ({}))
 

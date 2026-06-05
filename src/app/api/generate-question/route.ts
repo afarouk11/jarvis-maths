@@ -2,6 +2,8 @@ import { anthropic } from '@ai-sdk/anthropic'
 import { generateText } from 'ai'
 import { buildQuestionPrompt } from '@/lib/ai/prompts'
 import { difficultyForMastery } from '@/lib/bkt/adaptive'
+import { checkRateLimit, tooManyRequests } from '@/lib/api/rate-limit'
+import { asString, badRequest } from '@/lib/api/validate'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 
@@ -10,13 +12,20 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const rl = await checkRateLimit(supabase, user.id, 'generate-question', 60, 3600)
+  if (!rl.allowed) return tooManyRequests(rl)
+
   const { data: prof } = await supabase
     .from('profiles')
     .select('level, exam_board')
     .eq('id', user.id)
     .single()
 
-  const { topicId, topicName, difficulty: requestedDifficulty } = await req.json()
+  const body = await req.json().catch(() => ({}))
+  const { difficulty: requestedDifficulty } = body
+  const topicId = asString(body.topicId, 200)
+  const topicName = asString(body.topicName, 200)
+  if (!topicId || !topicName) return badRequest('topicId and topicName are required')
 
   // Resolve the topic up front — needed for both adaptive difficulty and the insert.
   const { data: topic } = await supabase
