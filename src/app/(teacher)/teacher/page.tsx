@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import { predictedGrade } from '@/lib/bkt/bayesian-knowledge-tracing'
 import { getTopics } from '@/lib/curriculum'
@@ -29,9 +30,15 @@ export default async function TeacherDashboard() {
   const classCodes = [...new Set((links ?? []).map(l => l.class_code))]
 
   let students: StudentRow[] = []
+  let classWeakTopics: Array<{ name: string; avg: number; students: number }> = []
+  let classMisconceptions: Array<{ tag: string; count: number }> = []
 
   if (studentIds.length > 0) {
-    const [{ data: profiles }, { data: allProgress }] = await Promise.all([
+    const admin = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    )
+    const [{ data: profiles }, { data: allProgress }, { data: topicRows }, { data: misconRows }] = await Promise.all([
       supabase
         .from('profiles')
         .select('id, full_name, level, xp, streak_days, last_active_at, exam_date, target_grade, exam_board')
@@ -40,7 +47,31 @@ export default async function TeacherDashboard() {
         .from('student_progress')
         .select('student_id, topic_id, p_known')
         .in('student_id', studentIds),
+      supabase.from('topics').select('id, name'),
+      admin.from('student_misconceptions').select('tag, count').in('user_id', studentIds),
     ])
+
+    // Class gaps: average mastery per topic across all students (weakest first).
+    const nameById = new Map((topicRows ?? []).map((t: { id: string; name: string }) => [t.id, t.name]))
+    const byTopic = new Map<string, { sum: number; n: number }>()
+    for (const pr of allProgress ?? []) {
+      const e = byTopic.get(pr.topic_id) ?? { sum: 0, n: 0 }
+      e.sum += pr.p_known
+      e.n += 1
+      byTopic.set(pr.topic_id, e)
+    }
+    classWeakTopics = [...byTopic.entries()]
+      .map(([id, e]) => ({ name: (nameById.get(id) as string | undefined) ?? 'Topic', avg: e.sum / e.n, students: e.n }))
+      .sort((a, b) => a.avg - b.avg)
+      .slice(0, 6)
+
+    // Common mistakes: misconception tags shared across the class.
+    const byTag = new Map<string, number>()
+    for (const m of misconRows ?? []) byTag.set(m.tag, (byTag.get(m.tag) ?? 0) + (m.count ?? 1))
+    classMisconceptions = [...byTag.entries()]
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
 
     students = (profiles ?? []).map(p => {
       const prog = (allProgress ?? []).filter(pr => pr.student_id === p.id)
@@ -128,6 +159,44 @@ export default async function TeacherDashboard() {
             value={String(students.reduce((s, st) => s + st.xp, 0).toLocaleString())}
             color="#a78bfa"
           />
+        </div>
+      )}
+
+      {/* Class insights — what to teach next + shared mistakes */}
+      {students.length > 0 && (classWeakTopics.length > 0 || classMisconceptions.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {classWeakTopics.length > 0 && (
+            <div className="rounded-2xl p-5" style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.15)' }}>
+              <p className="text-sm font-semibold text-white mb-1">Class gaps — teach these next</p>
+              <p className="text-xs mb-3" style={{ color: '#5a7aaa' }}>Lowest average mastery across your class.</p>
+              <div className="space-y-2">
+                {classWeakTopics.map(t => (
+                  <div key={t.name} className="flex items-center gap-3">
+                    <BookOpen size={13} style={{ color: '#f87171' }} className="shrink-0" />
+                    <span className="text-xs text-slate-300 flex-1 truncate">{t.name}</span>
+                    <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                      <div className="h-full rounded-full" style={{ width: `${Math.round(t.avg * 100)}%`, background: t.avg >= 0.7 ? '#4ade80' : t.avg >= 0.4 ? '#f59e0b' : '#f87171' }} />
+                    </div>
+                    <span className="text-xs font-mono shrink-0" style={{ color: '#94a3b8', minWidth: 32, textAlign: 'right' }}>{Math.round(t.avg * 100)}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {classMisconceptions.length > 0 && (
+            <div className="rounded-2xl p-5" style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.15)' }}>
+              <p className="text-sm font-semibold text-white mb-1">Common mistakes</p>
+              <p className="text-xs mb-3" style={{ color: '#5a7aaa' }}>Exam-technique slips your class repeats most.</p>
+              <div className="space-y-2">
+                {classMisconceptions.map(m => (
+                  <div key={m.tag} className="flex items-start gap-2">
+                    <span className="text-xs font-bold shrink-0" style={{ color: '#fbbf24' }}>{m.count}×</span>
+                    <span className="text-xs text-slate-300">{m.tag}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
