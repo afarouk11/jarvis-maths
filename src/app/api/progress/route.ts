@@ -19,7 +19,13 @@ export async function GET() {
     .eq('student_id', user.id)
 
   if (error) return Response.json({ error: error.message }, { status: 500 })
-  return Response.json(data ?? [])
+
+  // Normalise topic_id (a UUID in the DB) to the topic slug, so every client
+  // consumer is slug-consistent (brain map, Study Now, useProgress all key by slug).
+  const { data: topicRows } = await supabase.from('topics').select('id, slug')
+  const slugById = new Map((topicRows ?? []).map((t: { id: string; slug: string }) => [t.id, t.slug]))
+  const normalised = (data ?? []).map(p => ({ ...p, topic_id: slugById.get(p.topic_id) ?? p.topic_id }))
+  return Response.json(normalised)
 }
 
 export async function POST(req: Request) {
@@ -31,10 +37,14 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Resolve topic slug → UUID
+  // Resolve topic slug → UUID. topic_id is a UUID FK, so we must never fall back
+  // to writing the raw slug (that would violate the FK and orphan the row).
   const { data: topic } = await supabase
     .from('topics').select('id').eq('slug', topicId).single()
-  const topicUUID = topic?.id ?? topicId
+  if (!topic) {
+    return Response.json({ error: 'Topic not found — run /api/seed-topics first' }, { status: 404 })
+  }
+  const topicUUID = topic.id
 
   // Get or create progress row
   const { data: existing } = await supabase

@@ -49,6 +49,9 @@ interface Props {
   totalTopics: number
   topics: Omit<Topic, 'id' | 'parent_id'>[]
   topicCategories: Record<string, string[]>
+  /** UUID → slug map, so realtime rows (which carry a UUID topic_id) can be
+   *  normalised to the slug keys the map matches on. */
+  slugById?: Record<string, string>
 }
 
 interface SelectedTopic {
@@ -84,7 +87,7 @@ function getHighestCrossed(oldVal: number, newVal: number): { message: string; c
   return result
 }
 
-export function BrainMap({ progress, avgPKnown, grade, topicsActive, totalTopics, topics, topicCategories }: Props) {
+export function BrainMap({ progress, avgPKnown, grade, topicsActive, totalTopics, topics, topicCategories, slugById }: Props) {
   const router = useRouter()
   const [liveProgress, setLiveProgress] = useState<StudentProgress[]>(progress)
   const [hovered, setHovered] = useState<{ name: string; slug: string; pKnown: number } | null>(null)
@@ -131,7 +134,9 @@ export function BrainMap({ progress, avgPKnown, grade, topicsActive, totalTopics
           },
           (payload) => {
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-              const newRow = payload.new as StudentProgress
+              const raw = payload.new as StudentProgress
+              // Realtime rows carry a UUID topic_id; normalise to the slug key.
+              const newRow = { ...raw, topic_id: slugById?.[raw.topic_id] ?? raw.topic_id }
               setLiveProgress(prev => {
                 const oldRow = prev.find(p => p.topic_id === newRow.topic_id)
                 const oldVal = oldRow?.p_known ?? 0
