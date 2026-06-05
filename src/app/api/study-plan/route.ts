@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getTopics, type Level } from '@/lib/curriculum'
 import { applyDecay } from '@/lib/bkt/forgetting'
+import { masteryBarForGrade } from '@/lib/grade'
 import { rootWeakPrerequisite, topologicalOrder } from '@/lib/curriculum/topic-graph'
 
 export const maxDuration = 15
@@ -57,9 +58,13 @@ export async function GET() {
     .sort((a, b) => a.p_known - b.p_known)
     .map(r => r.slug)
 
+  // "Weak" is relative to the target grade: a topic counts as a gap if it's
+  // below the mastery bar that grade requires.
+  const bar = masteryBarForGrade(profile?.target_grade ?? 'A*')
+
   // Weak started topics, each routed to its weakest prerequisite ("fix first").
   const weakRoots: string[] = []
-  for (const r of rows.filter(r => (attemptedBySlug.get(r.slug) ?? 0) > 0 && r.p_known < 0.55).sort((a, b) => a.p_known - b.p_known)) {
+  for (const r of rows.filter(r => (attemptedBySlug.get(r.slug) ?? 0) > 0 && r.p_known < bar).sort((a, b) => a.p_known - b.p_known)) {
     const root = rootWeakPrerequisite(r.slug, pKnownBySlug) ?? r.slug
     if (nameBySlug.has(root) && !weakRoots.includes(root)) weakRoots.push(root)
   }

@@ -82,6 +82,24 @@ export function computeGradeTrend(
   return { direction, deltaPoints }
 }
 
+/**
+ * The per-topic mastery bar a student should clear to be on track for a given
+ * target grade. Higher targets demand higher mastery on each topic, so study is
+ * steered toward what actually moves *that* grade (a C student needs every topic
+ * solid; an A* student needs them excellent).
+ */
+export function masteryBarForGrade(grade: string): number {
+  switch (grade) {
+    case 'A*': case '9': return 0.88
+    case 'A':  case '8': return 0.80
+    case 'B':  case '7': return 0.72
+    case 'C':  case '6': return 0.62
+    case 'D':  case '5': return 0.55
+    case 'E':  case '4': return 0.48
+    default: return 0.70
+  }
+}
+
 /** Shared grade → colour mapping so every surface uses the same palette. */
 export function gradeColor(grade: string): string {
   switch (grade) {
