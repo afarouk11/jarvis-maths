@@ -26,6 +26,8 @@ interface MarkResult {
   quality: number
   feedback: string
   partialCredit: boolean
+  marksAwarded?: number
+  marksTotal?: number
   exam_technique_flags?: string[]
   steps?: MarkingStep[] | null
 }
@@ -230,6 +232,8 @@ function PracticePageInner() {
         quality,
         difficulty: question.difficulty,
         skill: (question as { skill?: string }).skill,
+        marksEarned: markResult?.marksAwarded,
+        marksAvailable: markResult?.marksTotal,
         format: 'written',
         misconceptions: markResult?.exam_technique_flags ?? [],
       }),

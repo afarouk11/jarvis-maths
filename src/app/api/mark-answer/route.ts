@@ -65,10 +65,14 @@ Also check for exam technique issues:
 - Rounding too early in multi-step working
 - Writing an answer without proof when question says "show that"
 
+Award marks strictly against the mark scheme. "marksTotal" is the total marks available for this question (count the M/A/B codes in the worked solution, or use the marks stated in the question). "marksAwarded" is the sum of the individual M/A/B marks the student genuinely earned (0 ≤ marksAwarded ≤ marksTotal). Be precise and consistent — these two fields determine the student's score and their mastery update.
+
 Return JSON with exactly this structure:
 {
   "correct": true | false,
   "quality": 0-5,
+  "marksAwarded": <integer>,
+  "marksTotal": <integer>,
   "feedback": "1-2 sentence AQA-style feedback: state marks awarded and reason, then one specific improvement tip if wrong",
   "partialCredit": true | false,
   "exam_technique_flags": [],

@@ -36,7 +36,7 @@ interface QuestionState {
   drawingHeight: number
   drawMode: boolean
   marking: boolean
-  result: { correct: boolean; quality: number; feedback: string; partialCredit: boolean } | null
+  result: { correct: boolean; quality: number; feedback: string; partialCredit: boolean; marksAwarded?: number; marksTotal?: number } | null
   marksEarned: number
   revealed: boolean
 }
@@ -118,11 +118,15 @@ export function MockExamView({ paper, focusTopics, onClose }: {
       }),
     })
     const result = await res.json()
-    const marksEarned = result.correct
-      ? q.marks
-      : result.partialCredit
-        ? Math.round(q.marks * (result.quality / 5))
-        : 0
+    // Prefer the marks the examiner actually awarded against the scheme; only
+    // fall back to a quality-derived estimate if the model omitted them.
+    const marksEarned = typeof result.marksAwarded === 'number'
+      ? Math.max(0, Math.min(q.marks, result.marksAwarded))
+      : result.correct
+        ? q.marks
+        : result.partialCredit
+          ? Math.round(q.marks * (result.quality / 5))
+          : 0
     updateState(q.number, { marking: false, result, marksEarned, revealed: false })
 
     // Feedback loop: fold this question's result into the student's mastery
