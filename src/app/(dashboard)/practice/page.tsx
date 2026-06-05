@@ -55,6 +55,7 @@ function PracticePageInner() {
   const [studentAnswer, setStudentAnswer] = useState('')
   const [marking, setMarking] = useState(false)
   const [markResult, setMarkResult] = useState<MarkResult | null>(null)
+  const [reported, setReported] = useState(false)
   const [revealed, setRevealed] = useState(false)
   const [startTime, setStartTime] = useState(Date.now())
   const [submitted, setSubmitted] = useState(false)
@@ -127,6 +128,7 @@ function PracticePageInner() {
     setStudentAnswer('')
     setDrawingImage('')
     setMarkResult(null)
+    setReported(false)
     setSubmitted(false)
     setStartTime(Date.now())
 
@@ -217,6 +219,22 @@ function PracticePageInner() {
     setMarkResult(result)
     setMarking(false)
     setRevealed(true)
+  }
+
+  function reportMarking() {
+    if (!question || !markResult) return
+    setReported(true)
+    fetch('/api/report-marking', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        stem: question.stem,
+        correctAnswer: question.answer,
+        studentAnswer: drawMode ? '[handwritten]' : studentAnswer,
+        aiFeedback: markResult.feedback,
+        aiCorrect: markResult.correct,
+      }),
+    }).catch(() => {})
   }
 
   async function recordAndNext(quality: number, selfRating?: number) {
@@ -623,6 +641,13 @@ function PracticePageInner() {
                       {markResult.correct ? 'Correct!' : markResult.partialCredit ? 'Partially correct' : 'Incorrect'}
                     </p>
                     <p className="text-sm" style={{ color: '#d1deff' }}>{markResult.feedback}</p>
+                    {reported ? (
+                      <p className="text-xs mt-2" style={{ color: '#4ade80' }}>Thanks — we&apos;ll review this mark.</p>
+                    ) : (
+                      <button onClick={reportMarking} className="text-xs mt-2 underline transition-colors hover:text-slate-300" style={{ color: '#5a7aaa' }}>
+                        Marked wrong? Report it
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               )}
