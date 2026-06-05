@@ -10,6 +10,8 @@ import { decayedPKnown } from '@/lib/bkt/forgetting'
 
 export const maxDuration = 120
 
+type ServerSupabase = Awaited<ReturnType<typeof createClient>>
+
 // ── A-Level config ────────────────────────────────────────────────────────────
 type ALevelType = 'pure' | 'stats' | 'mechanics'
 const ALEVEL_CONFIG: Record<ALevelType, {
@@ -198,7 +200,7 @@ async function generateGcsePaper({ body, board, admin, userId, supabase }: any) 
 // Single source of truth for mastery: read live (decayed) p_known from
 // student_progress and express it on the 0–5 scale the weakness weighting uses.
 // Replaces the separate topic_mastery store that could drift out of sync.
-async function buildMasteryMap(supabase: any, userId: string): Promise<Map<string, number>> {
+async function buildMasteryMap(supabase: ServerSupabase, userId: string): Promise<Map<string, number>> {
   const [{ data: progress }, { data: topicRows }] = await Promise.all([
     supabase.from('student_progress')
       .select('topic_id, p_known, last_attempted_at, ease_factor, interval_days')
