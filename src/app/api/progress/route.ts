@@ -2,7 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { updateBKTPartial, pGuessForFormat } from '@/lib/bkt/bayesian-knowledge-tracing'
 import { decayedPKnown } from '@/lib/bkt/forgetting'
 import { computeGradeSummary } from '@/lib/grade'
-import { updateSM2, qualityFromCorrect } from '@/lib/sm2/spaced-repetition'
+import { qualityFromCorrect } from '@/lib/sm2/spaced-repetition'
+import { updateFSRS, gradeFromScore } from '@/lib/fsrs/fsrs'
 import { getPrerequisites } from '@/lib/curriculum/topic-graph'
 import { getTopics } from '@/lib/curriculum'
 import { xpForAnswer } from '@/lib/xp-levels'
@@ -87,11 +88,13 @@ export async function POST(req: Request) {
 
   // Difficulty- and weakness-weighted XP (uses the prior, pre-update mastery).
   const xpGain = xpForAnswer(correct, difficulty ?? 3, priorPKnown)
-  const sm2 = updateSM2(
+  // FSRS scheduling: derive a grade from the answer score and update the topic's
+  // memory model (stability + difficulty), from which the next review is set.
+  const fsrs = updateFSRS(
     existing
-      ? { intervalDays: existing.interval_days, easeFactor: existing.ease_factor, repetitions: existing.repetitions, nextReviewAt: new Date(existing.next_review_at) }
-      : { intervalDays: 1, easeFactor: 2.5, repetitions: 0, nextReviewAt: new Date() },
-    quality
+      ? { stability: existing.stability, difficulty: existing.difficulty, lastReviewAt: existing.last_attempted_at }
+      : {},
+    gradeFromScore(score),
   )
 
   const update = {
@@ -101,20 +104,27 @@ export async function POST(req: Request) {
     p_transit: newBKT.pTransit,
     p_slip: newBKT.pSlip,
     p_guess: newBKT.pGuess,
-    next_review_at: sm2.nextReviewAt.toISOString(),
-    interval_days: sm2.intervalDays,
-    ease_factor: sm2.easeFactor,
-    repetitions: sm2.repetitions,
+    next_review_at: fsrs.nextReviewAt.toISOString(),
+    interval_days: fsrs.intervalDays,
+    ease_factor: existing?.ease_factor ?? 2.5,
+    repetitions: (existing?.repetitions ?? 0) + 1,
     questions_attempted: (existing?.questions_attempted ?? 0) + 1,
     questions_correct: (existing?.questions_correct ?? 0) + (correct ? 1 : 0),
     last_attempted_at: new Date().toISOString(),
   }
 
-  const { error } = await supabase
+  // Persist FSRS state if the columns exist; retry without them if migration 032
+  // hasn't been applied yet so question recording never breaks.
+  const fsrsFields = { stability: fsrs.stability, difficulty: fsrs.difficulty }
+  let upsertError = (await supabase
     .from('student_progress')
-    .upsert(update, { onConflict: 'student_id,topic_id' })
-
-  if (error) return Response.json({ error: error.message }, { status: 500 })
+    .upsert({ ...update, ...fsrsFields }, { onConflict: 'student_id,topic_id' })).error
+  if (upsertError) {
+    upsertError = (await supabase
+      .from('student_progress')
+      .upsert(update, { onConflict: 'student_id,topic_id' })).error
+  }
+  if (upsertError) return Response.json({ error: upsertError.message }, { status: 500 })
 
   // (student_progress is now the single source of truth for mastery — paper
   // generation reads live decayed p_known directly, so the old topic_mastery
@@ -293,5 +303,5 @@ export async function POST(req: Request) {
     skill: skill ?? null,
   })
 
-  return Response.json({ pKnown: newBKT.pKnown, nextReviewAt: sm2.nextReviewAt, xpGain })
+  return Response.json({ pKnown: newBKT.pKnown, nextReviewAt: fsrs.nextReviewAt, xpGain })
 }
