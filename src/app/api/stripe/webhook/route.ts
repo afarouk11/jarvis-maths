@@ -35,6 +35,15 @@ export async function POST(req: NextRequest) {
     return new Response('Webhook signature invalid', { status: 400 })
   }
 
+  // Idempotency: Stripe re-delivers events, so record each id and skip duplicates.
+  // A unique-violation means we've already processed this event.
+  try {
+    const { error } = await adminClient().from('stripe_events').insert({ id: event.id })
+    if (error?.code === '23505') return new Response('ok (duplicate)', { status: 200 })
+  } catch {
+    // Ledger table may not be migrated yet — fall through and process the event.
+  }
+
   switch (event.type) {
     case 'customer.subscription.created':
     case 'customer.subscription.updated':
