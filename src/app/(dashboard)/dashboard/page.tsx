@@ -23,6 +23,7 @@ import { StreakCard } from '@/components/dashboard/StreakCard'
 import { ExamCountdown } from '@/components/dashboard/ExamCountdown'
 import { DailyChallenge } from '@/components/dashboard/DailyChallenge'
 import { PushNotificationPrompt } from '@/components/dashboard/PushNotificationPrompt'
+import { AssignmentsCard } from '@/components/dashboard/AssignmentsCard'
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ upgraded?: string }> }) {
   const params = await searchParams
@@ -203,6 +204,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             lastStudiedAt={profile?.last_active_at ?? null}
           />
           <DailyChallenge />
+          <AssignmentsCard />
           <StudyPlan />
 
           {/* Quick actions */}

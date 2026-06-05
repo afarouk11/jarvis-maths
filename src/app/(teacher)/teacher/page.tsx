@@ -6,6 +6,7 @@ import { getTopics } from '@/lib/curriculum'
 import type { Level } from '@/lib/curriculum'
 import Link from 'next/link'
 import { Users, Flame, BookOpen, Trophy, Copy, Zap } from 'lucide-react'
+import { AssignmentsPanel } from '@/components/teacher/AssignmentsPanel'
 
 export default async function TeacherDashboard() {
   const supabase = await createClient()
@@ -161,6 +162,9 @@ export default async function TeacherDashboard() {
           />
         </div>
       )}
+
+      {/* Assignments — set work for a class */}
+      {classCodes.length > 0 && <AssignmentsPanel classCodes={classCodes} />}
 
       {/* Class insights — what to teach next + shared mistakes */}
       {students.length > 0 && (classWeakTopics.length > 0 || classMisconceptions.length > 0) && (
