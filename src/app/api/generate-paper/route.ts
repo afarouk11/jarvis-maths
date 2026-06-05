@@ -6,6 +6,7 @@ import { generateText } from 'ai'
 import { AQA_TOPICS, TOPIC_CATEGORIES } from '@/lib/curriculum/aqa-topics'
 import { GCSE_TOPICS, GCSE_TOPIC_CATEGORIES } from '@/lib/curriculum/gcse-topics'
 import { checkRateLimit, tooManyRequests } from '@/lib/api/rate-limit'
+import { decayedPKnown } from '@/lib/bkt/forgetting'
 
 export const maxDuration = 120
 
@@ -90,10 +91,7 @@ async function generateALevelPaper({ body, board, admin, userId, supabase }: any
   const paperType: PaperType = (['pure', 'stats', 'mechanics'].includes(body.paperType) ? body.paperType : 'pure') as PaperType
   const cfg = ALEVEL_CONFIG[paperType]
 
-  const { data: progress } = await supabase
-    .from('topic_mastery')
-    .select('topic, mastery_level')
-    .eq('user_id', userId)
+  const masteryMap = await buildMasteryMap(supabase, userId)
 
   const { data: boardPapers } = await admin
     .from('past_papers')
@@ -105,10 +103,9 @@ async function generateALevelPaper({ body, board, admin, userId, supabase }: any
   const topicFreq = await buildTopicFrequency(admin, (boardPapers ?? []).map((p: any) => p.id))
   const categorySlugs = new Set(TOPIC_CATEGORIES[cfg.categoryKey])
   const categoryTopics = AQA_TOPICS.filter(t => categorySlugs.has(t.slug))
-  const masteryMap = new Map((progress ?? []).map((p: any) => [p.topic.toLowerCase(), p.mastery_level ?? 0]))
 
   const scored = categoryTopics.map(t => {
-    const mastery = masteryMap.get(t.name.toLowerCase()) ?? masteryMap.get(t.slug) ?? 0
+    const mastery = masteryMap.get(t.slug) ?? 0
     const freq    = topicFreq[t.slug] ?? 0
     const freqW   = freq > 0 ? Math.log(freq + 1) : 0.5
     return { slug: t.slug, name: t.name, score: (1 - (mastery as number) / 5) * (1 + freqW) }
@@ -145,10 +142,7 @@ async function generateGcsePaper({ body, board, admin, userId, supabase }: any) 
   const paperType: GcseType = body.paperType === 'calc' ? 'calc' : 'non-calc'
   const cfg = GCSE_CONFIG[paperType]
 
-  const { data: progress } = await supabase
-    .from('topic_mastery')
-    .select('topic, mastery_level')
-    .eq('user_id', userId)
+  const masteryMap = await buildMasteryMap(supabase, userId)
 
   const { data: boardPapers } = await admin
     .from('past_papers')
@@ -158,7 +152,6 @@ async function generateGcsePaper({ body, board, admin, userId, supabase }: any) 
     .eq('processed', true)
 
   const topicFreq  = await buildTopicFrequency(admin, (boardPapers ?? []).map((p: any) => p.id))
-  const masteryMap = new Map((progress ?? []).map((p: any) => [p.topic.toLowerCase(), p.mastery_level ?? 0]))
 
   // Pull topics from all GCSE categories with scoring
   const allGcseTopics = cfg.categories.flatMap(cat =>
@@ -168,7 +161,7 @@ async function generateGcsePaper({ body, board, admin, userId, supabase }: any) 
   ) as typeof GCSE_TOPICS
 
   const scored = allGcseTopics.map(t => {
-    const mastery = masteryMap.get(t.name.toLowerCase()) ?? masteryMap.get(t.slug) ?? 0
+    const mastery = masteryMap.get(t.slug) ?? 0
     const freq    = topicFreq[t.slug] ?? 0
     const freqW   = freq > 0 ? Math.log(freq + 1) : 0.5
     return { slug: t.slug, name: t.name, score: (1 - (mastery as number) / 5) * (1 + freqW) }
@@ -201,6 +194,26 @@ async function generateGcsePaper({ body, board, admin, userId, supabase }: any) 
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+// Single source of truth for mastery: read live (decayed) p_known from
+// student_progress and express it on the 0–5 scale the weakness weighting uses.
+// Replaces the separate topic_mastery store that could drift out of sync.
+async function buildMasteryMap(supabase: any, userId: string): Promise<Map<string, number>> {
+  const [{ data: progress }, { data: topicRows }] = await Promise.all([
+    supabase.from('student_progress')
+      .select('topic_id, p_known, last_attempted_at, ease_factor, interval_days')
+      .eq('student_id', userId),
+    supabase.from('topics').select('id, slug'),
+  ])
+  const slugById = new Map((topicRows ?? []).map((t: { id: string; slug: string }) => [t.id, t.slug]))
+  const map = new Map<string, number>()
+  for (const p of progress ?? []) {
+    const slug = (slugById.get(p.topic_id) ?? p.topic_id) as string
+    map.set(slug, decayedPKnown(p) * 5)
+  }
+  return map
+}
+
 async function buildTopicFrequency(admin: any, paperIds: string[]) {
   const BATCH = 50
   const allChunks: { topic_slug: string | null; paper_id: string }[] = []

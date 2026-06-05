@@ -101,12 +101,9 @@ export async function POST(req: Request) {
 
   if (error) return Response.json({ error: error.message }, { status: 500 })
 
-  // Keep topic_mastery in sync — used by generate-paper for weakness weighting
-  await supabase.from('topic_mastery').upsert({
-    user_id: user.id,
-    topic: topicId,
-    mastery_level: newBKT.pKnown * 5,
-  }, { onConflict: 'user_id,topic' })
+  // (student_progress is now the single source of truth for mastery — paper
+  // generation reads live decayed p_known directly, so the old topic_mastery
+  // mirror is no longer written.)
 
   // Prerequisite evidence propagation: answering a dependent correctly is weak
   // positive evidence that its prerequisites are solid, so nudge them upward
