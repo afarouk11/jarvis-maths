@@ -171,27 +171,54 @@ export async function POST(req: Request) {
     .single()
 
   if (prof) {
-    const xpGain    = correct ? 15 : 5
-    const now       = new Date()
+    const xpGain = correct ? 15 : 5
+    const now    = new Date()
+
+    // Read streak freezes separately so a missing column (un-migrated) simply
+    // disables the feature instead of breaking the profile read.
+    let freezes: number | null = null
+    {
+      const { data: f, error: fErr } = await supabase
+        .from('profiles').select('streak_freezes').eq('id', user.id).single()
+      if (!fErr) freezes = (f?.streak_freezes as number | null) ?? 0
+    }
+
+    // Calendar-day difference (UTC), not a raw millisecond floor.
     const lastActive = prof.last_active_at ? new Date(prof.last_active_at) : null
-    const daysSince  = lastActive
-      ? Math.floor((now.getTime() - lastActive.getTime()) / 86400000)
+    const dayDiff = lastActive
+      ? Math.round(
+          (Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+            - Date.UTC(lastActive.getUTCFullYear(), lastActive.getUTCMonth(), lastActive.getUTCDate())) / 86400000,
+        )
       : 999
 
-    const newStreak = daysSince === 0
-      ? prof.streak_days              // already studied today
-      : daysSince === 1
-        ? prof.streak_days + 1        // studied yesterday → extend streak
-        : 1                           // gap → reset
+    let newStreak = prof.streak_days ?? 0
+    let newFreezes = freezes ?? 0
 
-    await supabase
-      .from('profiles')
-      .update({
-        xp: (prof.xp ?? 0) + xpGain,
-        streak_days: newStreak,
-        last_active_at: now.toISOString(),
-      })
-      .eq('id', user.id)
+    if (dayDiff <= 0) {
+      if (newStreak === 0) newStreak = 1        // first activity today
+    } else if (dayDiff === 1) {
+      newStreak += 1                            // consecutive day
+    } else if (dayDiff === 2 && newFreezes > 0) {
+      newFreezes -= 1                           // one missed day — covered by a freeze
+      newStreak += 1
+    } else {
+      newStreak = 1                             // gap too large → reset
+    }
+
+    // Earn a freeze each time the streak crosses a 7-day milestone (capped at 2).
+    if (newStreak > (prof.streak_days ?? 0) && newStreak % 7 === 0) {
+      newFreezes = Math.min(2, newFreezes + 1)
+    }
+
+    const update: Record<string, unknown> = {
+      xp: (prof.xp ?? 0) + xpGain,
+      streak_days: newStreak,
+      last_active_at: now.toISOString(),
+    }
+    if (freezes !== null) update.streak_freezes = newFreezes
+
+    await supabase.from('profiles').update(update).eq('id', user.id)
   }
 
   // Record grade snapshot at most once per day
