@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const tab = req.nextUrl.searchParams.get('tab') ?? 'xp'
+  const scope = req.nextUrl.searchParams.get('scope') === 'cohort' ? 'cohort' : 'global'
   const orderCol = tab === 'streak' ? 'streak_days' : 'xp'
 
   const admin = createServiceClient(
@@ -43,18 +44,25 @@ export async function GET(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  const [{ data: realUsers }, { data: me }] = await Promise.all([
-    admin
-      .from('profiles')
-      .select('id, full_name, xp, streak_days')
-      .order(orderCol, { ascending: false })
-      .limit(20),
-    admin
-      .from('profiles')
-      .select('xp, streak_days')
-      .eq('id', user.id)
-      .single(),
-  ])
+  // Need the viewer's level/board first so we can scope the cohort board.
+  const { data: me } = await admin
+    .from('profiles')
+    .select('xp, streak_days, level, exam_board')
+    .eq('id', user.id)
+    .single()
+
+  let realQuery = admin
+    .from('profiles')
+    .select('id, full_name, xp, streak_days')
+    .order(orderCol, { ascending: false })
+    .limit(20)
+
+  // Cohort scope: only students on the same level and exam board (fairer ranking).
+  if (scope === 'cohort' && me?.level && me?.exam_board) {
+    realQuery = realQuery.eq('level', me.level).eq('exam_board', me.exam_board)
+  }
+
+  const { data: realUsers } = await realQuery
 
   // Merge real users + seed students, deduplicate by name, sort
   type RawEntry = { id: string | null; name: string; xp: number; streak: number; isMe: boolean }
@@ -68,9 +76,13 @@ export async function GET(req: NextRequest) {
   }))
 
   const realNames = new Set(realEntries.map(e => e.name))
-  const seedEntries: RawEntry[] = SEED_STUDENTS
-    .filter(s => !realNames.has(s.name))
-    .map(s => ({ id: null, name: s.name, xp: s.xp, streak: s.streak, isMe: false }))
+  // Seed students fill out the GLOBAL board while the user base is small; the
+  // cohort board shows only real peers.
+  const seedEntries: RawEntry[] = scope === 'global'
+    ? SEED_STUDENTS
+        .filter(s => !realNames.has(s.name))
+        .map(s => ({ id: null, name: s.name, xp: s.xp, streak: s.streak, isMe: false }))
+    : []
 
   const merged = [...realEntries, ...seedEntries]
   merged.sort((a, b) => (tab === 'streak' ? b.streak - a.streak : b.xp - a.xp))

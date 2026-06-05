@@ -29,16 +29,17 @@ const RANK_STYLES: Record<number, { color: string; bg: string; border: string; l
 
 export default function LeaderboardClient() {
   const [tab, setTab] = useState<'xp' | 'streak'>('xp')
+  const [scope, setScope] = useState<'global' | 'cohort'>('global')
   const [data, setData] = useState<Data | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     setLoading(true)
-    fetch(`/api/leaderboard?tab=${tab}`)
+    fetch(`/api/leaderboard?tab=${tab}&scope=${scope}`)
       .then(r => r.json())
       .then(setData)
       .finally(() => setLoading(false))
-  }, [tab])
+  }, [tab, scope])
 
   const meInTop = data?.top.some(e => e.isMe)
 
@@ -71,6 +72,22 @@ export default function LeaderboardClient() {
             }}>
             {t === 'xp' ? <Zap size={13} /> : <Flame size={13} />}
             {t === 'xp' ? 'XP' : 'Streak'}
+          </button>
+        ))}
+      </div>
+
+      {/* Scope toggle — everyone vs your level + exam board */}
+      <div className="inline-flex items-center rounded-xl p-1 gap-1 mb-6 ml-0 sm:ml-2"
+        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+        {([['global', 'Everyone'], ['cohort', 'My class']] as const).map(([s, label]) => (
+          <button key={s} onClick={() => setScope(s)}
+            className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+            style={{
+              background: scope === s ? 'rgba(245,158,11,0.14)' : 'transparent',
+              color: scope === s ? '#f59e0b' : '#4a6070',
+              border: scope === s ? '1px solid rgba(245,158,11,0.28)' : '1px solid transparent',
+            }}>
+            {label}
           </button>
         ))}
       </div>
