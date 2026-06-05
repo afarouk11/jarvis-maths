@@ -3,7 +3,7 @@ import { updateBKTPartial, pGuessForFormat } from '@/lib/bkt/bayesian-knowledge-
 import { decayedPKnown } from '@/lib/bkt/forgetting'
 import { computeGradeSummary } from '@/lib/grade'
 import { qualityFromCorrect } from '@/lib/sm2/spaced-repetition'
-import { updateFSRS, gradeFromScore } from '@/lib/fsrs/fsrs'
+import { updateFSRS, gradeFromScore, compressIntervalForExam } from '@/lib/fsrs/fsrs'
 import { getPrerequisites } from '@/lib/curriculum/topic-graph'
 import { getTopics } from '@/lib/curriculum'
 import { xpForAnswer } from '@/lib/xp-levels'
@@ -97,6 +97,15 @@ export async function POST(req: Request) {
     gradeFromScore(score),
   )
 
+  // Compress the interval as the exam approaches (cramming curve), and never
+  // schedule a review past the exam date.
+  const { data: examProf } = await supabase.from('profiles').select('exam_date').eq('id', user.id).single()
+  const daysToExam = examProf?.exam_date
+    ? Math.max(0, Math.ceil((new Date(examProf.exam_date).getTime() - Date.now()) / 86400000))
+    : null
+  const intervalDays = compressIntervalForExam(fsrs.intervalDays, daysToExam)
+  const nextReviewAt = new Date(Date.now() + intervalDays * 86400000)
+
   const update = {
     student_id: user.id,
     topic_id: topicUUID,
@@ -104,8 +113,8 @@ export async function POST(req: Request) {
     p_transit: newBKT.pTransit,
     p_slip: newBKT.pSlip,
     p_guess: newBKT.pGuess,
-    next_review_at: fsrs.nextReviewAt.toISOString(),
-    interval_days: fsrs.intervalDays,
+    next_review_at: nextReviewAt.toISOString(),
+    interval_days: intervalDays,
     ease_factor: existing?.ease_factor ?? 2.5,
     repetitions: (existing?.repetitions ?? 0) + 1,
     questions_attempted: (existing?.questions_attempted ?? 0) + 1,
@@ -303,5 +312,5 @@ export async function POST(req: Request) {
     skill: skill ?? null,
   })
 
-  return Response.json({ pKnown: newBKT.pKnown, nextReviewAt: fsrs.nextReviewAt, xpGain })
+  return Response.json({ pKnown: newBKT.pKnown, nextReviewAt, xpGain })
 }

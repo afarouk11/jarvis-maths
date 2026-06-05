@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { updateFSRS, gradeFromScore } from './fsrs'
+import { updateFSRS, gradeFromScore, compressIntervalForExam } from './fsrs'
 
 const DAY = 86400000
 const now = Date.UTC(2026, 0, 1)
@@ -51,6 +51,29 @@ describe('updateFSRS — reviews', () => {
     const easy = updateFSRS(prior, 4, now)
     const hard = updateFSRS(prior, 2, now)
     expect(easy.stability).toBeGreaterThan(hard.stability)
+  })
+})
+
+describe('compressIntervalForExam', () => {
+  it('is unchanged with no exam date', () => {
+    expect(compressIntervalForExam(20, null)).toBe(20)
+  })
+
+  it('never schedules past the exam', () => {
+    expect(compressIntervalForExam(30, 5)).toBeLessThanOrEqual(5)
+  })
+
+  it('compresses harder the closer the exam is', () => {
+    const far = compressIntervalForExam(20, 60)
+    const near = compressIntervalForExam(20, 10)
+    const veryNear = compressIntervalForExam(20, 5)
+    expect(far).toBeGreaterThanOrEqual(near)
+    expect(near).toBeGreaterThanOrEqual(veryNear)
+  })
+
+  it('always returns at least 1 day', () => {
+    expect(compressIntervalForExam(1, 3)).toBeGreaterThanOrEqual(1)
+    expect(compressIntervalForExam(50, 0)).toBe(1)
   })
 })
 

@@ -83,6 +83,19 @@ export function updateFSRS(input: FSRSInput, grade: number, now: number = Date.n
   return { stability, difficulty, intervalDays, nextReviewAt: new Date(now + intervalDays * DAY) }
 }
 
+/**
+ * Compresses a review interval as the exam approaches (the cramming curve).
+ * Never schedules the next review past the exam, and progressively shortens
+ * intervals inside the final 30 / 14 / 7 days so revision intensifies.
+ */
+export function compressIntervalForExam(intervalDays: number, daysToExam: number | null): number {
+  if (daysToExam === null) return intervalDays
+  if (daysToExam <= 0) return 1
+  const factor = daysToExam <= 7 ? 0.4 : daysToExam <= 14 ? 0.6 : daysToExam <= 30 ? 0.8 : 1
+  const compressed = Math.max(1, Math.round(Math.min(intervalDays, daysToExam) * factor))
+  return Math.min(compressed, daysToExam)
+}
+
 // Map our continuous answer score (0-1) onto an FSRS grade.
 export function gradeFromScore(score: number): number {
   if (score < 0.5) return 1
