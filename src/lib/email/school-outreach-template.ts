@@ -19,54 +19,61 @@ export function schoolOutreachEmail(opts: OutreachEmailOptions): { subject: stri
       ? 'Years 12–13'
       : 'Years 10–11'
 
-  const subject = `Free AI Maths Tutor for ${schoolName} — Autumn Term + Summer Programme`
+  const subject = `Free AI Maths Tutor for ${schoolName} — Summer + Autumn Term`
 
   const text = `Dear Head of Maths at ${schoolName},
 
-With exams wrapping up, I wanted to reach out at what I think is exactly the right moment.
+Most of your students who underperform in maths aren't lazy. They just don't know what to revise — so they revise everything, retain little, and walk into exams repeating the same mistakes.
 
-I'm Muhammad, founder of StudiQ — an AI-powered maths tutoring platform built specifically for ${courses} students. We're offering a small number of London schools two things completely free, with no strings attached:
+Private tutors fix this. They diagnose the exact gaps, focus every session on what actually costs marks, and adjust in real time. But at £50–80 an hour, most students never get access to one.
+
+That's the gap StudiQ was built to close.
+
+I'm Muhammad, co-founder of StudiQ — an AI maths tutoring platform that does what a great private tutor does: builds a precise map of each student's knowledge, identifies the exact subtopics costing them marks, and closes those gaps before the exam. It works for ${courses} students and covers AQA, Edexcel and OCR.
+
+WHY BOTHER?
+Because it costs you nothing to find out. We're offering ${schoolName} two things completely free — no budget, no contract, no commitment beyond the term:
 
 1. A SUMMER MATHS PROGRAMME (July–August)
-For students who want to get ahead before September — whether that's incoming Year 12s building on their GCSE, Year 13 resitters, or any student who wants a head start. Students work through StudiQ independently over the summer at their own pace.
+Students work through StudiQ independently at their own pace. Perfect for incoming Year 12s building on their GCSE, Year 13 resitters, or any student who wants to arrive in September ahead of the curve.
 
 2. FULL CLASS ACCESS FROM SEPTEMBER (Autumn Term)
-Free access for all your ${yearGroups} students for the entire autumn term, including the teacher dashboard so you can track every student's progress from day one.
+Free for all your ${yearGroups} students for the entire autumn term, including the teacher dashboard so you can track every student's predicted grade and progress from day one.
 
 WHAT STUDENTS GET
-• SPOK — a voice and text AI tutor that explains maths step by step and adapts to each student's exact gaps
+• SPOK — a voice and text AI tutor that explains maths step by step, marks their answers, and adapts to their exact gaps
 • Knowledge Tracing — pinpoints precisely which subtopics are costing marks
-• Past paper AI — 5-year analysis for AQA, Edexcel and OCR
+• Past paper AI — 5-year question analysis for AQA, Edexcel and OCR
 • Spaced repetition — proven to double long-term retention
 • Teacher dashboard — predicted grades, mastery by topic, daily activity${offersAlevel ? `
 • Full GCSE and A-level coverage in one place` : ''}
 
 WHAT WE ASK IN RETURN
 Only two things:
-1. Students complete a baseline assessment before they start (50 minutes — we provide it)
+1. Students complete a baseline assessment before they start (50 minutes — we provide the paper)
 2. Students complete the same assessment at the end of term
 
-That's it. We want to prove — with real data — that this works. No testimonials, no publicity, no financial commitment.
+That's it. We want to prove this works with real data, not testimonials. If it doesn't move the needle, we'd rather know.
 
 IN PRACTICE
 • Under 10 minutes to set up — students join with a class code
-• No IT changes — runs in the browser on any device
+• No IT changes — runs in any browser on any device
 • You receive a full progress report at the end of term
 
 Watch the 2-minute demo: https://youtu.be/5lNYCryUae0
-Full details: https://studiq.org/schools
+Full details and try it yourself: https://studiq.org/schools
 
-If you'd like to get started for September — or even get a few students on the summer programme before the holidays — just reply to this email and I'll set everything up for you personally.
+If this sounds worth exploring, just reply to this email. I'll personally handle setup and be your point of contact throughout.
 
 Thank you for your time.
 
 Warm regards,
 Muhammad Nakmouche
-Founder, StudiQ
+Co-founder, StudiQ
 admin@studiq.org
 studiq.org
 
-P.S. There is no cost, no upsell, and no obligation beyond the term. If the data doesn't show results worth continuing, we'd rather know than not.
+P.S. No cost. No upsell. No obligation beyond the term. If the data doesn't show results worth continuing, we'd rather know than not.
 
 ---
 You're receiving this because ${schoolName} is a London secondary school that teaches ${courses}.
@@ -102,33 +109,47 @@ To opt out permanently, reply with "unsubscribe" and we will remove you immediat
 
       <p style="margin-top:0;">Dear Head of Maths at <strong>${schoolName}</strong>,</p>
 
-      <p>With exams wrapping up, I wanted to reach out at what I think is exactly the right moment.</p>
+      <p>Most of your students who underperform in maths aren't lazy. They just don't know what to revise — so they revise everything, retain little, and walk into exams repeating the same mistakes.</p>
 
-      <p>I'm Muhammad, founder of <strong>StudiQ</strong> — an AI-powered maths tutoring platform for <strong>${courses}</strong> students. We're offering a small number of London schools two things, completely free:</p>
+      <p>Private tutors fix this. They diagnose the exact gaps, focus every session on what actually costs marks, and adjust in real time. But at <strong>£50–80 an hour</strong>, most students never get access to one.</p>
+
+      <p style="font-weight:600;color:#111827;">That's the gap StudiQ was built to close.</p>
+
+      <p>I'm Muhammad, co-founder of <strong>StudiQ</strong> — an AI maths tutoring platform that does what a great private tutor does: builds a precise map of each student's knowledge, identifies the subtopics costing them marks, and closes those gaps before the exam. Built for <strong>${courses}</strong> students across AQA, Edexcel and OCR.</p>
+
+      <!-- Why bother -->
+      <div style="background:#f8faff;border:1px solid #e0eaff;border-radius:8px;padding:20px 24px;margin:24px 0;">
+        <p style="margin:0 0 10px;font-weight:700;color:#111827;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;">Why bother?</p>
+        <p style="margin:0;font-size:14px;color:#374151;line-height:1.8;">
+          Because it costs you nothing to find out. We're not asking for budget, a long-term commitment, or even much of your time.
+          We're offering <strong>${schoolName}</strong> free access for the summer and the entire autumn term.
+          If it moves the needle for your students, we'll have the data to prove it. If it doesn't, we'd genuinely rather know.
+        </p>
+      </div>
 
       <!-- Two offers -->
       <div style="display:grid;gap:12px;margin:24px 0;">
 
         <div style="background:#f0fdf4;border-left:4px solid #22c55e;border-radius:0 8px 8px 0;padding:18px 22px;">
           <p style="margin:0 0 6px;font-weight:700;color:#111827;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;">☀️ Summer Maths Programme — July &amp; August</p>
-          <p style="margin:0;font-size:14px;color:#374151;line-height:1.7;">For students who want a head start before September — incoming Year 12s, resitters, or anyone who wants to arrive in September ahead of the curve. Students work through StudiQ independently at their own pace over the summer.</p>
+          <p style="margin:0;font-size:14px;color:#374151;line-height:1.7;">For incoming Year 12s building on their GCSE, Year 13 resitters, or any student who wants to arrive in September ahead of the curve. Students work independently at their own pace — no timetable required.</p>
         </div>
 
         <div style="background:#f0f6ff;border-left:4px solid #3b82f6;border-radius:0 8px 8px 0;padding:18px 22px;">
           <p style="margin:0 0 6px;font-weight:700;color:#111827;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;">📚 Full Class Access — Autumn Term from September</p>
-          <p style="margin:0;font-size:14px;color:#374151;line-height:1.7;">Free access for all your ${yearGroups} students for the entire autumn term, with the teacher dashboard so you can track every student's predicted grade and progress from day one.</p>
+          <p style="margin:0;font-size:14px;color:#374151;line-height:1.7;">Free for all your ${yearGroups} students for the entire autumn term. Includes the teacher dashboard so you can see every student's predicted grade, mastery by topic, and daily activity — from day one.</p>
         </div>
 
       </div>
 
       <!-- What students get -->
-      <div style="background:#f8faff;border:1px solid #e0eaff;border-radius:8px;padding:20px 24px;margin:24px 0;">
-        <p style="margin:0 0 12px;font-weight:700;color:#111827;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;">What students get</p>
+      <div style="background:#fffdf0;border:1px solid #fde68a;border-radius:8px;padding:20px 24px;margin:24px 0;">
+        <p style="margin:0 0 12px;font-weight:700;color:#111827;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;">What every student gets</p>
         <ul style="margin:0;padding-left:18px;color:#374151;font-size:14px;line-height:2.1;">
-          <li><strong>SPOK</strong> — voice &amp; text AI tutor, step-by-step explanations, adapts to each student's exact gaps</li>
-          <li><strong>Knowledge Tracing</strong> — pinpoints the exact subtopics costing marks in ${courses}</li>
-          <li><strong>Past paper AI</strong> — 5-year analysis for AQA, Edexcel &amp; OCR</li>
-          <li><strong>Spaced repetition</strong> — questions scheduled at the perfect moment, proven to double retention</li>
+          <li><strong>SPOK</strong> — voice &amp; text AI tutor that explains step-by-step, marks answers, and adapts to each student's exact gaps</li>
+          <li><strong>Knowledge Tracing</strong> — pinpoints the precise subtopics costing marks in ${courses}</li>
+          <li><strong>Past paper AI</strong> — 5-year question analysis for AQA, Edexcel &amp; OCR</li>
+          <li><strong>Spaced repetition</strong> — questions timed to hit before a student forgets, proven to double retention</li>
           <li><strong>Teacher dashboard</strong> — predicted grades, mastery by topic, and daily activity per student</li>
           ${offersAlevel ? '<li><strong>GCSE &amp; A-level in one place</strong> — full specification coverage for both courses</li>' : ''}
         </ul>
@@ -138,7 +159,7 @@ To opt out permanently, reply with "unsubscribe" and we will remove you immediat
       <div style="background:#fffbeb;border-left:4px solid #f59e0b;border-radius:0 8px 8px 0;padding:18px 22px;margin:24px 0;">
         <p style="margin:0 0 10px;font-weight:700;color:#111827;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;">What we ask in return</p>
         <ol style="margin:0;padding-left:18px;color:#374151;font-size:14px;line-height:2.1;">
-          <li>Students complete a <strong>baseline assessment before</strong> they start (50 min — we provide it)</li>
+          <li>Students complete a <strong>baseline assessment before they start</strong> (50 minutes — we provide the paper)</li>
           <li>Students complete the <strong>same assessment at the end of term</strong> to measure real progress</li>
         </ol>
         <p style="margin:12px 0 0;font-size:13px;color:#92400e;">We want rigorous evidence, not anecdotes. If the data doesn't show results, we'd rather know.</p>
@@ -163,14 +184,14 @@ To opt out permanently, reply with "unsubscribe" and we will remove you immediat
         <a href="https://studiq.org/schools" style="display:inline-block;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#ffffff;text-decoration:none;padding:15px 36px;border-radius:10px;font-weight:600;font-size:15px;letter-spacing:-0.01em;">
           See the full offer →
         </a>
-        <p style="margin:14px 0 0;font-size:14px;color:#374151;">Or just <strong>reply to this email</strong> — I'll set everything up for you personally.</p>
+        <p style="margin:14px 0 0;font-size:14px;color:#374151;">Or just <strong>reply to this email</strong> — I'll personally handle everything.</p>
       </div>
 
       <p style="font-size:14px;color:#374151;margin-bottom:4px;">Thank you for your time.</p>
       <p style="font-size:14px;margin:0;color:#374151;">
         Warm regards,<br/>
         <strong>Muhammad Nakmouche</strong><br/>
-        Founder, StudiQ<br/>
+        Co-founder, StudiQ<br/>
         <a href="mailto:admin@studiq.org" style="color:#3b82f6;text-decoration:none;">admin@studiq.org</a>
         &nbsp;·&nbsp;
         <a href="https://studiq.org" style="color:#3b82f6;text-decoration:none;">studiq.org</a>
