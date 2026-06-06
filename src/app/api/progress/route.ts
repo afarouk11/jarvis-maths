@@ -171,18 +171,22 @@ export async function POST(req: Request) {
     try {
       for (const raw of misconceptions.slice(0, 5)) {
         const tag = String(raw).slice(0, 200)
-        const { data: existingM } = await supabase
-          .from('student_misconceptions')
-          .select('count')
-          .eq('user_id', user.id).eq('topic_slug', topicId).eq('tag', tag)
-          .maybeSingle()
-        await supabase.from('student_misconceptions').upsert({
-          user_id: user.id,
-          topic_slug: topicId,
-          tag,
-          count: (existingM?.count ?? 0) + 1,
-          last_seen_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,topic_slug,tag' })
+        // Atomic increment via RPC; fall back to read-modify-write if 037 isn't applied.
+        const { error } = await supabase.rpc('bump_misconception', { p_user: user.id, p_topic: topicId, p_tag: tag })
+        if (error) {
+          const { data: existingM } = await supabase
+            .from('student_misconceptions')
+            .select('count')
+            .eq('user_id', user.id).eq('topic_slug', topicId).eq('tag', tag)
+            .maybeSingle()
+          await supabase.from('student_misconceptions').upsert({
+            user_id: user.id,
+            topic_slug: topicId,
+            tag,
+            count: (existingM?.count ?? 0) + 1,
+            last_seen_at: new Date().toISOString(),
+          }, { onConflict: 'user_id,topic_slug,tag' })
+        }
       }
     } catch { /* table may not be migrated yet — non-fatal */ }
   }
@@ -282,13 +286,17 @@ export async function POST(req: Request) {
     }
 
     const update: Record<string, unknown> = {
-      xp: (prof.xp ?? 0) + xpGain,
       streak_days: newStreak,
       last_active_at: now.toISOString(),
     }
     if (freezes !== null) update.streak_freezes = newFreezes
 
     await supabase.from('profiles').update(update).eq('id', user.id)
+
+    // XP is incremented atomically so concurrent answers never lose points.
+    // Fall back to read-modify-write if the RPC (migration 037) isn't present.
+    const { error: xpErr } = await supabase.rpc('increment_xp', { p_user: user.id, p_amount: xpGain })
+    if (xpErr) await supabase.from('profiles').update({ xp: (prof.xp ?? 0) + xpGain }).eq('id', user.id)
   }
 
   // Record grade snapshot at most once per day
