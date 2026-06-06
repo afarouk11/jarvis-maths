@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StudiQ — Maths Baseline Assessment</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Georgia', serif;
+      font-size: 11pt;
+      color: #111;
+      background: #fff;
+      padding: 0;
+    }
+
+    .page {
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 18mm 20mm;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding-bottom: 12px;
+      border-bottom: 2.5px solid #111;
+      margin-bottom: 14px;
+    }
+    .header-left .logo {
+      font-family: Arial, sans-serif;
+      font-size: 18pt;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      color: #1d4ed8;
+    }
+    .header-left .subtitle {
+      font-size: 8.5pt;
+      color: #555;
+      margin-top: 2px;
+      font-family: Arial, sans-serif;
+    }
+    .header-right {
+      text-align: right;
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+      color: #444;
+      line-height: 1.6;
+    }
+
+    /* Title block */
+    .title-block {
+      text-align: center;
+      margin: 14px 0 10px;
+      border: 1.5px solid #111;
+      padding: 10px 16px;
+    }
+    .title-block h1 {
+      font-size: 15pt;
+      font-weight: bold;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+    .title-block .meta {
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+      color: #444;
+      margin-top: 4px;
+    }
+
+    /* Candidate info */
+    .candidate-box {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 12px 0;
+      font-family: Arial, sans-serif;
+      font-size: 9.5pt;
+    }
+    .field {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .field label { color: #555; white-space: nowrap; }
+    .field .line {
+      flex: 1;
+      border-bottom: 1px solid #999;
+      height: 18px;
+    }
+
+    /* Instructions */
+    .instructions {
+      background: #f8f8f8;
+      border: 1px solid #ddd;
+      border-left: 3px solid #1d4ed8;
+      padding: 9px 12px;
+      margin: 12px 0;
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+      line-height: 1.6;
+    }
+    .instructions strong { color: #1d4ed8; }
+
+    /* Marks table */
+    .marks-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0 14px;
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+    }
+    .marks-table th {
+      background: #111;
+      color: #fff;
+      padding: 5px 8px;
+      text-align: center;
+      font-weight: 600;
+    }
+    .marks-table td {
+      border: 1px solid #ccc;
+      padding: 5px 8px;
+      text-align: center;
+    }
+    .marks-table td:first-child { text-align: left; }
+
+    /* Section headers */
+    .section-header {
+      background: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      font-size: 10.5pt;
+      font-weight: bold;
+      padding: 6px 12px;
+      margin: 18px 0 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .section-subhead {
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+      color: #555;
+      margin: -8px 0 12px;
+      font-style: italic;
+    }
+
+    /* Questions */
+    .question {
+      margin-bottom: 20px;
+      page-break-inside: avoid;
+    }
+    .question-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 5px;
+    }
+    .q-number {
+      font-family: Arial, sans-serif;
+      font-size: 10pt;
+      font-weight: bold;
+    }
+    .marks-badge {
+      font-family: Arial, sans-serif;
+      font-size: 8.5pt;
+      color: #555;
+      border: 1px solid #bbb;
+      padding: 1px 7px;
+      border-radius: 2px;
+      white-space: nowrap;
+    }
+    .question p {
+      line-height: 1.65;
+      margin-bottom: 6px;
+    }
+
+    /* Answer lines */
+    .answer-lines {
+      margin-top: 8px;
+    }
+    .answer-line {
+      border-bottom: 1px solid #bbb;
+      height: 22px;
+      margin-bottom: 6px;
+      width: 100%;
+    }
+    .answer-box {
+      border: 1px solid #bbb;
+      min-height: 60px;
+      width: 100%;
+      margin-top: 8px;
+    }
+    .answer-box-tall {
+      border: 1px solid #bbb;
+      min-height: 100px;
+      width: 100%;
+      margin-top: 8px;
+    }
+    .working-box {
+      border: 1px solid #bbb;
+      min-height: 130px;
+      width: 100%;
+      margin-top: 8px;
+      position: relative;
+    }
+    .working-label {
+      font-family: Arial, sans-serif;
+      font-size: 8pt;
+      color: #aaa;
+      position: absolute;
+      top: 4px;
+      left: 6px;
+    }
+
+    /* Multiple choice */
+    .choices {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .choice {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: Arial, sans-serif;
+      font-size: 10pt;
+    }
+    .choice-box {
+      width: 16px;
+      height: 16px;
+      border: 1.5px solid #555;
+      flex-shrink: 0;
+    }
+
+    /* Math display */
+    .math {
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 12pt;
+    }
+    .formula {
+      text-align: center;
+      margin: 8px 0;
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 12pt;
+    }
+
+    /* Graph grid */
+    .graph-grid {
+      border: 1px solid #bbb;
+      width: 100%;
+      height: 120px;
+      margin-top: 8px;
+      background-image:
+        linear-gradient(rgba(200,200,200,0.5) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(200,200,200,0.5) 1px, transparent 1px);
+      background-size: 10mm 10mm;
+    }
+
+    /* Part labels */
+    .part {
+      margin-top: 10px;
+      margin-left: 12px;
+    }
+    .part-label {
+      font-family: Arial, sans-serif;
+      font-size: 9.5pt;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 24px;
+      padding-top: 8px;
+      border-top: 1px solid #ccc;
+      display: flex;
+      justify-content: space-between;
+      font-family: Arial, sans-serif;
+      font-size: 8pt;
+      color: #888;
+    }
+
+    /* Page break */
+    .page-break { page-break-after: always; }
+
+    @media print {
+      body { padding: 0; }
+      .page { padding: 14mm 18mm; }
+      @page { size: A4; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">StudiQ</div>
+      <div class="subtitle">AI-Powered Maths Tutoring · studiq.org</div>
+    </div>
+    <div class="header-right">
+      <strong>BASELINE ASSESSMENT</strong><br/>
+      A-Level Mathematics<br/>
+      Time allowed: 50 minutes<br/>
+      Total marks: 50
+    </div>
+  </div>
+
+  <!-- Title -->
+  <div class="title-block">
+    <h1>A-Level Mathematics — Baseline Assessment</h1>
+    <div class="meta">To be completed before starting the StudiQ programme &nbsp;|&nbsp; AQA / Edexcel / OCR</div>
+  </div>
+
+  <!-- Candidate info -->
+  <div class="candidate-box">
+    <div class="field"><label>Full name:</label><div class="line"></div></div>
+    <div class="field"><label>Date:</label><div class="line"></div></div>
+    <div class="field"><label>School:</label><div class="line"></div></div>
+    <div class="field"><label>Year group:</label><div class="line"></div></div>
+    <div class="field"><label>Exam board:</label><div class="line"></div></div>
+    <div class="field"><label>Target grade:</label><div class="line"></div></div>
+  </div>
+
+  <!-- Instructions -->
+  <div class="instructions">
+    <strong>Instructions:</strong> Answer <strong>all</strong> questions. Show all working where required — method marks are awarded.
+    You may use a calculator. Write clearly in the spaces provided. This assessment is used to personalise your StudiQ programme —
+    it is not a test of your worth. Answer honestly and do your best.
+  </div>
+
+  <!-- Marks summary -->
+  <table class="marks-table">
+    <tr>
+      <th>Section</th>
+      <th>Topics covered</th>
+      <th>Marks</th>
+      <th>Score</th>
+    </tr>
+    <tr><td>A — Algebra &amp; Functions</td><td>Expressions, equations, inequalities, functions</td><td>12</td><td></td></tr>
+    <tr><td>B — Coordinate Geometry &amp; Sequences</td><td>Straight lines, circles, sequences, series</td><td>10</td><td></td></tr>
+    <tr><td>C — Trigonometry &amp; Exponentials</td><td>Trig identities, logs, exponential models</td><td>10</td><td></td></tr>
+    <tr><td>D — Calculus</td><td>Differentiation and integration</td><td>12</td><td></td></tr>
+    <tr><td>E — Statistics &amp; Mechanics</td><td>Probability, distributions, kinematics, forces</td><td>6</td><td></td></tr>
+    <tr><td colspan="2"><strong>Total</strong></td><td><strong>50</strong></td><td></td></tr>
+  </table>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section-header">Section A — Algebra &amp; Functions &nbsp; [12 marks]</div>
+
+  <!-- Q1 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">1.</span>
+      <span class="marks-badge">3 marks</span>
+    </div>
+    <p>Solve the inequality <span class="math">2x² − 5x − 3 &lt; 0</span>, giving your answer in set notation.</p>
+    <div class="working-box"><span class="working-label">Working</span></div>
+    <div style="margin-top:8px; font-family:Arial,sans-serif; font-size:9pt; color:#555;">Answer: .................................</div>
+  </div>
+
+  <!-- Q2 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">2.</span>
+      <span class="marks-badge">3 marks</span>
+    </div>
+    <p>The function <span class="math">f(x) = x³ − 6x² + 9x − 4</span>.</p>
+    <div class="part">
+      <div class="part-label">(a)</div>
+      <p>Show that <span class="math">(x − 1)</span> is a factor of <span class="math">f(x)</span>. &nbsp; [1]</p>
+      <div class="answer-box"></div>
+    </div>
+    <div class="part">
+      <div class="part-label">(b)</div>
+      <p>Hence fully factorise <span class="math">f(x)</span>. &nbsp; [2]</p>
+      <div class="working-box"><span class="working-label">Working</span></div>
+      <div style="margin-top:8px; font-family:Arial,sans-serif; font-size:9pt; color:#555;">Answer: .................................</div>
+    </div>
+  </div>
+
+  <!-- Q3 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">3.</span>
+      <span class="marks-badge">2 marks</span>
+    </div>
+    <p>Express <span class="math">3x² − 12x + 7</span> in the form <span class="math">a(x + b)² + c</span>, stating the values of <span class="math">a</span>, <span class="math">b</span>, and <span class="math">c</span>.</p>
+    <div class="working-box"><span class="working-label">Working</span></div>
+    <div style="margin-top:8px; font-family:Arial,sans-serif; font-size:9pt; color:#555;">a = ............  b = ............  c = ............</div>
+  </div>
+
+  <!-- Q4 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">4.</span>
+      <span class="marks-badge">4 marks</span>
+    </div>
+    <p>Given that <span class="math">f(x) = 2x + 1</span> and <span class="math">g(x) = x² − 3</span>:</p>
+    <div class="part">
+      <div class="part-label">(a)</div>
+      <p>Find <span class="math">fg(x)</span>. &nbsp; [2]</p>
+      <div class="answer-box"></div>
+    </div>
+    <div class="part">
+      <div class="part-label">(b)</div>
+      <p>Find <span class="math">f⁻¹(x)</span> and state its domain. &nbsp; [2]</p>
+      <div class="answer-box"></div>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section-header">Section B — Coordinate Geometry &amp; Sequences &nbsp; [10 marks]</div>
+
+  <!-- Q5 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">5.</span>
+      <span class="marks-badge">4 marks</span>
+    </div>
+    <p>A circle has equation <span class="math">x² + y² − 6x + 4y − 12 = 0</span>.</p>
+    <div class="part">
+      <div class="part-label">(a)</div>
+      <p>Find the centre and radius of the circle. &nbsp; [2]</p>
+      <div class="answer-box"></div>
+    </div>
+    <div class="part">
+      <div class="part-label">(b)</div>
+      <p>Find the equation of the tangent to the circle at the point <span class="math">(5, −4 + √13)</span>. &nbsp; [2]</p>
+      <div class="working-box"><span class="working-label">Working</span></div>
+      <div style="margin-top:8px; font-family:Arial,sans-serif; font-size:9pt; color:#555;">Answer: .................................</div>
+    </div>
+  </div>
+
+  <!-- Q6 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">6.</span>
+      <span class="marks-badge">3 marks</span>
+    </div>
+    <p>An arithmetic sequence has first term 7 and common difference 4.</p>
+    <div class="part">
+      <div class="part-label">(a)</div>
+      <p>Find the 20th term. &nbsp; [1]</p>
+      <div class="answer-line"></div>
+    </div>
+    <div class="part">
+      <div class="part-label">(b)</div>
+      <p>Find the sum of the first 50 terms. &nbsp; [2]</p>
+      <div class="working-box"><span class="working-label">Working</span></div>
+      <div style="margin-top:8px; font-family:Arial,sans-serif; font-size:9pt; color:#555;">Answer: .................................</div>
+    </div>
+  </div>
+
+  <!-- Q7 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">7.</span>
+      <span class="marks-badge">3 marks</span>
+    </div>
+    <p>A geometric series has first term 8 and common ratio <span class="math">r = ¾</span>.</p>
+    <div class="part">
+      <div class="part-label">(a)</div>
+      <p>Explain why the series converges. &nbsp; [1]</p>
+      <div class="answer-box"></div>
+    </div>
+    <div class="part">
+      <div class="part-label">(b)</div>
+      <p>Find the sum to infinity. &nbsp; [2]</p>
+      <div class="working-box"><span class="working-label">Working</span></div>
+      <div style="margin-top:8px; font-family:Arial,sans-serif; font-size:9pt; color:#555;">Answer: .................................</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section-header">Section C — Trigonometry &amp; Exponentials &nbsp; [10 marks]</div>
+
+  <!-- Q8 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">8.</span>
+      <span class="marks-badge">4 marks</span>
+    </div>
+    <p>Solve <span class="math">2sin²θ − sinθ − 1 = 0</span> for <span class="math">0° ≤ θ ≤ 360°</span>.</p>
+    <div class="working-box"><span class="working-label">Working</span></div>
+    <div style="margin-top:8px; font-family:Arial,sans-serif; font-size:9pt; color:#555;">θ = .................................</div>
+  </div>
+
+  <!-- Q9 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">9.</span>
+      <span class="marks-badge">3 marks</span>
+    </div>
+    <p>Prove that <span class="math">(1 − cos²θ)(1 + cot²θ) ≡ 1</span>.</p>
+    <div class="working-box" style="min-height:110px;"><span class="working-label">Proof</span></div>
+  </div>
+
+  <!-- Q10 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">10.</span>
+      <span class="marks-badge">3 marks</span>
+    </div>
+    <p>A population P grows according to the model <span class="math">P = 500e^{0.04t}</span>, where t is measured in years.</p>
+    <div class="part">
+      <div class="part-label">(a)</div>
+      <p>State the initial population. &nbsp; [1]</p>
+      <div class="answer-line"></div>
+    </div>
+    <div class="part">
+      <div class="part-label">(b)</div>
+      <p>Find the time when the population reaches 1500. Give your answer to 2 decimal places. &nbsp; [2]</p>
+      <div class="working-box"><span class="working-label">Working</span></div>
+      <div style="margin-top:8px; font-family:Arial,sans-serif; font-size:9pt; color:#555;">t = ............ years</div>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section-header">Section D — Calculus &nbsp; [12 marks]</div>
+
+  <!-- Q11 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">11.</span>
+      <span class="marks-badge">4 marks</span>
+    </div>
+    <p>Differentiate the following with respect to x:</p>
+    <div class="part">
+      <div class="part-label">(a)</div>
+      <p><span class="math">y = 3x⁴ − 5x² + 7x − 2</span> &nbsp; [1]</p>
+      <div class="answer-line"></div>
+    </div>
+    <div class="part">
+      <div class="part-label">(b)</div>
+      <p><span class="math">y = (2x + 1)⁵</span> &nbsp; [2]</p>
+      <div class="answer-line"></div>
+    </div>
+    <div class="part">
+      <div class="part-label">(c)</div>
+      <p><span class="math">y = x²eˣ</span> &nbsp; [2]</p>
+      <div class="answer-line"></div>
+    </div>
+  </div>
+
+  <!-- Q12 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">12.</span>
+      <span class="marks-badge">4 marks</span>
+    </div>
+    <p>Find <span class="math">∫ x·sin(x) dx</span>, using integration by parts.</p>
+    <div class="working-box" style="min-height:130px;"><span class="working-label">Working</span></div>
+    <div style="margin-top:8px; font-family:Arial,sans-serif; font-size:9pt; color:#555;">Answer: .................................</div>
+  </div>
+
+  <!-- Q13 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">13.</span>
+      <span class="marks-badge">4 marks</span>
+    </div>
+    <p>The curve C has equation <span class="math">y = x³ − 3x² − 9x + 5</span>.</p>
+    <div class="part">
+      <div class="part-label">(a)</div>
+      <p>Find the coordinates of the stationary points of C. &nbsp; [3]</p>
+      <div class="working-box"><span class="working-label">Working</span></div>
+    </div>
+    <div class="part">
+      <div class="part-label">(b)</div>
+      <p>Determine the nature of each stationary point. &nbsp; [1]</p>
+      <div class="answer-box"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section-header">Section E — Statistics &amp; Mechanics &nbsp; [6 marks]</div>
+
+  <!-- Q14 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">14.</span>
+      <span class="marks-badge">3 marks</span>
+    </div>
+    <p>A bag contains 4 red and 6 blue balls. Two balls are drawn at random without replacement.</p>
+    <div class="part">
+      <div class="part-label">(a)</div>
+      <p>Find the probability that both balls are the same colour. &nbsp; [2]</p>
+      <div class="working-box"><span class="working-label">Working</span></div>
+      <div style="margin-top:8px; font-family:Arial,sans-serif; font-size:9pt; color:#555;">P = .................................</div>
+    </div>
+    <div class="part">
+      <div class="part-label">(b)</div>
+      <p>A random variable X ~ B(10, 0.3). Find P(X ≥ 3). &nbsp; [1]</p>
+      <div class="answer-box"></div>
+    </div>
+  </div>
+
+  <!-- Q15 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">15.</span>
+      <span class="marks-badge">3 marks</span>
+    </div>
+    <p>A particle moves in a straight line. Its velocity at time t seconds is given by <span class="math">v = 3t² − 12t + 9</span> (m/s).</p>
+    <div class="part">
+      <div class="part-label">(a)</div>
+      <p>Find the times when the particle is at rest. &nbsp; [2]</p>
+      <div class="working-box"><span class="working-label">Working</span></div>
+    </div>
+    <div class="part">
+      <div class="part-label">(b)</div>
+      <p>Find the acceleration when t = 2. &nbsp; [1]</p>
+      <div class="answer-line"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span>StudiQ Baseline Assessment — Mathematics &nbsp;|&nbsp; studiq.org &nbsp;|&nbsp; admin@studiq.org</span>
+    <span>Total: _______ / 50</span>
+  </div>
+
+</div>
+</body>
+</html>

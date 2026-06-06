@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StudiQ — Science Baseline Assessment</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Georgia', serif;
+      font-size: 11pt;
+      color: #111;
+      background: #fff;
+    }
+
+    .page {
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 18mm 20mm;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding-bottom: 12px;
+      border-bottom: 2.5px solid #111;
+      margin-bottom: 14px;
+    }
+    .header-left .logo {
+      font-family: Arial, sans-serif;
+      font-size: 18pt;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      color: #16a34a;
+    }
+    .header-left .subtitle {
+      font-size: 8.5pt;
+      color: #555;
+      margin-top: 2px;
+      font-family: Arial, sans-serif;
+    }
+    .header-right {
+      text-align: right;
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+      color: #444;
+      line-height: 1.6;
+    }
+
+    .title-block {
+      text-align: center;
+      margin: 14px 0 10px;
+      border: 1.5px solid #111;
+      padding: 10px 16px;
+    }
+    .title-block h1 {
+      font-size: 15pt;
+      font-weight: bold;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+    .title-block .meta {
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+      color: #444;
+      margin-top: 4px;
+    }
+
+    .candidate-box {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 12px 0;
+      font-family: Arial, sans-serif;
+      font-size: 9.5pt;
+    }
+    .field { display: flex; align-items: center; gap: 8px; }
+    .field label { color: #555; white-space: nowrap; }
+    .field .line { flex: 1; border-bottom: 1px solid #999; height: 18px; }
+
+    .instructions {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-left: 3px solid #16a34a;
+      padding: 9px 12px;
+      margin: 12px 0;
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+      line-height: 1.6;
+    }
+    .instructions strong { color: #16a34a; }
+
+    .marks-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0 14px;
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+    }
+    .marks-table th {
+      background: #111;
+      color: #fff;
+      padding: 5px 8px;
+      text-align: center;
+      font-weight: 600;
+    }
+    .marks-table td {
+      border: 1px solid #ccc;
+      padding: 5px 8px;
+      text-align: center;
+    }
+    .marks-table td:first-child { text-align: left; }
+
+    .section-header {
+      color: #fff;
+      font-family: Arial, sans-serif;
+      font-size: 10.5pt;
+      font-weight: bold;
+      padding: 6px 12px;
+      margin: 18px 0 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .biology-header { background: #16a34a; }
+    .chemistry-header { background: #7c3aed; }
+    .physics-header { background: #dc2626; }
+
+    .question { margin-bottom: 18px; page-break-inside: avoid; }
+    .question-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 5px;
+    }
+    .q-number { font-family: Arial, sans-serif; font-size: 10pt; font-weight: bold; }
+    .marks-badge {
+      font-family: Arial, sans-serif;
+      font-size: 8.5pt;
+      color: #555;
+      border: 1px solid #bbb;
+      padding: 1px 7px;
+      border-radius: 2px;
+    }
+    .question p { line-height: 1.65; margin-bottom: 5px; }
+
+    .answer-line { border-bottom: 1px solid #bbb; height: 22px; margin-bottom: 6px; width: 100%; }
+    .answer-box { border: 1px solid #bbb; min-height: 55px; width: 100%; margin-top: 8px; }
+    .answer-box-tall { border: 1px solid #bbb; min-height: 90px; width: 100%; margin-top: 8px; }
+    .working-box {
+      border: 1px solid #bbb;
+      min-height: 90px;
+      width: 100%;
+      margin-top: 8px;
+      position: relative;
+    }
+    .working-label { font-family: Arial, sans-serif; font-size: 8pt; color: #aaa; position: absolute; top: 4px; left: 6px; }
+
+    .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+    .choice { display: flex; align-items: center; gap: 8px; font-family: Arial, sans-serif; font-size: 10pt; }
+    .choice-box { width: 16px; height: 16px; border: 1.5px solid #555; flex-shrink: 0; }
+
+    .part { margin-top: 10px; margin-left: 12px; }
+    .part-label { font-family: Arial, sans-serif; font-size: 9.5pt; font-weight: bold; margin-bottom: 4px; }
+
+    .diagram-box {
+      border: 1px solid #bbb;
+      width: 100%;
+      height: 100px;
+      margin: 8px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: Arial, sans-serif;
+      font-size: 8pt;
+      color: #aaa;
+    }
+
+    .table-data {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0;
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+    }
+    .table-data th { background: #f0f0f0; padding: 4px 8px; border: 1px solid #ccc; text-align: center; }
+    .table-data td { padding: 4px 8px; border: 1px solid #ccc; text-align: center; }
+
+    .footer {
+      margin-top: 24px;
+      padding-top: 8px;
+      border-top: 1px solid #ccc;
+      display: flex;
+      justify-content: space-between;
+      font-family: Arial, sans-serif;
+      font-size: 8pt;
+      color: #888;
+    }
+
+    .page-break { page-break-after: always; }
+
+    @media print {
+      body { padding: 0; }
+      .page { padding: 14mm 18mm; }
+      @page { size: A4; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">StudiQ</div>
+      <div class="subtitle">AI-Powered Science Tutoring · studiq.org</div>
+    </div>
+    <div class="header-right">
+      <strong>BASELINE ASSESSMENT</strong><br/>
+      GCSE Combined Science<br/>
+      Time allowed: 50 minutes<br/>
+      Total marks: 48
+    </div>
+  </div>
+
+  <!-- Title -->
+  <div class="title-block">
+    <h1>GCSE Science — Baseline Assessment</h1>
+    <div class="meta">Biology · Chemistry · Physics &nbsp;|&nbsp; To be completed before starting the StudiQ programme</div>
+  </div>
+
+  <!-- Candidate info -->
+  <div class="candidate-box">
+    <div class="field"><label>Full name:</label><div class="line"></div></div>
+    <div class="field"><label>Date:</label><div class="line"></div></div>
+    <div class="field"><label>School:</label><div class="line"></div></div>
+    <div class="field"><label>Year group:</label><div class="line"></div></div>
+    <div class="field"><label>Exam board:</label><div class="line"></div></div>
+    <div class="field"><label>Target grade:</label><div class="line"></div></div>
+  </div>
+
+  <!-- Instructions -->
+  <div class="instructions">
+    <strong>Instructions:</strong> Answer <strong>all</strong> questions across all three sections. Show working where marks are awarded for method.
+    You may use a calculator. This assessment is used to personalise your StudiQ programme — answer honestly and do your best.
+    A periodic table is provided at the back of this paper.
+  </div>
+
+  <!-- Marks summary -->
+  <table class="marks-table">
+    <tr>
+      <th>Section</th>
+      <th>Topics covered</th>
+      <th>Marks</th>
+      <th>Score</th>
+    </tr>
+    <tr><td>A — Biology</td><td>Cells, genetics, ecology, disease, homeostasis</td><td>16</td><td></td></tr>
+    <tr><td>B — Chemistry</td><td>Atomic structure, bonding, reactions, rates, organic</td><td>16</td><td></td></tr>
+    <tr><td>C — Physics</td><td>Forces, energy, waves, electricity, space</td><td>16</td><td></td></tr>
+    <tr><td colspan="2"><strong>Total</strong></td><td><strong>48</strong></td><td></td></tr>
+  </table>
+
+  <!-- ═══════════════════════ BIOLOGY ═══════════════════════ -->
+  <div class="section-header biology-header">Section A — Biology &nbsp; [16 marks]</div>
+
+  <!-- Q1 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">1.</span>
+      <span class="marks-badge">1 mark</span>
+    </div>
+    <p>Which of the following is found in a plant cell but NOT in an animal cell?</p>
+    <div class="choices">
+      <div class="choice"><div class="choice-box"></div> A &nbsp; Nucleus</div>
+      <div class="choice"><div class="choice-box"></div> B &nbsp; Cell wall</div>
+      <div class="choice"><div class="choice-box"></div> C &nbsp; Cell membrane</div>
+      <div class="choice"><div class="choice-box"></div> D &nbsp; Mitochondria</div>
+    </div>
+  </div>
+
+  <!-- Q2 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">2.</span>
+      <span class="marks-badge">3 marks</span>
+    </div>
+    <p>A student places a plant cell in a concentrated salt solution.</p>
+    <div class="part">
+      <div class="part-label">(a)</div>
+      <p>State the process by which water moves out of the cell. &nbsp; [1]</p>
+      <div class="answer-line"></div>
+    </div>
+    <div class="part">
+      <div class="part-label">(b)</div>
+      <p>Describe what happens to the cell and explain why. &nbsp; [2]</p>
+      <div class="answer-box-tall"></div>
+    </div>
+  </div>
+
+  <!-- Q3 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">3.</span>
+      <span class="marks-badge">4 marks</span>
+    </div>
+    <p>The diagram below shows a pair of chromosomes. Use it to answer the questions.</p>
+    <div class="diagram-box">[Diagram: homologous chromosome pair showing alleles Bb at one locus, Aa at another]</div>
+    <div class="part">
+      <div class="part-label">(a)</div>
+      <p>What is the genotype of this organism at the locus shown? &nbsp; [1]</p>
+      <div class="answer-line"></div>
+    </div>
+    <div class="part">
+      <div class="part-label">(b)</div>
+      <p>Complete a Punnett square to show the expected offspring ratios from a cross between two individuals who are both heterozygous (Bb × Bb). State the probability of a homozygous recessive offspring. &nbsp; [3]</p>
+      <div class="working-box" style="min-height:110px;"><span class="working-label">Punnett square / working</span></div>
+      <div style="margin-top:6px; font-family:Arial,sans-serif; font-size:9pt; color:#555;">Probability of bb offspring: .................................</div>
+    </div>
+  </div>
+
+  <!-- Q4 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">4.</span>
+      <span class="marks-badge">4 marks</span>
+    </div>
+    <p>Describe how the body responds when blood glucose concentration rises above the normal level. Include the role of the pancreas and the mechanism used to restore normal levels. &nbsp; [4]</p>
+    <div class="answer-box-tall" style="min-height:100px;"></div>
+  </div>
+
+  <!-- Q5 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">5.</span>
+      <span class="marks-badge">4 marks</span>
+    </div>
+    <p>A student investigates the effect of light intensity on the rate of photosynthesis. The table shows her results.</p>
+    <table class="table-data">
+      <tr><th>Light intensity (arbitrary units)</th><th>0</th><th>10</th><th>20</th><th>30</th><th>40</th></tr>
+      <tr><td>O₂ produced (cm³/min)</td><td>0</td><td>1.2</td><td>2.4</td><td>3.5</td><td>3.5</td></tr>
+    </table>
+    <div class="part">
+      <div class="part-label">(a)</div>
+      <p>Describe the relationship between light intensity and rate of photosynthesis shown in the data. &nbsp; [2]</p>
+      <div class="answer-box"></div>
+    </div>
+    <div class="part">
+      <div class="part-label">(b)</div>
+      <p>Suggest why the rate does not increase beyond 30 arbitrary units. &nbsp; [2]</p>
+      <div class="answer-box"></div>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- ═══════════════════════ CHEMISTRY ═══════════════════════ -->
+  <div class="section-header chemistry-header">Section B — Chemistry &nbsp; [16 marks]</div>
+
+  <!-- Q6 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">6.</span>
+      <span class="marks-badge">1 mark</span>
+    </div>
+    <p>An atom has 17 protons, 17 electrons and 18 neutrons. Which of the following correctly describes this atom?</p>
+    <div class="choices">
+      <div class="choice"><div class="choice-box"></div> A &nbsp; It is a positive ion</div>
+      <div class="choice"><div class="choice-box"></div> B &nbsp; It is a negative ion</div>
+      <div class="choice"><div class="choice-box"></div> C &nbsp; It is a neutral atom</div>
+      <div class="choice"><div class="choice-box"></div> D &nbsp; It is an isotope with mass number 17</div>
+    </div>
+  </div>
+
+  <!-- Q7 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">7.</span>
+      <span class="marks-badge">3 marks</span>
+    </div>
+    <p>Sodium chloride (NaCl) and silicon dioxide (SiO₂) are both giant structures.</p>
+    <div class="part">
+      <div class="part-label">(a)</div>
+      <p>State the type of bonding in each compound. &nbsp; [2]</p>
+      <div class="answer-box"></div>
+    </div>
+    <div class="part">
+      <div class="part-label">(b)</div>
+      <p>Explain why sodium chloride conducts electricity when dissolved in water but silicon dioxide does not. &nbsp; [1]</p>
+      <div class="answer-box"></div>
+    </div>
+  </div>
+
+  <!-- Q8 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">8.</span>
+      <span class="marks-badge">4 marks</span>
+    </div>
+    <p>A student reacts magnesium with dilute hydrochloric acid and monitors the volume of gas produced over time.</p>
+    <div class="part">
+      <div class="part-label">(a)</div>
+      <p>Write the balanced symbol equation for this reaction. Include state symbols. &nbsp; [2]</p>
+      <div class="answer-line"></div>
+      <div class="answer-line"></div>
+    </div>
+    <div class="part">
+      <div class="part-label">(b)</div>
+      <p>State two ways the student could increase the rate of this reaction. &nbsp; [2]</p>
+      <div class="answer-box"></div>
+    </div>
+  </div>
+
+  <!-- Q9 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">9.</span>
+      <span class="marks-badge">4 marks</span>
+    </div>
+    <p>A reversible reaction reaches equilibrium: &nbsp; N₂(g) + 3H₂(g) ⇌ 2NH₃(g) &nbsp; ΔH = −92 kJ/mol</p>
+    <div class="part">
+      <div class="part-label">(a)</div>
+      <p>State the effect of increasing temperature on the yield of ammonia. Explain your answer using Le Chatelier's principle. &nbsp; [2]</p>
+      <div class="answer-box"></div>
+    </div>
+    <div class="part">
+      <div class="part-label">(b)</div>
+      <p>State the effect of increasing pressure on the position of equilibrium and explain why. &nbsp; [2]</p>
+      <div class="answer-box"></div>
+    </div>
+  </div>
+
+  <!-- Q10 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">10.</span>
+      <span class="marks-badge">4 marks</span>
+    </div>
+    <p>Describe the process of cracking in the petrochemical industry. Include why it is carried out, the conditions used, and give one example of a product. &nbsp; [4]</p>
+    <div class="answer-box-tall" style="min-height:100px;"></div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- ═══════════════════════ PHYSICS ═══════════════════════ -->
+  <div class="section-header physics-header">Section C — Physics &nbsp; [16 marks]</div>
+
+  <!-- Q11 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">11.</span>
+      <span class="marks-badge">1 mark</span>
+    </div>
+    <p>Which of the following is a vector quantity?</p>
+    <div class="choices">
+      <div class="choice"><div class="choice-box"></div> A &nbsp; Speed</div>
+      <div class="choice"><div class="choice-box"></div> B &nbsp; Mass</div>
+      <div class="choice"><div class="choice-box"></div> C &nbsp; Velocity</div>
+      <div class="choice"><div class="choice-box"></div> D &nbsp; Temperature</div>
+    </div>
+  </div>
+
+  <!-- Q12 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">12.</span>
+      <span class="marks-badge">4 marks</span>
+    </div>
+    <p>A car of mass 1200 kg accelerates from rest to 20 m/s in 8 seconds.</p>
+    <div class="part">
+      <div class="part-label">(a)</div>
+      <p>Calculate the acceleration of the car. &nbsp; [2]</p>
+      <div class="working-box"><span class="working-label">Working</span></div>
+      <div style="margin-top:6px; font-family:Arial,sans-serif; font-size:9pt; color:#555;">Acceleration = ............ m/s²</div>
+    </div>
+    <div class="part">
+      <div class="part-label">(b)</div>
+      <p>Calculate the resultant force acting on the car. &nbsp; [2]</p>
+      <div class="working-box"><span class="working-label">Working</span></div>
+      <div style="margin-top:6px; font-family:Arial,sans-serif; font-size:9pt; color:#555;">Force = ............ N</div>
+    </div>
+  </div>
+
+  <!-- Q13 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">13.</span>
+      <span class="marks-badge">3 marks</span>
+    </div>
+    <p>A wave has a frequency of 200 Hz and a wavelength of 1.5 m.</p>
+    <div class="part">
+      <div class="part-label">(a)</div>
+      <p>Calculate the wave speed. &nbsp; [2]</p>
+      <div class="working-box"><span class="working-label">Working</span></div>
+      <div style="margin-top:6px; font-family:Arial,sans-serif; font-size:9pt; color:#555;">Wave speed = ............ m/s</div>
+    </div>
+    <div class="part">
+      <div class="part-label">(b)</div>
+      <p>State whether this wave could be a sound wave or a light wave. Give a reason. &nbsp; [1]</p>
+      <div class="answer-box"></div>
+    </div>
+  </div>
+
+  <!-- Q14 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">14.</span>
+      <span class="marks-badge">4 marks</span>
+    </div>
+    <p>A circuit contains a 12 V battery and two resistors in series: R₁ = 4 Ω and R₂ = 8 Ω.</p>
+    <div class="part">
+      <div class="part-label">(a)</div>
+      <p>Calculate the total resistance in the circuit. &nbsp; [1]</p>
+      <div class="answer-line"></div>
+    </div>
+    <div class="part">
+      <div class="part-label">(b)</div>
+      <p>Calculate the current flowing through the circuit. &nbsp; [1]</p>
+      <div class="answer-line"></div>
+    </div>
+    <div class="part">
+      <div class="part-label">(c)</div>
+      <p>Calculate the voltage across R₂. &nbsp; [1]</p>
+      <div class="answer-line"></div>
+    </div>
+    <div class="part">
+      <div class="part-label">(d)</div>
+      <p>Calculate the power dissipated by R₁. &nbsp; [1]</p>
+      <div class="working-box"><span class="working-label">Working</span></div>
+      <div style="margin-top:6px; font-family:Arial,sans-serif; font-size:9pt; color:#555;">Power = ............ W</div>
+    </div>
+  </div>
+
+  <!-- Q15 -->
+  <div class="question">
+    <div class="question-header">
+      <span class="q-number">15.</span>
+      <span class="marks-badge">4 marks</span>
+    </div>
+    <p>Explain how nuclear fission releases energy and describe how this is used in a nuclear power station to generate electricity. &nbsp; [4]</p>
+    <div class="answer-box-tall" style="min-height:110px;"></div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span>StudiQ Baseline Assessment — Science &nbsp;|&nbsp; studiq.org &nbsp;|&nbsp; admin@studiq.org</span>
+    <span>Total: _______ / 48</span>
+  </div>
+
+</div>
+</body>
+</html>
