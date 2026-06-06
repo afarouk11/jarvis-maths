@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { predictedGrade, masteryColor } from '@/lib/bkt/bayesian-knowledge-tracing'
+import { masteryColor } from '@/lib/bkt/bayesian-knowledge-tracing'
+import { applyDecay } from '@/lib/bkt/forgetting'
+import { computeGradeSummary, computeGradeTrend } from '@/lib/grade'
 import { computeExamReadiness } from '@/lib/exam-readiness'
 import { getTopics } from '@/lib/curriculum'
 import type { Level } from '@/lib/curriculum'
@@ -21,6 +23,7 @@ import { StreakCard } from '@/components/dashboard/StreakCard'
 import { ExamCountdown } from '@/components/dashboard/ExamCountdown'
 import { DailyChallenge } from '@/components/dashboard/DailyChallenge'
 import { PushNotificationPrompt } from '@/components/dashboard/PushNotificationPrompt'
+import { AssignmentsCard } from '@/components/dashboard/AssignmentsCard'
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ upgraded?: string }> }) {
   const params = await searchParams
@@ -32,12 +35,21 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const { data: profileCheck } = await supabase.from('profiles').select('onboarding_complete').eq('id', user.id).single()
   if (!profileCheck?.onboarding_complete) redirect('/onboarding')
 
-  const [{ data: profile }, { data: progress }, { data: recentLessons }, { data: topicsRows }] = await Promise.all([
+  const fourteenDaysAgo = new Date(Date.now() - 14 * 86400000).toISOString()
+  const [{ data: profile }, { data: progressRows }, { data: recentLessons }, { data: topicsRows }, { data: snapshots }] = await Promise.all([
     supabase.from('profiles').select().eq('id', user.id).single(),
     supabase.from('student_progress').select().eq('student_id', user.id),
     supabase.from('lessons').select('id, title, topic_id, difficulty, created_at').order('created_at', { ascending: false }).limit(4),
     supabase.from('topics').select('id, slug'),
+    supabase.from('grade_snapshots').select('avg_p_known, created_at').eq('student_id', user.id).gte('created_at', fourteenDaysAgo).order('created_at', { ascending: true }),
   ])
+
+  // Grade trend over the last two weeks ("B, trending up").
+  const gradeTrend = computeGradeTrend(snapshots ?? [])
+
+  // Apply forgetting decay so mastery reflects real retention across every
+  // surface below (grade, readiness, heat map, weak topics).
+  const progress = applyDecay(progressRows ?? [])
 
   const level = ((profile?.level as Level) ?? 'A-Level')
   const allTopics = getTopics(level)
@@ -48,9 +60,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const progressMap = new Map((progress ?? []).map(p => [p.topic_id, p]))
   const pKnownMap   = new Map((progress ?? []).map(p => [p.topic_id, p.p_known]))
   const dueTopics   = (progress ?? []).filter(p => new Date(p.next_review_at) <= new Date()).slice(0, 4)
-  const avgPKnown          = allTopics.length > 0 ? (progress ?? []).reduce((s, p) => s + p.p_known, 0) / allTopics.length : 0
-  const attemptedAvgPKnown = (progress ?? []).length > 0 ? (progress ?? []).reduce((s, p) => s + p.p_known, 0) / (progress ?? []).length : 0
-  const grade       = predictedGrade(avgPKnown)
+  const gradeSummary       = computeGradeSummary(progress ?? [], allTopics.length)
+  const avgPKnown          = gradeSummary.overallPKnown
+  const attemptedAvgPKnown = gradeSummary.studiedPKnown
+  // Until the student has covered enough of the spec, a predicted grade is noise.
+  const grade              = gradeSummary.confident ? gradeSummary.grade : '—'
   const name        = profile?.full_name?.split(' ')[0] ?? 'Student'
   const weakTopics  = [...(progress ?? [])].sort((a, b) => a.p_known - b.p_known).slice(0, 3)
   const xpLevel     = getXPLevel(profile?.xp ?? 0)
@@ -121,7 +135,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       {/* Key stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon={<Trophy size={16} />} label="Predicted Grade" value={grade} sub={`${Math.round(avgPKnown * 100)}% across all topics`} sub2={`${Math.round(attemptedAvgPKnown * 100)}% within studied topics`} color={gradeColor} />
+        <StatCard icon={<Trophy size={16} />} label="Predicted Grade" value={grade}
+          sub={gradeSummary.confident ? `${Math.round(avgPKnown * 100)}% across all topics` : 'Keep studying to unlock'}
+          sub2={gradeSummary.confident ? `${Math.round(attemptedAvgPKnown * 100)}% within studied topics` : undefined}
+          trend={gradeSummary.confident ? gradeTrend ?? undefined : undefined}
+          color={gradeColor} />
         <StatCard icon={<Flame size={16} />}  label="Study Streak"   value={`${profile?.streak_days ?? 0}d`} sub="days in a row" color="#f97316" />
         <XPCard xp={profile?.xp ?? 0} />
         <StatCard icon={<BookOpen size={16} />} label="Topics Studied" value={`${progress?.length ?? 0}`} sub={`of ${allTopics.length} total`} color="#22c55e" />
@@ -186,6 +204,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             lastStudiedAt={profile?.last_active_at ?? null}
           />
           <DailyChallenge />
+          <AssignmentsCard />
           <StudyPlan />
 
           {/* Quick actions */}
@@ -260,8 +279,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   )
 }
 
-function StatCard({ icon, label, value, sub, sub2, color }: {
+function StatCard({ icon, label, value, sub, sub2, color, trend }: {
   icon: React.ReactNode; label: string; value: string; sub: string; sub2?: string; color: string
+  trend?: { direction: 'up' | 'down' | 'flat'; deltaPoints: number }
 }) {
   return (
     <div className="p-4 rounded-xl"
@@ -270,9 +290,16 @@ function StatCard({ icon, label, value, sub, sub2, color }: {
         <div className="p-1.5 rounded-lg" style={{ background: `${color}18`, color }}>{icon}</div>
         <p className="text-xs font-medium" style={{ color: '#5a7aaa' }}>{label}</p>
       </div>
-      <p className="font-bold mb-0.5" style={{ color, fontFamily: 'var(--font-space-grotesk)', fontSize: 28, lineHeight: 1 }}>
-        {value}
-      </p>
+      <div className="flex items-baseline gap-2 mb-0.5">
+        <p className="font-bold" style={{ color, fontFamily: 'var(--font-space-grotesk)', fontSize: 28, lineHeight: 1 }}>
+          {value}
+        </p>
+        {trend && trend.direction !== 'flat' && (
+          <span className="text-xs font-semibold" style={{ color: trend.direction === 'up' ? '#4ade80' : '#f87171' }}>
+            {trend.direction === 'up' ? '▲' : '▼'} {Math.abs(trend.deltaPoints)}pts
+          </span>
+        )}
+      </div>
       <p className="text-xs" style={{ color: '#5a7aaa', position: 'relative' }}>{sub}</p>
       {sub2 && <p className="text-xs mt-0.5" style={{ color: '#374151', position: 'relative' }}>{sub2}</p>}
     </div>

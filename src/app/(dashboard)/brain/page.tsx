@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { BrainMap } from '@/components/progress/BrainMap'
-import { predictedGrade } from '@/lib/bkt/bayesian-knowledge-tracing'
+import { applyDecay } from '@/lib/bkt/forgetting'
+import { computeGradeSummary } from '@/lib/grade'
 import { getTopics, getTopicCategories } from '@/lib/curriculum'
 import type { Level } from '@/lib/curriculum'
 
@@ -10,25 +11,35 @@ export default async function BrainPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/sign-in')
 
-  const [{ data: profile }, { data: progress }] = await Promise.all([
+  const [{ data: profile }, { data: progressRows }, { data: topicRows }] = await Promise.all([
     supabase.from('profiles').select('level').eq('id', user.id).single(),
     supabase.from('student_progress').select().eq('student_id', user.id),
+    supabase.from('topics').select('id, slug'),
   ])
 
   const level: Level = (profile?.level as Level) ?? 'A-Level'
   const topics = getTopics(level)
   const topicCategories = getTopicCategories(level)
 
-  const progressList = progress ?? []
-  const avgPKnown = progressList.length
-    ? progressList.reduce((s: number, p: any) => s + p.p_known, 0) / progressList.length
-    : 0
+  // The brain map keys everything by slug, but student_progress.topic_id is a
+  // UUID — remap it so mastery actually matches the topics (previously it never
+  // did, so the map showed every topic as unstarted).
+  const slugById: Record<string, string> = Object.fromEntries((topicRows ?? []).map((t: { id: string; slug: string }) => [t.id, t.slug]))
+  const remapped = (progressRows ?? []).map(p => ({ ...p, topic_id: slugById[p.topic_id] ?? p.topic_id }))
+
+  // Decay mastery for topics overdue for review so the map shows real retention.
+  const progressList = applyDecay(remapped)
+  // Grade is now derived from mastery across ALL topics (unstudied = 0), matching
+  // the dashboard. Previously this page divided by studied topics only, so it
+  // reported a higher grade than the dashboard for the same student.
+  const gradeSummary = computeGradeSummary(progressList, topics.length)
 
   return (
     <BrainMap
       progress={progressList}
-      avgPKnown={avgPKnown}
-      grade={predictedGrade(avgPKnown)}
+      slugById={slugById}
+      avgPKnown={gradeSummary.overallPKnown}
+      grade={gradeSummary.confident ? gradeSummary.grade : '—'}
       topicsActive={progressList.length}
       totalTopics={topics.length}
       topics={topics}

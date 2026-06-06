@@ -4,6 +4,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { anthropic } from '@ai-sdk/anthropic'
 import { generateText } from 'ai'
 import { isPro } from '@/lib/stripe'
+import { checkRateLimit, tooManyRequests } from '@/lib/api/rate-limit'
 
 function formatBoardName(board: string): string {
   switch (board) {
@@ -30,6 +31,9 @@ export async function POST(req: NextRequest) {
     if (!isPro(prof?.stripe_subscription_status)) {
       return NextResponse.json({ error: 'pro_required' }, { status: 403 })
     }
+
+    const rl = await checkRateLimit(supabase, user.id, 'generate-lesson', 20, 3600)
+    if (!rl.allowed) return tooManyRequests(rl)
 
     const levelLabel = prof?.level === 'gcse' ? 'GCSE' : 'A-level'
     const boardLabel = formatBoardName(prof?.exam_board ?? 'aqa')

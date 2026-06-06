@@ -20,12 +20,28 @@ export default function SignUpPage() {
     setError('')
     const nameError = validateName(form.fullName)
     if (nameError) { setError(nameError); setLoading(false); return }
-    const { error } = await createClient().auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: { data: { full_name: form.fullName } },
-    })
-    if (error) { setError(error.message); setLoading(false); return }
+
+    const supabase = createClient()
+    // If the visitor is browsing as an anonymous guest, upgrade that account in
+    // place (keeps the same user id) so all their guest progress carries over.
+    // Otherwise create a fresh account.
+    const { data: { user: current } } = await supabase.auth.getUser()
+
+    if (current?.is_anonymous) {
+      const { error } = await supabase.auth.updateUser({
+        email: form.email,
+        password: form.password,
+        data: { full_name: form.fullName },
+      })
+      if (error) { setError(error.message); setLoading(false); return }
+    } else {
+      const { error } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: { data: { full_name: form.fullName } },
+      })
+      if (error) { setError(error.message); setLoading(false); return }
+    }
     router.push('/onboarding')
   }
 

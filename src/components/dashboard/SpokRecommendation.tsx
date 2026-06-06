@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { computeExamReadiness } from '@/lib/exam-readiness'
+import { rootWeakPrerequisite } from '@/lib/curriculum/topic-graph'
 import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
 import type { StudentProgress } from '@/types'
 
@@ -40,9 +41,21 @@ export function SpokRecommendation({ progress, examDate, targetGrade, examBoard,
   }
 
   const accent = readiness.urgency === 'low' ? readiness.color : urgencyAccent[readiness.urgency]
-  const href   = readiness.topPrioritySlug
-    ? `/practice?topic=${readiness.topPrioritySlug}`
-    : '/practice'
+
+  // If the weakest topic is blocked by a shakier prerequisite, recommend that
+  // prerequisite first (prerequisite-graph-aware recommendation).
+  const pKnownBySlug = new Map(progress.map(p => [slugById.get(p.topic_id) ?? p.topic_id, p.p_known]))
+  const rootSlug = readiness.topPrioritySlug
+    ? rootWeakPrerequisite(readiness.topPrioritySlug, pKnownBySlug)
+    : null
+  const rootName = rootSlug ? topicNames.get(rootSlug) : null
+
+  const recommendedSlug = rootSlug ?? readiness.topPrioritySlug
+  const href = recommendedSlug ? `/practice?topic=${recommendedSlug}` : '/practice'
+
+  const message = rootName && readiness.topPriorityName
+    ? `${rootName} underpins ${readiness.topPriorityName} — strengthen it first.`
+    : (readiness.improvementNeeded ?? `You're at ${readiness.score}% exam readiness. Keep going.`)
 
   if (progress.length === 0) {
     return (
@@ -117,7 +130,7 @@ export function SpokRecommendation({ progress, examDate, targetGrade, examBoard,
           )}
         </div>
         <p className="text-sm font-medium text-white leading-snug">
-          {readiness.improvementNeeded ?? `You're at ${readiness.score}% exam readiness. Keep going.`}
+          {message}
         </p>
       </div>
 

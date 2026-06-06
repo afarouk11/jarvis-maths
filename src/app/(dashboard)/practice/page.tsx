@@ -11,6 +11,8 @@ import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
 import { GCSE_TOPICS } from '@/lib/curriculum/gcse-topics'
 import { CheckCircle, XCircle, Loader2, Zap, Check, X, Pen, Type } from 'lucide-react'
 import { DrawingCanvas } from '@/components/ui/DrawingCanvas'
+import { VideoExplanation } from '@/components/math/VideoExplanation'
+import { sanitizeSvg } from '@/lib/math/sanitize-svg'
 import { Skeleton } from '@/components/ui/skeleton'
 import { friendlyError } from '@/lib/friendly-error'
 
@@ -25,6 +27,8 @@ interface MarkResult {
   quality: number
   feedback: string
   partialCredit: boolean
+  marksAwarded?: number
+  marksTotal?: number
   exam_technique_flags?: string[]
   steps?: MarkingStep[] | null
 }
@@ -51,6 +55,7 @@ function PracticePageInner() {
   const [studentAnswer, setStudentAnswer] = useState('')
   const [marking, setMarking] = useState(false)
   const [markResult, setMarkResult] = useState<MarkResult | null>(null)
+  const [reported, setReported] = useState(false)
   const [revealed, setRevealed] = useState(false)
   const [startTime, setStartTime] = useState(Date.now())
   const [submitted, setSubmitted] = useState(false)
@@ -123,6 +128,7 @@ function PracticePageInner() {
     setStudentAnswer('')
     setDrawingImage('')
     setMarkResult(null)
+    setReported(false)
     setSubmitted(false)
     setStartTime(Date.now())
 
@@ -136,14 +142,16 @@ function PracticePageInner() {
           res = await fetch('/api/generate-question', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ topicId: slug, topicName: topic.name, difficulty: 3 }),
+            // No difficulty sent — the server picks it adaptively from current mastery
+          body: JSON.stringify({ topicId: slug, topicName: topic.name }),
           })
         }
       } else {
         res = await fetch('/api/generate-question', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topicId: slug, topicName: topic.name, difficulty: 3 }),
+          // No difficulty sent — the server picks it adaptively from current mastery
+          body: JSON.stringify({ topicId: slug, topicName: topic.name }),
         })
       }
       if (!res.ok) {
@@ -213,7 +221,24 @@ function PracticePageInner() {
     setRevealed(true)
   }
 
-  async function recordAndNext(quality: number) {
+  function reportMarking() {
+    if (!question || !markResult) return
+    setReported(true)
+    fetch('/api/report-marking', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        stem: question.stem,
+        correctAnswer: question.answer,
+        studentAnswer: drawMode ? '[handwritten]' : studentAnswer,
+        aiFeedback: markResult.feedback,
+        aiCorrect: markResult.correct,
+        questionId: question.id,
+      }),
+    }).catch(() => {})
+  }
+
+  async function recordAndNext(quality: number, selfRating?: number) {
     if (!question) return
     const timeSeconds = Math.round((Date.now() - startTime) / 1000)
     const res = await fetch('/api/progress', {
@@ -225,6 +250,13 @@ function PracticePageInner() {
         correct: quality >= 3,
         timeSeconds,
         quality,
+        difficulty: question.difficulty,
+        skill: (question as { skill?: string }).skill,
+        marksEarned: markResult?.marksAwarded,
+        marksAvailable: markResult?.marksTotal,
+        format: 'written',
+        misconceptions: markResult?.exam_technique_flags ?? [],
+        selfRating,
       }),
     })
     const data = await res.json()
@@ -424,8 +456,10 @@ function PracticePageInner() {
               value={selectedSlug}
               onChange={e => setSelectedSlug(e.target.value)}
               className="px-3 py-2 rounded-lg text-sm outline-none flex-1 min-w-0"
-              style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', color: '#e8f0fe', colorScheme: 'dark' }}>
-              {allTopics.map(t => <option key={t.slug} value={t.slug} style={{ background: '#1e3a5f', color: '#e8f0fe' }}>{t.name}</option>)}
+              // Solid (non-translucent) colours so the control and its option list
+              // never render white-on-white on light-theme browsers/OSes.
+              style={{ background: '#13233f', border: '1px solid rgba(59,130,246,0.35)', color: '#e8f0fe', colorScheme: 'dark' }}>
+              {allTopics.map(t => <option key={t.slug} value={t.slug} style={{ background: '#13233f', color: '#e8f0fe' }}>{t.name}</option>)}
             </select>
             <motion.button
               whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
@@ -498,6 +532,12 @@ function PracticePageInner() {
                   <span className="text-xs font-medium text-blue-400">
                     {allTopics.find(t => t.slug === selectedSlug)?.name} · {question.marks} mark{question.marks !== 1 ? 's' : ''}
                   </span>
+                  {(question as { skill?: string }).skill && (
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                      style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.3)', color: '#c4b5fd' }}>
+                      Focus: {(question as { skill?: string }).skill}
+                    </span>
+                  )}
                   {(question as { source?: string }).source && (question as { source?: string }).source !== 'ai-generated' && (
                     <span className="text-xs px-2 py-0.5 rounded-full font-medium"
                       style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)', color: '#fbbf24' }}>
@@ -505,13 +545,19 @@ function PracticePageInner() {
                     </span>
                   )}
                 </div>
-                <span className="text-xs" style={{ color: '#5a7aaa' }}>
+                <span className="text-xs flex items-center gap-1.5" style={{ color: '#5a7aaa' }}>
+                  <span title="Difficulty adapts to your mastery" style={{ color: '#f59e0b', fontSize: 10, fontWeight: 600 }}>ADAPTIVE</span>
                   {'★'.repeat(question.difficulty)}{'☆'.repeat(5 - question.difficulty)}
                 </span>
               </div>
               <div className="text-white leading-relaxed">
                 <MixedMath content={question.stem} />
               </div>
+              {question.diagram && sanitizeSvg(question.diagram) && (
+                <div className="mt-4 rounded-lg p-3 flex justify-center overflow-x-auto"
+                  style={{ background: '#f8f9fa', border: '1px solid rgba(255,255,255,0.1)' }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeSvg(question.diagram) }} />
+              )}
             </div>
 
             {/* Answer input */}
@@ -596,6 +642,13 @@ function PracticePageInner() {
                       {markResult.correct ? 'Correct!' : markResult.partialCredit ? 'Partially correct' : 'Incorrect'}
                     </p>
                     <p className="text-sm" style={{ color: '#d1deff' }}>{markResult.feedback}</p>
+                    {reported ? (
+                      <p className="text-xs mt-2" style={{ color: '#4ade80' }}>Thanks — we&apos;ll review this mark.</p>
+                    ) : (
+                      <button onClick={reportMarking} className="text-xs mt-2 underline transition-colors hover:text-slate-300" style={{ color: '#5a7aaa' }}>
+                        Marked wrong? Report it
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -642,7 +695,7 @@ function PracticePageInner() {
                   {question.worked_solution && question.worked_solution.length > 0 && (
                     <div className="mb-4">
                       <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-2">Worked Solution</p>
-                      <StepByStepSolution steps={question.worked_solution} />
+                      <StepByStepSolution steps={question.worked_solution} marks={question.marks} />
                     </div>
                   )}
                   <div className="p-3 rounded-lg"
@@ -650,6 +703,16 @@ function PracticePageInner() {
                     <p className="text-xs font-medium text-green-400 mb-1">Answer</p>
                     <div className="text-white text-sm"><MixedMath content={question.answer} /></div>
                   </div>
+
+                  {/* Video explanation — offered when the student didn't fully get it */}
+                  {(!markResult || !markResult.correct) && (
+                    <div className="mt-3">
+                      <VideoExplanation
+                        topicName={allTopics.find(t => t.slug === selectedSlug)?.name ?? selectedSlug}
+                        topicSlug={selectedSlug}
+                      />
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -669,7 +732,7 @@ function PracticePageInner() {
                   ].map(opt => (
                     <motion.button key={opt.value}
                       whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                      onClick={() => recordAndNext(markResult?.quality ?? opt.value)}
+                      onClick={() => recordAndNext(markResult?.quality ?? opt.value, opt.value)}
                       className="py-2 rounded-lg text-xs font-medium"
                       style={{ background: `${opt.color}15`, border: `1px solid ${opt.color}40`, color: opt.color }}>
                       {opt.label}

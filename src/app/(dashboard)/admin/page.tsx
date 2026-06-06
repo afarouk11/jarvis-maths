@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
-import { Database, Clapperboard, FileText } from 'lucide-react'
+import { Database, Clapperboard, FileText, Flag } from 'lucide-react'
 
 const TYPES = [
   { value: 'worked_example', label: 'Worked Example' },
@@ -43,13 +43,25 @@ interface Entry {
   created_at: string
 }
 
+interface MarkingReport {
+  id: string
+  stem: string | null
+  correct_answer: string | null
+  student_answer: string | null
+  ai_feedback: string | null
+  ai_correct: boolean | null
+  question_id: string | null
+  created_at: string
+}
+
 export default function AdminPage() {
   const [authorized, setAuthorized] = useState<boolean | null>(null)
   const [entries, setEntries]       = useState<Entry[]>([])
   const [saving, setSaving]         = useState(false)
   const [deleting, setDeleting]     = useState<string | null>(null)
   const [toast, setToast]           = useState('')
-  const [tab, setTab]               = useState<'knowledge' | 'creators' | 'papers'>('knowledge')
+  const [tab, setTab]               = useState<'knowledge' | 'creators' | 'papers' | 'reports'>('knowledge')
+  const [reports, setReports]       = useState<MarkingReport[]>([])
 
   // Official papers state
   const [officialPapers, setOfficialPapers]   = useState<OfficialPaperRow[]>([])
@@ -112,6 +124,24 @@ export default function AdminPage() {
       .order('created_at', { ascending: false })
       .then(({ data }) => setVideos(data ?? []))
   }, [authorized])
+
+  useEffect(() => {
+    if (!authorized || tab !== 'reports') return
+    fetch('/api/report-marking')
+      .then(r => (r.ok ? r.json() : { reports: [] }))
+      .then(d => setReports(d.reports ?? []))
+      .catch(() => {})
+  }, [authorized, tab])
+
+  async function resolveReport(id: string, flagQuestionId?: string | null) {
+    await fetch('/api/report-marking', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, flagQuestionId: flagQuestionId ?? undefined }),
+    }).catch(() => {})
+    setReports(prev => prev.filter(r => r.id !== id))
+    showToast(flagQuestionId ? 'Resolved and question flagged.' : 'Report resolved.')
+  }
 
   function showToast(msg: string) {
     setToast(msg)
@@ -226,6 +256,7 @@ export default function AdminPage() {
           { key: 'knowledge', label: 'Knowledge Base', icon: <Database size={13} /> },
           { key: 'creators',  label: 'Creators',       icon: <Clapperboard size={13} /> },
           { key: 'papers',    label: 'Past Papers',    icon: <FileText size={13} /> },
+          { key: 'reports',   label: 'Mark Reports',   icon: <Flag size={13} /> },
         ] as const).map(({ key, label, icon }) => (
           <button
             key={key}
@@ -593,6 +624,42 @@ export default function AdminPage() {
               >
                 {paperDeleting === p.id ? '…' : 'Delete'}
               </button>
+            </div>
+          ))}
+        </div>
+      </>}
+
+      {tab === 'reports' && <>
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-slate-300">{reports.length} unresolved report{reports.length !== 1 ? 's' : ''}</h2>
+          {reports.length === 0 && (
+            <p className="text-sm text-center py-8" style={{ color: '#3a4a5c' }}>No marking reports to review. 🎉</p>
+          )}
+          {reports.map(r => (
+            <div key={r.id} className="rounded-xl px-4 py-3 space-y-2"
+              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <p className="text-xs" style={{ color: '#5a7aaa' }}>
+                {new Date(r.created_at).toLocaleString('en-GB')} · SPOK said{' '}
+                <span style={{ color: r.ai_correct ? '#4ade80' : '#f87171' }}>{r.ai_correct ? 'correct' : 'incorrect'}</span>
+              </p>
+              <p className="text-sm text-white"><span className="text-slate-500">Q:</span> {r.stem}</p>
+              <p className="text-xs text-slate-300"><span className="text-slate-500">Student:</span> {r.student_answer}</p>
+              <p className="text-xs text-slate-300"><span className="text-slate-500">Scheme:</span> {r.correct_answer}</p>
+              {r.ai_feedback && <p className="text-xs" style={{ color: '#fbbf24' }}><span className="text-slate-500">SPOK:</span> {r.ai_feedback}</p>}
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => resolveReport(r.id)}
+                  className="text-xs px-3 py-1.5 rounded-lg"
+                  style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#4ade80' }}>
+                  Resolve
+                </button>
+                {r.question_id && (
+                  <button onClick={() => resolveReport(r.id, r.question_id)}
+                    className="text-xs px-3 py-1.5 rounded-lg"
+                    style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
+                    Flag question & resolve
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>

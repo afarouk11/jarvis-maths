@@ -6,6 +6,7 @@ import { embedText } from '@/lib/ai/embeddings'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { isPro, PLANS } from '@/lib/stripe'
+import { logEvent } from '@/lib/analytics'
 import { CHAT_SKILL_MODES } from '@/lib/spok-skills'
 import type { SkillModeId } from '@/lib/spok-skills'
 import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
@@ -26,6 +27,30 @@ Rules:
 - Never fabricate slugs. Only use slugs from the list above.
 - When a student says "I need help with X" or "where can I learn Y", respond with a brief explanation and 2-4 relevant topic links.
 - Links render as clickable buttons in the student's interface — they click and go straight to that lesson.
+---`
+
+const NAV_LINKS_BLOCK = `
+
+---
+## Site navigation — help students find their way around StudiQ
+
+When a student asks how or where to do something on the site (or seems lost), point them to the right page using this exact format inline: [NAV:/path|Button label]
+
+Available pages:
+- [NAV:/dashboard|Dashboard] — their home overview: streak, predicted grade, what's due
+- [NAV:/practice|Practice] — adaptive exam questions marked by you (add ?topic=slug to target a topic, e.g. [NAV:/practice?topic=integration|Practice integration])
+- [NAV:/topics|Topics] — browse every topic and open a lesson
+- [NAV:/papers|Past Papers] — generate a full mock paper or open official past papers
+- [NAV:/progress|Progress] — grade trend, mastery charts and exam readiness
+- [NAV:/brain|Knowledge Map] — the 3D neural map showing mastery and gaps
+- [NAV:/timetable|Revision Timetable] — a personalised revision schedule
+- [NAV:/leaderboard|Leaderboard] — XP ranking
+- [NAV:/profile|Profile] — change exam board, target grade or exam date
+
+Rules:
+- Use a NAV link whenever the student asks "how do I…", "where do I…", "can I…" about a feature, or when sending them somewhere would genuinely help their next step.
+- Only use paths from the list above. Never invent a path.
+- Keep it natural: one short sentence plus the relevant link, not a wall of buttons. Usually one NAV link, occasionally two.
 ---`
 
 export const maxDuration = 60
@@ -81,6 +106,8 @@ export async function POST(req: Request) {
       }
     }
   }
+
+  await logEvent(supabase, user.id, 'chat_message', { skillMode: skillMode ?? null, hasImage: !!imageData })
 
   const profile = await buildStudentProfile(user.id)
 
@@ -155,6 +182,7 @@ export async function POST(req: Request) {
   const system = [
     SPOK_SYSTEM_PROMPT,
     TOPIC_LINKS_BLOCK,
+    NAV_LINKS_BLOCK,
     accessibilityInstructions,
     languageInstruction,
     profile ? `\n\n---\n${profile}\n---\n\nUse this profile to personalise your responses.` : '',

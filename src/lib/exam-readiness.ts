@@ -1,5 +1,6 @@
 import type { StudentProgress } from '@/types'
 import { predictedGrade } from '@/lib/bkt/bayesian-knowledge-tracing'
+import { masteryBarForGrade } from '@/lib/grade'
 
 export interface ExamReadiness {
   score: number           // 0–100
@@ -85,9 +86,11 @@ export function computeExamReadiness({
   // Label + color
   const { label, color } = readinessLabel(score)
 
-  // Top priority: lowest p_known among studied topics, or first unstudied
+  // Top priority: the weakest topic still below the mastery bar required for the
+  // student's target grade, so effort is steered toward what moves THAT grade.
+  const bar = masteryBarForGrade(targetGrade)
   const sorted = [...progress].sort((a, b) => a.p_known - b.p_known)
-  const topPriority = sorted[0] ?? null
+  const topPriority = sorted.find(p => p.p_known < bar) ?? sorted[0] ?? null
   const topPrioritySlug = topPriority ? (slugById.get(topPriority.topic_id) ?? null) : null
   const topPriorityName = topPrioritySlug ? (topicNames.get(topPrioritySlug) ?? null) : null
   const topPriorityMastery = topPriority?.p_known ?? null

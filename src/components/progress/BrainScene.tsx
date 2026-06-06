@@ -337,6 +337,34 @@ function arcPoints(a: THREE.Vector3, b: THREE.Vector3, segments = 12): THREE.Vec
   })
 }
 
+// ── Per-section zone definitions ──────────────────────────────────────────────
+// Well-separated directions on the unit sphere for up to 6 sections.
+// Each entry is [cx, cy, cz] (unnormalised) and a halfAngle cap radius in radians.
+// Known A-level and GCSE sections get stable, anatomically-motivated positions.
+// Any overflow sections beyond the known list are placed automatically.
+const KNOWN_ZONE_DIRS: Record<string, [number, number, number, number]> = {
+  // A-level
+  'Pure Mathematics': [0,     0.5,   1,     1.0 ],
+  'Statistics':       [-1,    0.1,  -0.55,  0.85],
+  'Mechanics':        [ 1,   -0.15, -0.55,  0.80],
+  // GCSE
+  'Number':                    [ 0,    0.6,   1,    0.85],
+  'Algebra':                   [-0.9,  0.3,   0.6,  0.85],
+  'Geometry & Measures':       [ 0.9,  0.3,   0.6,  0.85],
+  'Statistics & Probability':  [ 0,   -0.6,  -0.8,  0.85],
+}
+
+// Fallback directions for sections not in KNOWN_ZONE_DIRS, spread evenly around
+// the equator and alternating vertical bands so clusters stay separated.
+const FALLBACK_DIRS: Array<[number, number, number, number]> = [
+  [ 0,   0.8,  0.6,  0.80],
+  [-0.9, 0,    0.5,  0.80],
+  [ 0.9, 0,    0.5,  0.80],
+  [ 0,  -0.8,  0.6,  0.80],
+  [-0.7, 0.4, -0.6,  0.80],
+  [ 0.7, 0.4, -0.6,  0.80],
+]
+
 // ── Scene: neurons + synapses ─────────────────────────────────────────────────
 function NeuralScene({
   progress,
@@ -361,17 +389,37 @@ function NeuralScene({
     return new Set(slugs)
   }, [sectionFilter, topicCategories])
 
+  // Build per-section zone assignments: each section gets a [cx,cy,cz,halfAngle].
+  // Known sections get their fixed anatomical direction; unknown sections pull
+  // from FALLBACK_DIRS in order so they are always well-separated.
+  const sectionZones = useMemo((): Map<string, [number, number, number, number]> => {
+    const zones = new Map<string, [number, number, number, number]>()
+    let fallbackIdx = 0
+    for (const sec of Object.keys(topicCategories)) {
+      if (KNOWN_ZONE_DIRS[sec] !== undefined) {
+        zones.set(sec, KNOWN_ZONE_DIRS[sec])
+      } else {
+        const dir = FALLBACK_DIRS[fallbackIdx % FALLBACK_DIRS.length]
+        zones.set(sec, dir)
+        fallbackIdx++
+      }
+    }
+    return zones
+  }, [topicCategories])
+
+  // Compute the world-space centre of each section's cap (used for labels).
+  const sectionCentres = useMemo((): Map<string, THREE.Vector3> => {
+    const R_LABEL = 1.85 // slightly outside the neuron shell so labels don't overlap neurons
+    const centres = new Map<string, THREE.Vector3>()
+    for (const [sec, [cx, cy, cz]] of sectionZones) {
+      centres.set(sec, new THREE.Vector3(cx, cy, cz).normalize().multiplyScalar(R_LABEL))
+    }
+    return centres
+  }, [sectionZones])
+
   const nodePositions = useMemo(() => {
     const map = new Map<string, THREE.Vector3>()
     const R = 1.3
-
-    // For A-level: cluster neurons into 3 spatial zones on the sphere surface.
-    // Pure → front/upper, Stats → left, Mechanics → right.
-    const A_LEVEL_ZONES: Record<string, { cx: number; cy: number; cz: number; halfAngle: number }> = {
-      'Pure Mathematics': { cx: 0,    cy: 0.5,   cz: 1,     halfAngle: 1.0 },
-      'Statistics':       { cx: -1,   cy: 0.1,   cz: -0.55, halfAngle: 0.85 },
-      'Mechanics':        { cx: 1,    cy: -0.15, cz: -0.55, halfAngle: 0.80 },
-    }
 
     function placeInCap(slugs: string[], cx: number, cy: number, cz: number, halfAngle: number) {
       const center = new THREE.Vector3(cx, cy, cz).normalize()
@@ -393,14 +441,14 @@ function NeuralScene({
     }
 
     const handled = new Set<string>()
-    for (const [sec, zone] of Object.entries(A_LEVEL_ZONES)) {
+    for (const [sec, [cx, cy, cz, halfAngle]] of sectionZones) {
       const slugsInSec = (topicCategories[sec] ?? []).filter(s => topics.some(t => t.slug === s))
       if (slugsInSec.length === 0) continue
-      placeInCap(slugsInSec, zone.cx, zone.cy, zone.cz, zone.halfAngle)
+      placeInCap(slugsInSec, cx, cy, cz, halfAngle)
       slugsInSec.forEach(s => handled.add(s))
     }
 
-    // GCSE or uncategorised: uniform Fibonacci spiral
+    // Any topics not covered by topicCategories at all: uniform Fibonacci spiral
     const remaining = topics.filter(t => !handled.has(t.slug))
     if (remaining.length > 0) {
       const phi = Math.PI * (3 - Math.sqrt(5))
@@ -413,7 +461,7 @@ function NeuralScene({
     }
 
     return map
-  }, [topics, topicCategories])
+  }, [topics, topicCategories, sectionZones])
 
   const edgeData = useMemo(() => (
     TOPIC_EDGES
@@ -425,6 +473,20 @@ function NeuralScene({
       })
   ), [nodePositions, slugMap])
 
+  // Short display label for each section name
+  const SHORT_LABEL: Record<string, string> = {
+    'Pure Mathematics':        'PURE',
+    'Statistics':              'STATS',
+    'Mechanics':               'MECH',
+    'Number':                  'NUMBER',
+    'Algebra':                 'ALGEBRA',
+    'Geometry & Measures':     'GEOMETRY',
+    'Statistics & Probability':'PROB',
+  }
+  function sectionLabel(sec: string): string {
+    return SHORT_LABEL[sec] ?? sec.split(' ')[0].toUpperCase().slice(0, 6)
+  }
+
   return (
     <>
       {edgeData.map(({ arc, color }, i) => (
@@ -434,7 +496,8 @@ function NeuralScene({
 
       {/* Neurons */}
       {topics.map(t => {
-        const pos = nodePositions.get(t.slug)!
+        const pos = nodePositions.get(t.slug)
+        if (pos === undefined) return null
         const pKnown = slugMap.get(t.slug) ?? 0
         const color = progressHex(pKnown)
         const active = filteredSlugs === null || filteredSlugs.has(t.slug)
@@ -453,35 +516,36 @@ function NeuralScene({
         )
       })}
 
-      {/* Section labels — only for A-level (Pure / Stats / Mech) */}
-      {'Pure Mathematics' in topicCategories && (
-        <>
-          <Html position={[0, 2.0, 2.1]} center distanceFactor={8} style={{ pointerEvents: 'none' }}>
+      {/* Section labels — rendered at each cluster centre, dim when another section is filtered */}
+      {Array.from(sectionCentres.entries()).map(([sec, centre]) => {
+        const isFiltered = sectionFilter !== null && sectionFilter !== sec
+        return (
+          <Html
+            key={sec}
+            position={[centre.x, centre.y, centre.z]}
+            center
+            distanceFactor={8}
+            style={{ pointerEvents: 'none', transition: 'opacity 0.3s', opacity: isFiltered ? 0.15 : 1 }}
+          >
             <div style={{
-              background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.35)',
-              borderRadius: 6, padding: '3px 9px', color: '#93c5fd',
-              fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.12em',
-              whiteSpace: 'nowrap', textTransform: 'uppercase', backdropFilter: 'blur(4px)',
-            }}>PURE</div>
+              background: 'rgba(245,158,11,0.10)',
+              border: '1px solid rgba(245,158,11,0.28)',
+              borderRadius: 6,
+              padding: '3px 9px',
+              color: '#f59e0b',
+              fontSize: 10,
+              fontFamily: 'monospace',
+              letterSpacing: '0.12em',
+              whiteSpace: 'nowrap',
+              textTransform: 'uppercase',
+              backdropFilter: 'blur(4px)',
+              opacity: 0.72,
+            }}>
+              {sectionLabel(sec)}
+            </div>
           </Html>
-          <Html position={[-2.3, 0.3, -1.2]} center distanceFactor={8} style={{ pointerEvents: 'none' }}>
-            <div style={{
-              background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)',
-              borderRadius: 6, padding: '3px 9px', color: '#fcd34d',
-              fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.12em',
-              whiteSpace: 'nowrap', textTransform: 'uppercase', backdropFilter: 'blur(4px)',
-            }}>STATS</div>
-          </Html>
-          <Html position={[2.3, -0.3, -1.2]} center distanceFactor={8} style={{ pointerEvents: 'none' }}>
-            <div style={{
-              background: 'rgba(168,85,247,0.12)', border: '1px solid rgba(168,85,247,0.35)',
-              borderRadius: 6, padding: '3px 9px', color: '#c4b5fd',
-              fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.12em',
-              whiteSpace: 'nowrap', textTransform: 'uppercase', backdropFilter: 'blur(4px)',
-            }}>MECH</div>
-          </Html>
-        </>
-      )}
+        )
+      })}
     </>
   )
 }

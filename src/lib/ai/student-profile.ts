@@ -13,11 +13,13 @@ export async function buildStudentProfile(userId: string): Promise<string> {
     { data: progress },
     { data: attempts },
     { data: insights },
+    { data: miscons },
   ] = await Promise.all([
     supabase.from('profiles').select().eq('id', userId).single(),
     supabase.from('student_progress').select().eq('student_id', userId),
     supabase.from('question_attempts').select().eq('student_id', userId).order('attempted_at', { ascending: false }).limit(50),
     supabase.from('student_insights').select().eq('student_id', userId).single(),
+    supabase.from('student_misconceptions').select('topic_slug, tag, count').eq('user_id', userId).gte('count', 2).order('count', { ascending: false }).limit(4),
   ])
 
   if (!profile) return ''
@@ -70,6 +72,23 @@ export async function buildStudentProfile(userId: string): Promise<string> {
     ? Math.round(timings.reduce((s, t) => s + t, 0) / timings.length)
     : null
 
+  // Recurring misconceptions (seen 2+ times) — so SPOK can gently name the pattern
+  const recurring = (miscons ?? []).map((m: { topic_slug: string; tag: string; count: number }) => {
+    const topic = ALL_TOPICS.find(t => t.slug === m.topic_slug)
+    return `${m.tag}${topic ? ` (in ${topic.name})` : ''} — seen ${m.count}×`
+  })
+
+  // Confidence calibration — only once there's enough signal.
+  const calibCount = (profile.calib_count as number | undefined) ?? 0
+  const calibMean = calibCount >= 5 ? (profile.calib_sum as number) / calibCount : null
+  const calibrationNote = calibMean === null
+    ? ''
+    : calibMean > 0.15
+      ? 'Calibration: tends to OVERESTIMATE their performance — gently reality-check answers and encourage checking working.'
+      : calibMean < -0.15
+        ? 'Calibration: tends to UNDERESTIMATE themselves — they are better than they think, build their confidence.'
+        : 'Calibration: well-calibrated self-assessment.'
+
   // Spok notes
   const notes = (insights?.jarvis_notes as any[] ?? []).slice(-5).map((n: any) => n.note)
 
@@ -84,6 +103,8 @@ export async function buildStudentProfile(userId: string): Promise<string> {
     due > 0 ? `${due} topic(s) due for spaced repetition review today.` : 'No topics due for review.',
     recentAccuracy !== null ? `Recent accuracy (last 50 questions): ${recentAccuracy}%` : '',
     avgTime !== null ? `Average time per question: ${avgTime}s` : '',
+    calibrationNote,
+    recurring.length > 0 ? `\nRecurring mistakes (call these out gently when relevant, don't list them mechanically):\n${recurring.map(r => `- ${r}`).join('\n')}` : '',
     notes.length > 0 ? `\nSpok memory notes:\n${notes.map(n => `- ${n}`).join('\n')}` : '',
   ].filter(Boolean)
 

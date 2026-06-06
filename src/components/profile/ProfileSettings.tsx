@@ -27,6 +27,7 @@ export function ProfileSettings({ initialFullName, initialExamBoard, initialTarg
   const [language,    setLanguage]    = useState<Lang>('en')
   const [dyslexia,    setDyslexia]    = useState(false)
   const [adhd,        setAdhd]        = useState(false)
+  const [emailReminders, setEmailReminders] = useState(true)
   const [saving,      setSaving]      = useState(false)
   const [saved,       setSaved]       = useState(false)
   const [nameError,   setNameError]   = useState('')
@@ -37,9 +38,10 @@ export function ProfileSettings({ initialFullName, initialExamBoard, initialTarg
 
   // Load accessibility prefs and language from profile
   useState(() => {
-    fetch('/api/profile').then(r => r.json()).then((p: { dyslexia_mode?: boolean; adhd_mode?: boolean; language?: Lang }) => {
+    fetch('/api/profile').then(r => r.json()).then((p: { dyslexia_mode?: boolean; adhd_mode?: boolean; language?: Lang; email_reminders?: boolean }) => {
       setDyslexia(p.dyslexia_mode ?? false)
       setAdhd(p.adhd_mode ?? false)
+      setEmailReminders(p.email_reminders ?? true)
       if (p.language) setLanguage(p.language)
     }).catch(() => {})
   })
@@ -72,7 +74,7 @@ export function ProfileSettings({ initialFullName, initialExamBoard, initialTarg
     await fetch('/api/profile/setup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fullName, examBoard, targetGrade, examDate, dyslexiaMode: dyslexia, adhdMode: adhd, language }),
+      body: JSON.stringify({ fullName, examBoard, targetGrade, examDate, dyslexiaMode: dyslexia, adhdMode: adhd, language, emailReminders }),
     })
     setSaving(false)
     setSaved(true)
@@ -177,6 +179,26 @@ export function ProfileSettings({ initialFullName, initialExamBoard, initialTarg
         </div>
       </div>
 
+      <div>
+        <label className="text-xs text-slate-500 mb-2 block">Notifications</label>
+        <button onClick={() => setEmailReminders(v => !v)}
+          className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all"
+          style={{
+            background: emailReminders ? 'rgba(245,158,11,0.08)' : 'rgba(255,255,255,0.02)',
+            border: `1px solid ${emailReminders ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.06)'}`,
+          }}>
+          <div className="flex-1">
+            <p className="text-sm font-medium" style={{ color: emailReminders ? '#f59e0b' : '#94a3b8' }}>Email reminders</p>
+            <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>Review nudges and streak reminders by email</p>
+          </div>
+          <div className="w-9 h-5 rounded-full transition-all relative shrink-0"
+            style={{ background: emailReminders ? '#f59e0b' : 'rgba(255,255,255,0.1)' }}>
+            <div className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all"
+              style={{ left: emailReminders ? '18px' : '2px' }} />
+          </div>
+        </button>
+      </div>
+
       <motion.button
         whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
         onClick={save} disabled={saving}
@@ -188,6 +210,20 @@ export function ProfileSettings({ initialFullName, initialExamBoard, initialTarg
         }}>
         {saved ? <><Check size={14} /> Saved</> : saving ? 'Saving...' : 'Save changes'}
       </motion.button>
+
+      {/* Your data */}
+      <div className="flex items-center justify-between rounded-xl p-4 mt-2"
+        style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <div>
+          <p className="text-sm font-semibold text-white">Download your data</p>
+          <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>Export everything we hold about you as JSON.</p>
+        </div>
+        <a href="/api/profile/export" download
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+          style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)', color: '#93c5fd' }}>
+          Export
+        </a>
+      </div>
 
       {/* Danger zone */}
       <div className="rounded-xl p-4 mt-2 space-y-3" style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.15)' }}>

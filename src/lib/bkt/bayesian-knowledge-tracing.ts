@@ -15,6 +15,38 @@ export function updateBKT(state: BKTState, correct: boolean): BKTState {
   return { ...state, pKnown: newPKnown }
 }
 
+/**
+ * Proportional BKT update. Real answers aren't binary — a 3/5 should move
+ * mastery part-way. We interpolate p_known between the fully-wrong and
+ * fully-correct Bayesian updates by `score` (marks earned, or self-assessed
+ * quality), in [0, 1].
+ */
+export function updateBKTPartial(state: BKTState, score: number): BKTState {
+  const s = Math.max(0, Math.min(1, score))
+  if (s >= 0.999) return updateBKT(state, true)
+  if (s <= 0.001) return updateBKT(state, false)
+  const hi = updateBKT(state, true).pKnown
+  const lo = updateBKT(state, false).pKnown
+  return { ...state, pKnown: lo + s * (hi - lo) }
+}
+
+/**
+ * Guess probability by question format. A correct 4-option MCQ could easily be
+ * luck (~25%), but a correct free-response "show that" almost never is (~5%),
+ * so written answers are much stronger evidence of knowing.
+ */
+export function pGuessForFormat(format?: string | null): number {
+  switch (format) {
+    case 'mcq':
+    case 'multiple-choice': return 0.25
+    case 'true-false':      return 0.5
+    case 'numeric':         return 0.15
+    case 'written':
+    case 'free-response':   return 0.07
+    default:                return 0.1
+  }
+}
+
 export function masteryLabel(pKnown: number): string {
   if (pKnown >= 0.85) return 'Mastered'
   if (pKnown >= 0.65) return 'Proficient'

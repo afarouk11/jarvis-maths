@@ -122,6 +122,10 @@ export interface Question {
   difficulty: number
   marks: number
   source: string | null
+  /** Optional self-contained SVG diagram for geometric/graphical questions. */
+  diagram?: string | null
+  /** Optional sub-skill (technique) this question targets. */
+  skill?: string | null
 }
 
 export interface BKTState {

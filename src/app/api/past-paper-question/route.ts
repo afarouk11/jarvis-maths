@@ -53,15 +53,31 @@ export async function GET(req: Request) {
     return Response.json({ error: 'no_past_paper_questions' }, { status: 404 })
   }
 
-  // Pick the best-matching chunk
-  const best = questionChunks[0]
-
-  // Fetch the paper metadata to show source badge
-  const { data: paper } = await supabase
+  // Resolve paper metadata for every candidate chunk up front so we can keep
+  // only questions from the student's OWN exam board. Without this an Edexcel
+  // student could be served an AQA past-paper question (bug: "Edexcel selected
+  // but AQA paper shown").
+  const candidatePaperIds = [...new Set(questionChunks.map(c => c.paper_id))]
+  const { data: candidatePapers } = await supabase
     .from('past_papers')
-    .select('title, exam_board, year, paper_number')
-    .eq('id', best.paper_id)
-    .single()
+    .select('id, title, exam_board, year, paper_number')
+    .in('id', candidatePaperIds)
+  const paperById = new Map((candidatePapers ?? []).map((p: { id: string }) => [p.id, p]))
+
+  const studentBoard = (prof?.exam_board ?? '').toLowerCase()
+  const boardMatched = studentBoard
+    ? questionChunks.filter(c => ((paperById.get(c.paper_id) as { exam_board?: string } | undefined)?.exam_board ?? '').toLowerCase() === studentBoard)
+    : questionChunks
+
+  // No past-paper question for this board → let the caller fall back to
+  // board-aware AI generation rather than showing the wrong board's paper.
+  if (boardMatched.length === 0) {
+    return Response.json({ error: 'no_past_paper_questions' }, { status: 404 })
+  }
+
+  // Pick the best-matching chunk from the board-correct set
+  const best = boardMatched[0]
+  const paper = paperById.get(best.paper_id) as { exam_board?: string; year?: number; paper_number?: number } | undefined
 
   const source = paper
     ? `${paper.exam_board?.toUpperCase() ?? 'Past paper'} ${paper.year ?? ''} Paper ${paper.paper_number ?? ''}`.trim()
@@ -75,7 +91,7 @@ export async function GET(req: Request) {
   try {
     const { text } = await generateText({
       model: anthropic('claude-haiku-4-5-20251001'),
-      prompt: `You are an AQA ${prof?.level ?? 'A-Level'} Maths examiner.
+      prompt: `You are a ${prof?.exam_board ?? 'AQA'} ${prof?.level ?? 'A-Level'} Maths examiner.
 
 Question from past paper:
 ${best.content}

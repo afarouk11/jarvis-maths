@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { fullName, examBoard, targetGrade, yearGroup, examDate, level, dyslexiaMode, adhdMode, language } = await req.json()
+  const { fullName, examBoard, targetGrade, yearGroup, examDate, level, dyslexiaMode, adhdMode, language, emailReminders } = await req.json()
 
   if (fullName) {
     const nameError = validateName(fullName)
@@ -37,6 +37,12 @@ export async function POST(req: NextRequest) {
     }, { onConflict: 'id' })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Persist the email-reminders preference separately so a missing column
+  // (migration 036 not applied) can never break profile setup / onboarding.
+  if (typeof emailReminders === 'boolean') {
+    try { await admin.from('profiles').update({ email_reminders: emailReminders }).eq('id', user.id) } catch { /* non-fatal */ }
+  }
 
   return NextResponse.json({ ok: true })
 }
