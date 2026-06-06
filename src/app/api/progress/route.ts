@@ -88,20 +88,46 @@ export async function POST(req: Request) {
 
   // Difficulty- and weakness-weighted XP (uses the prior, pre-update mastery).
   const xpGain = xpForAnswer(correct, difficulty ?? 3, priorPKnown)
+  // Read exam date + personalised FSRS retention (gracefully if 039 unapplied).
+  let examDate: string | null = null
+  let fsrsRetention = 0.9
+  const profRead = await supabase.from('profiles').select('exam_date, fsrs_retention').eq('id', user.id).single()
+  if (profRead.error) {
+    examDate = (await supabase.from('profiles').select('exam_date').eq('id', user.id).single()).data?.exam_date ?? null
+  } else {
+    examDate = profRead.data?.exam_date ?? null
+    fsrsRetention = profRead.data?.fsrs_retention ?? 0.9
+  }
+
   // FSRS scheduling: derive a grade from the answer score and update the topic's
-  // memory model (stability + difficulty), from which the next review is set.
+  // memory model (stability + difficulty), targeting the student's retention.
+  const grade = gradeFromScore(score)
   const fsrs = updateFSRS(
     existing
       ? { stability: existing.stability, difficulty: existing.difficulty, lastReviewAt: existing.last_attempted_at }
       : {},
-    gradeFromScore(score),
+    grade,
+    Date.now(),
+    fsrsRetention,
   )
+
+  // Capture a review log for FSRS personalisation (best-effort).
+  try {
+    await supabase.from('fsrs_review_logs').insert({
+      user_id: user.id,
+      topic_slug: topicId,
+      grade,
+      elapsed_days: existing?.last_attempted_at
+        ? Math.max(0, (Date.now() - new Date(existing.last_attempted_at).getTime()) / 86400000)
+        : 0,
+      recalled: grade >= 3,
+    })
+  } catch { /* table not migrated — non-fatal */ }
 
   // Compress the interval as the exam approaches (cramming curve), and never
   // schedule a review past the exam date.
-  const { data: examProf } = await supabase.from('profiles').select('exam_date').eq('id', user.id).single()
-  const daysToExam = examProf?.exam_date
-    ? Math.max(0, Math.ceil((new Date(examProf.exam_date).getTime() - Date.now()) / 86400000))
+  const daysToExam = examDate
+    ? Math.max(0, Math.ceil((new Date(examDate).getTime() - Date.now()) / 86400000))
     : null
   const intervalDays = compressIntervalForExam(fsrs.intervalDays, daysToExam)
   const nextReviewAt = new Date(Date.now() + intervalDays * 86400000)

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { updateFSRS, gradeFromScore, compressIntervalForExam } from './fsrs'
+import { updateFSRS, gradeFromScore, compressIntervalForExam, optimalRetentionFromLogs } from './fsrs'
 
 const DAY = 86400000
 const now = Date.UTC(2026, 0, 1)
@@ -74,6 +74,34 @@ describe('compressIntervalForExam', () => {
   it('always returns at least 1 day', () => {
     expect(compressIntervalForExam(1, 3)).toBeGreaterThanOrEqual(1)
     expect(compressIntervalForExam(50, 0)).toBe(1)
+  })
+})
+
+describe('requested retention', () => {
+  it('a higher requested retention yields a shorter interval', () => {
+    const lo = updateFSRS({}, 3, now, 0.85)
+    const hi = updateFSRS({}, 3, now, 0.95)
+    expect(hi.intervalDays).toBeLessThanOrEqual(lo.intervalDays)
+  })
+})
+
+describe('optimalRetentionFromLogs', () => {
+  it('returns null without enough data', () => {
+    expect(optimalRetentionFromLogs([{ recalled: true }])).toBeNull()
+  })
+
+  it('raises retention when realised recall is low (intervals too long)', () => {
+    const logs = Array.from({ length: 40 }, (_, i) => ({ recalled: i < 28 })) // 70% recall
+    const r = optimalRetentionFromLogs(logs)!
+    expect(r).toBeGreaterThan(0.9)
+    expect(r).toBeLessThanOrEqual(0.97)
+  })
+
+  it('lowers retention when realised recall is very high (intervals too short)', () => {
+    const logs = Array.from({ length: 40 }, () => ({ recalled: true })) // 100% recall
+    const r = optimalRetentionFromLogs(logs)!
+    expect(r).toBeLessThan(0.9)
+    expect(r).toBeGreaterThanOrEqual(0.80)
   })
 })
 

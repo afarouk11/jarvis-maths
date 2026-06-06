@@ -37,8 +37,8 @@ function initialStability(grade: number): number {
   return Math.max(0.1, W[grade - 1])
 }
 // Interval (days) for the requested retention given stability S.
-function nextInterval(stability: number): number {
-  return Math.max(1, Math.round(9 * stability * (1 / REQUEST_RETENTION - 1)))
+function nextInterval(stability: number, retention: number): number {
+  return Math.max(1, Math.round(9 * stability * (1 / retention - 1)))
 }
 function retrievability(elapsedDays: number, stability: number): number {
   return Math.pow(1 + elapsedDays / (9 * stability), -1)
@@ -57,7 +57,13 @@ function lapseStability(difficulty: number, stability: number, r: number): numbe
   return W[11] * Math.pow(difficulty, -W[12]) * (Math.pow(stability + 1, W[13]) - 1) * Math.exp(W[14] * (1 - r))
 }
 
-export function updateFSRS(input: FSRSInput, grade: number, now: number = Date.now()): FSRSState {
+export function updateFSRS(
+  input: FSRSInput,
+  grade: number,
+  now: number = Date.now(),
+  requestedRetention: number = REQUEST_RETENTION,
+): FSRSState {
+  const retention = clamp(requestedRetention, 0.7, 0.99)
   const g = clamp(Math.round(grade), 1, 4)
   const hasPrior = typeof input.stability === 'number' && input.stability > 0 && typeof input.difficulty === 'number'
 
@@ -79,8 +85,21 @@ export function updateFSRS(input: FSRSInput, grade: number, now: number = Date.n
   }
 
   stability = Math.max(0.1, stability)
-  const intervalDays = nextInterval(stability)
+  const intervalDays = nextInterval(stability, retention)
   return { stability, difficulty, intervalDays, nextReviewAt: new Date(now + intervalDays * DAY) }
+}
+
+/**
+ * Personalises the requested retention from a student's realised recall. If they
+ * recall less than the 0.9 target at their scheduled reviews, intervals are too
+ * long, so we raise the requested retention (shorter intervals), and vice versa.
+ * Returns null until there's enough signal. Stable: depends only on the logs.
+ */
+export function optimalRetentionFromLogs(logs: ReadonlyArray<{ recalled: boolean }>): number | null {
+  if (logs.length < 20) return null
+  const realized = logs.filter(l => l.recalled).length / logs.length
+  const adjusted = 0.9 + (0.9 - realized)
+  return Math.round(clamp(adjusted, 0.80, 0.97) * 100) / 100
 }
 
 /**
