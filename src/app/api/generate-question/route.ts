@@ -78,7 +78,7 @@ export async function POST(req: Request) {
   try {
     const [{ data: attemptedRows }, { data: bank }] = await Promise.all([
       supabase.from('question_attempts').select('question_id').eq('student_id', user.id),
-      supabase.from('questions').select('*').eq('topic_id', topic.id).eq('difficulty', difficulty).limit(50),
+      supabase.from('questions').select('*').eq('topic_id', topic.id).eq('difficulty', difficulty).eq('flagged', false).limit(50),
     ])
     const attemptedIds = new Set((attemptedRows ?? []).map((a: { question_id: string }) => a.question_id))
     const unseen = (bank ?? []).filter((q: { id: string; worked_solution: unknown }) =>

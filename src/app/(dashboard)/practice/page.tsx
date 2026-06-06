@@ -233,6 +233,7 @@ function PracticePageInner() {
         studentAnswer: drawMode ? '[handwritten]' : studentAnswer,
         aiFeedback: markResult.feedback,
         aiCorrect: markResult.correct,
+        questionId: question.id,
       }),
     }).catch(() => {})
   }
