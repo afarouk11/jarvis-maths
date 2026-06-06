@@ -4,7 +4,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { schoolOutreachEmail } from '@/lib/email/school-outreach-template'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resend = new Resend(process.env.EMAIL_OUTREACH_API_KEY)
 
 // Safety cap per API call to avoid accidental blasts and stay inside Resend rate limits
 const BATCH_SIZE = 50

@@ -4,7 +4,7 @@ import { Resend } from 'resend'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: Request) {
-  const resend = new Resend(process.env.RESEND_API_KEY)
+  const resend = new Resend(process.env.EMAIL_OUTREACH_API_KEY)
   const secret = req.headers.get('x-cron-secret') ?? new URL(req.url).searchParams.get('secret')
   if (secret !== process.env.CRON_SECRET) {
     return Response.json({ error: 'Forbidden' }, { status: 403 })
