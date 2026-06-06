@@ -211,6 +211,20 @@ export function ProfileSettings({ initialFullName, initialExamBoard, initialTarg
         {saved ? <><Check size={14} /> Saved</> : saving ? 'Saving...' : 'Save changes'}
       </motion.button>
 
+      {/* Your data */}
+      <div className="flex items-center justify-between rounded-xl p-4 mt-2"
+        style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <div>
+          <p className="text-sm font-semibold text-white">Download your data</p>
+          <p className="text-xs mt-0.5" style={{ color: '#5a7aaa' }}>Export everything we hold about you as JSON.</p>
+        </div>
+        <a href="/api/profile/export" download
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+          style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)', color: '#93c5fd' }}>
+          Export
+        </a>
+      </div>
+
       {/* Danger zone */}
       <div className="rounded-xl p-4 mt-2 space-y-3" style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.15)' }}>
         <div className="flex items-center justify-between">
