@@ -491,7 +491,6 @@ export function LandingPage() {
               <p className="text-xs leading-relaxed" style={{ color: '#374151' }}>
                 Personalised AI learning built for how students actually learn.
               </p>
-              <p className="text-xs mt-2" style={{ color: '#2d3a4a' }}>by Cerebral Options</p>
             </div>
             {/* Platform */}
             <div>
@@ -523,7 +522,7 @@ export function LandingPage() {
             </div>
           </div>
           <div className="flex items-center justify-between text-xs border-t pt-6" style={{ color: '#2d3a4a', borderColor: 'rgba(255,255,255,0.04)' }}>
-            <p>© 2026 Cerebral Options Ltd · Built for A-Level students</p>
+            <p>© 2025 StudiQ</p>
             <p>AQA · Edexcel · OCR · studiq.org</p>
           </div>
         </div>

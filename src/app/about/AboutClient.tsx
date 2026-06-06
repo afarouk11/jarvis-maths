@@ -177,7 +177,7 @@ export default function AboutPage() {
             <div className="p-8">
               <p className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: '#4a6070' }}>Who we are</p>
               <p className="leading-relaxed mb-4" style={{ color: '#6b8cba', fontSize: 15 }}>
-                StudiQ is built by <span className="text-white">Cerebral Options</span>, a small team with a direct stake in the problem we are trying to solve. This was not conceived in a boardroom. It came from the experience of being a student who needed something that did not exist and deciding to build it.
+                StudiQ is built by a small team with a direct stake in the problem we are trying to solve. This was not conceived in a boardroom. It came from the experience of being a student who needed something that did not exist and deciding to build it.
               </p>
               <p className="leading-relaxed" style={{ color: '#6b8cba', fontSize: 15 }}>
                 We contributed to the UK SEND Reform consultation because we believe that people building education technology should be engaged with the policy shaping it. Accessible, personalised learning is not a niche concern. It is the future of education, and we intend to be part of building it properly.
