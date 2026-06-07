@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import type { LearningJourney, JourneyStep, StepOutcome } from '@/lib/journey/types'
+import type { LearningJourney, JourneyStep, StepOutcome, JourneyPage } from '@/lib/journey/types'
 import type { Level } from '@/lib/curriculum'
 import type { StudentProgress } from '@/types'
 
@@ -68,5 +68,23 @@ export function useJourney() {
   const advance = useCallback((outcome?: StepOutcome) => post('advance', outcome), [post])
   const end = useCallback(() => post('end'), [post])
 
-  return { ...state, loading, refresh, start, advance, end }
+  // SPOK opens a page itself — returns the route for the caller to navigate to.
+  const open = useCallback(async (page: JourneyPage): Promise<{ route: string | null }> => {
+    let route: string | null = null
+    try {
+      const res = await fetch('/api/journey', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'open', page }),
+      })
+      const data = await res.json().catch(() => ({}))
+      route = typeof data?.route === 'string' ? data.route : null
+    } catch {
+      /* non-fatal */
+    }
+    await refresh()
+    return { route }
+  }, [refresh])
+
+  return { ...state, loading, refresh, start, advance, end, open }
 }

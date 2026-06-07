@@ -1,8 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { applyDecay } from '@/lib/bkt/forgetting'
 import { getTopics, type Level } from '@/lib/curriculum'
-import { pickFocusTopic, nextPhase, isWorkingPhase } from '@/lib/journey/engine'
-import type { JourneyPhase, LearningJourney, StepOutcome } from '@/lib/journey/types'
+import { pickFocusTopic, nextPhase, isWorkingPhase, pageToPhase, phaseRoute } from '@/lib/journey/engine'
+import type { JourneyPage, JourneyPhase, LearningJourney, StepOutcome } from '@/lib/journey/types'
 import type { StudentProgress } from '@/types'
 
 type SupabaseServer = Awaited<ReturnType<typeof createClient>>
@@ -58,6 +58,15 @@ async function openStep(
   ctx: Context,
 ): Promise<void> {
   if (!isWorkingPhase(phase) || phase === 'complete') return
+  // Don't open a second in-progress step for the same phase.
+  const { data: open } = await supabase
+    .from('journey_steps')
+    .select('id')
+    .eq('journey_id', journey.id)
+    .eq('phase', phase)
+    .eq('status', 'in_progress')
+    .maybeSingle()
+  if (open) return
   const slug = focusSlugOf(journey, ctx.slugById)
   const before = slug ? ctx.progress.find(p => p.topic_id === slug)?.p_known ?? null : null
   await supabase.from('journey_steps').insert({
@@ -67,6 +76,31 @@ async function openStep(
     status: 'in_progress',
     p_known_before: before,
   })
+}
+
+// Return the student's active journey, creating one (diagnosing the weakest
+// topic) if none exists.
+async function ensureActiveJourney(
+  supabase: SupabaseServer,
+  userId: string,
+  ctx: Context,
+  topics: ReturnType<typeof getTopics>,
+): Promise<LearningJourney | null> {
+  const existing = await activeJourney(supabase, userId)
+  if (existing) return existing
+  const focusSlug = pickFocusTopic(ctx.progress, topics, 0.7)
+  const focusId = focusSlug ? ctx.idBySlug.get(focusSlug) ?? null : null
+  const { data } = await supabase
+    .from('learning_journeys')
+    .insert({
+      student_id: userId,
+      status: 'active',
+      current_phase: focusSlug ? 'welcome' : 'complete',
+      focus_topic_id: focusId,
+    })
+    .select()
+    .single()
+  return (data as LearningJourney | null) ?? null
 }
 
 export async function GET(): Promise<Response> {
@@ -101,9 +135,9 @@ export async function POST(req: Request): Promise<Response> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = (await req.json().catch(() => ({}))) as { action?: unknown; outcome?: StepOutcome }
+  const body = (await req.json().catch(() => ({}))) as { action?: unknown; page?: unknown; outcome?: StepOutcome }
   const action = body.action
-  if (action !== 'start' && action !== 'advance' && action !== 'end') {
+  if (action !== 'start' && action !== 'advance' && action !== 'end' && action !== 'open') {
     return Response.json({ error: 'Invalid action' }, { status: 400 })
   }
   const outcome: StepOutcome | undefined = body.outcome
@@ -142,6 +176,39 @@ export async function POST(req: Request): Promise<Response> {
       .eq('student_id', user.id)
       .eq('status', 'active')
     return Response.json({ journey: null })
+  }
+
+  // ── open ───────────────────────────────────────────────────────────────────
+  // SPOK opens a page itself: ensure a journey exists, set its phase to match
+  // the page, manage the audit step, and return the route for the client to push.
+  if (action === 'open') {
+    const page: JourneyPage = body.page === 'practice' || body.page === 'paper' ? body.page : 'notes'
+    const journey = await ensureActiveJourney(supabase, user.id, ctx, topics)
+    if (!journey) return Response.json({ error: 'Nothing to study — all topics mastered' }, { status: 400 })
+
+    const targetPhase = pageToPhase(page)
+    // Close any step still open on the phase we're leaving.
+    if (isWorkingPhase(journey.current_phase) && journey.current_phase !== targetPhase) {
+      await supabase
+        .from('journey_steps')
+        .update({ status: 'done', completed_at: new Date().toISOString() })
+        .eq('journey_id', journey.id)
+        .eq('phase', journey.current_phase)
+        .eq('status', 'in_progress')
+    }
+
+    const { data: updated } = await supabase
+      .from('learning_journeys')
+      .update({ current_phase: targetPhase })
+      .eq('id', journey.id)
+      .select()
+      .single()
+    const target = (updated as LearningJourney | null) ?? journey
+    if (target.current_phase === targetPhase) await openStep(supabase, target, targetPhase, ctx)
+
+    const slug = focusSlugOf(target, ctx.slugById)
+    const route = slug ? phaseRoute(targetPhase, slug, target.id) : null
+    return Response.json({ journey: target, focusSlug: slug, route })
   }
 
   // ── advance ────────────────────────────────────────────────────────────────

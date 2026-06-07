@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useChat } from '@ai-sdk/react'
+import { useRouter } from 'next/navigation'
 import { DefaultChatTransport, isReasoningUIPart, isTextUIPart } from 'ai'
 import { Send, Mic, MicOff, Volume2, VolumeX, RefreshCw, Zap, Check, X, Lock, Square, ChevronLeft, ChevronRight, Paperclip } from 'lucide-react'
 import { ThinkingBlock } from '@/components/jarvis/ThinkingBlock'
@@ -48,7 +49,8 @@ export default function SpokPage() {
   const FREE_LIMIT = 5
 
   // ── Guided learning journey — the brain that replaces the avatar ──────────────
-  const { journey, focusSlug, progress: journeyProgress, level: journeyLevel, start: startJourney, advance: advanceJourney, end: endJourney } = useJourney()
+  const router = useRouter()
+  const { journey, focusSlug, progress: journeyProgress, level: journeyLevel, start: startJourney, advance: advanceJourney, end: endJourney, open: openJourneyPage } = useJourney()
   const lastJourneyKeyRef = useRef<string | null>(null)
   // getTopics/getTopicCategories return stable module-level constants — no memo needed.
   const brainTopics = getTopics(journeyLevel)
@@ -271,13 +273,15 @@ export default function SpokPage() {
     const journeyMatch = fullText.match(/\[JOURNEY\]([\s\S]*?)\[\/JOURNEY\]/)
     if (journeyMatch) {
       try {
-        const spec = JSON.parse(journeyMatch[1].trim()) as { action?: string }
-        const action = spec.action === 'advance' || spec.action === 'end' ? spec.action : 'start'
-        const key = `${lastMsg.id}:${action}`
+        const spec = JSON.parse(journeyMatch[1].trim()) as { action?: string; page?: string }
+        const action = spec.action === 'advance' || spec.action === 'end' || spec.action === 'open' ? spec.action : 'start'
+        const page = spec.page === 'practice' || spec.page === 'paper' ? spec.page : 'notes'
+        const key = `${lastMsg.id}:${action}:${action === 'open' ? page : ''}`
         if (key !== lastJourneyKeyRef.current) {
           lastJourneyKeyRef.current = key
           if (action === 'start') startJourney()
           else if (action === 'advance') advanceJourney()
+          else if (action === 'open') openJourneyPage(page).then(({ route }) => { if (route) router.push(route) })
           else endJourney()
         }
       } catch {}

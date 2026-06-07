@@ -2,7 +2,7 @@
 // unit-testable. The API route layers persistence + auth on top of this.
 
 import { rootWeakPrerequisite } from '@/lib/curriculum/topic-graph'
-import type { JourneyPhase, MasteryRow, TopicLite } from './types'
+import type { JourneyPage, JourneyPhase, MasteryRow, TopicLite } from './types'
 
 export const DEFAULT_TARGET_MASTERY = 0.7
 
@@ -57,6 +57,15 @@ export function pickFocusTopic(
 
   const root = rootWeakPrerequisite(weakest, pBySlug, target)
   return root ?? weakest
+}
+
+/** The journey phase that a page SPOK opens corresponds to. */
+export function pageToPhase(page: JourneyPage): JourneyPhase {
+  switch (page) {
+    case 'notes':    return 'learn'
+    case 'practice': return 'practice'
+    case 'paper':    return 'assess'
+  }
 }
 
 /** The page a given phase hands the student off to, carrying the journey id. */

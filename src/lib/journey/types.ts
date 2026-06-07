@@ -55,7 +55,10 @@ export interface TopicLite {
 }
 
 /** The action a [JOURNEY] block from SPOK can request. */
-export type JourneyAction = 'start' | 'advance' | 'end'
+export type JourneyAction = 'start' | 'advance' | 'end' | 'open'
+
+/** A page SPOK can open as part of the journey. */
+export type JourneyPage = 'notes' | 'practice' | 'paper'
 
 /** Outcome recorded against a step when advancing the cycle. */
 export interface StepOutcome {
