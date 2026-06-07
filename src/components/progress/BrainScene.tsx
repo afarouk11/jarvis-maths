@@ -260,7 +260,7 @@ function InstancedPulses({ arcs, colors }: { arcs: THREE.Vector3[][]; colors: st
 
 // ── Neuron node ───────────────────────────────────────────────────────────────
 function Neuron({
-  position, color, name, slug, pKnown, active, onHover, onClick,
+  position, color, name, slug, pKnown, active, focused = false, onHover, onClick,
 }: {
   position: THREE.Vector3
   color: string
@@ -268,6 +268,7 @@ function Neuron({
   slug: string
   pKnown: number
   active: boolean
+  focused?: boolean
   onHover: (info: { name: string; slug: string; pKnown: number } | null) => void
   onClick: (slug: string) => void
 }) {
@@ -278,7 +279,9 @@ function Neuron({
   useFrame(({ clock }) => {
     if (!ref.current) return
     const pulse = 1 + Math.sin(clock.elapsedTime * 2 + position.x * 5) * 0.15
-    ref.current.scale.setScalar(hovered ? 2.2 : pulse)
+    // The journey's focus node breathes larger and faster so it reads as "this one".
+    const base = focused ? 1.9 + Math.sin(clock.elapsedTime * 4) * 0.25 : 1
+    ref.current.scale.setScalar(hovered ? 2.2 : base * pulse)
   })
 
   return (
@@ -292,8 +295,8 @@ function Neuron({
       <meshStandardMaterial
         color={color}
         emissive={color}
-        emissiveIntensity={!active ? 0.5 : hovered ? 10 : 5}
-        transparent opacity={active ? 1 : 0.12}
+        emissiveIntensity={focused ? 16 : !active ? 0.5 : hovered ? 10 : 5}
+        transparent opacity={active ? 1 : 0.1}
       />
     </mesh>
   )
@@ -371,6 +374,7 @@ function NeuralScene({
   onHover,
   onClick,
   sectionFilter,
+  focusSlug = null,
   topics,
   topicCategories,
 }: {
@@ -378,6 +382,7 @@ function NeuralScene({
   onHover: (info: { name: string; slug: string; pKnown: number } | null) => void
   onClick: (slug: string) => void
   sectionFilter: string | null
+  focusSlug?: string | null
   topics: Omit<Topic, 'id' | 'parent_id'>[]
   topicCategories: Record<string, string[]>
 }) {
@@ -500,7 +505,11 @@ function NeuralScene({
         if (pos === undefined) return null
         const pKnown = slugMap.get(t.slug) ?? 0
         const color = progressHex(pKnown)
-        const active = filteredSlugs === null || filteredSlugs.has(t.slug)
+        const focused = focusSlug === t.slug
+        // When a focus node is set, everything else dims so the eye lands on it.
+        const active = focusSlug !== null
+          ? focused
+          : (filteredSlugs === null || filteredSlugs.has(t.slug))
         return (
           <Neuron
             key={t.slug}
@@ -510,6 +519,7 @@ function NeuralScene({
             slug={t.slug}
             pKnown={pKnown}
             active={active}
+            focused={focused}
             onHover={onHover}
             onClick={onClick}
           />
@@ -551,11 +561,15 @@ function NeuralScene({
 }
 
 // ── Main exported scene ───────────────────────────────────────────────────────
-export default function BrainScene({ progress, onHover, onClick, sectionFilter, topics, topicCategories }: {
+export default function BrainScene({ progress, onHover, onClick, sectionFilter, focusSlug = null, fill = false, topics, topicCategories }: {
   progress: StudentProgress[]
   onHover: (info: { name: string; slug: string; pKnown: number } | null) => void
   onClick: (slug: string) => void
   sectionFilter: string | null
+  /** When set, this topic's neuron is highlighted and the rest dim (journey focus). */
+  focusSlug?: string | null
+  /** Fill the parent container instead of the full window height (for embedding). */
+  fill?: boolean
   topics: Omit<Topic, 'id' | 'parent_id'>[]
   topicCategories: Record<string, string[]>
 }) {
@@ -570,13 +584,15 @@ export default function BrainScene({ progress, onHover, onClick, sectionFilter, 
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
-  if (!h) return null
+  // In fill mode the parent sizes us; otherwise wait for the measured window height.
+  const heightStyle: number | string = fill ? '100%' : h
+  if (!fill && !h) return null
 
   return (
-    <div style={{ width: '100%', height: h, position: 'relative' }}>
-      <CanvasErrorBoundary fallback={<div style={{ width: '100%', height: h, background: '#060d1f' }} />}>
+    <div style={{ width: '100%', height: heightStyle, position: 'relative' }}>
+      <CanvasErrorBoundary fallback={<div style={{ width: '100%', height: heightStyle, background: '#060d1f' }} />}>
         <Canvas
-          style={{ width: '100%', height: h }}
+          style={{ width: '100%', height: heightStyle }}
           camera={{ position: [0, 0, 7], fov: 50 }}
           dpr={1}
           performance={{ min: 0.5 }}
@@ -598,7 +614,7 @@ export default function BrainScene({ progress, onHover, onClick, sectionFilter, 
           <group>
             <BrainMesh />
             <HoloRings />
-            <NeuralScene progress={progress} onHover={handleHover} onClick={handleClick} sectionFilter={sectionFilter} topics={topics} topicCategories={topicCategories} />
+            <NeuralScene progress={progress} onHover={handleHover} onClick={handleClick} sectionFilter={sectionFilter} focusSlug={focusSlug} topics={topics} topicCategories={topicCategories} />
           </group>
           <OrbitControls enablePan={false} minDistance={4} maxDistance={14} autoRotate autoRotateSpeed={0.5} />
 

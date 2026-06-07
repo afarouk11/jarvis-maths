@@ -15,6 +15,7 @@ import { VideoExplanation } from '@/components/math/VideoExplanation'
 import { sanitizeSvg } from '@/lib/math/sanitize-svg'
 import { Skeleton } from '@/components/ui/skeleton'
 import { friendlyError } from '@/lib/friendly-error'
+import { JourneyBanner } from '@/components/journey/JourneyBanner'
 
 interface MarkingStep {
   line: string
@@ -282,6 +283,11 @@ function PracticePageInner() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
+
+      <JourneyBanner
+        phaseLabel="Practice"
+        topicName={allTopics.find((t: { slug: string; name: string }) => t.slug === selectedSlug)?.name}
+      />
 
       {/* Pro upgrade modal — shown when AI marking requires Pro */}
       <AnimatePresence>

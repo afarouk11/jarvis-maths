@@ -6,6 +6,7 @@ import { FileText, Zap, Clock, BookOpen, Plus, FlaskConical, Calculator, Atom, X
 import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
 import { GCSE_TOPICS } from '@/lib/curriculum/gcse-topics'
 import { MockExamView, type MockPaper } from '@/components/papers/MockExamView'
+import { JourneyBanner } from '@/components/journey/JourneyBanner'
 
 type ALevelType = 'pure' | 'stats' | 'mechanics'
 type GcseType   = 'non-calc' | 'calc'
@@ -204,6 +205,7 @@ export default function PapersPage() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
+      <JourneyBanner phaseLabel="Predicted paper" />
       {examOpen && mockPaper && (
         <MockExamView paper={mockPaper} focusTopics={focusTopics} onClose={() => { setExamOpen(false); loadSaved() }} />
       )}
