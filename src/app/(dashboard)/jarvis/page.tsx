@@ -3,12 +3,10 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useChat } from '@ai-sdk/react'
+import { useRouter } from 'next/navigation'
 import { DefaultChatTransport, isReasoningUIPart, isTextUIPart } from 'ai'
 import { Send, Mic, MicOff, Volume2, VolumeX, RefreshCw, Zap, Check, X, Lock, Square, ChevronLeft, ChevronRight, Paperclip } from 'lucide-react'
 import { ThinkingBlock } from '@/components/jarvis/ThinkingBlock'
-import { JarvisAvatar } from '@/components/jarvis/JarvisAvatar'
-import dynamic from 'next/dynamic'
-const JarvisScene = dynamic(() => import('@/components/jarvis/JarvisScene').then(m => ({ default: m.JarvisScene })), { ssr: false })
 import { CHAT_SKILL_MODES, type SkillModeId } from '@/lib/spok-skills'
 import { useAccessibility } from '@/hooks/useAccessibility'
 import { SpokMessage } from '@/components/math/SpokMessage'
@@ -16,6 +14,9 @@ import { AnimatedGraphRenderer, parseAnimateSpec, type AnimateSpec } from '@/com
 import { DiagramRenderer, parseDiagramSpec, type DiagramSpec } from '@/components/math/DiagramRenderer'
 import { AnimatedDiagramRenderer, parseAnimDiagramSpec, type AnimDiagramSpec } from '@/components/math/AnimatedDiagramRenderer'
 import { useJarvisVoice, useSpeechToText, createSentenceBuffer } from '@/hooks/useJarvisVoice'
+import { SpokVisual } from '@/components/jarvis/SpokVisual'
+import { useJourney } from '@/hooks/useJourney'
+import { getTopics, getTopicCategories } from '@/lib/curriculum'
 import type { JarvisState } from '@/types'
 
 export default function SpokPage() {
@@ -46,6 +47,18 @@ export default function SpokPage() {
   const [messagesUsedToday, setMessagesUsedToday] = useState<number | null>(null)
   const [avgMastery, setAvgMastery] = useState<number>(0)
   const FREE_LIMIT = 5
+
+  // ── Guided learning journey — the brain that replaces the avatar ──────────────
+  const router = useRouter()
+  const { journey, focusSlug, progress: journeyProgress, level: journeyLevel, start: startJourney, advance: advanceJourney, end: endJourney, open: openJourneyPage } = useJourney()
+  const lastJourneyKeyRef = useRef<string | null>(null)
+  // getTopics/getTopicCategories return stable module-level constants — no memo needed.
+  const brainTopics = getTopics(journeyLevel)
+  const brainCategories = getTopicCategories(journeyLevel)
+
+  // The brain replaces the avatar whenever a journey is active and morphs back
+  // when it completes or is ended. Derived so it always tracks the server state.
+  const visualMode: 'avatar' | 'brain' = journey?.status === 'active' ? 'brain' : 'avatar'
 
   // Photo input for handwritten working
   const [pendingImage, setPendingImage]     = useState<string | null>(null)
@@ -252,6 +265,25 @@ export default function SpokPage() {
         setTryItSpec(spec)
         setTryItAnswer('')
         setTryItHintShown(false)
+      } catch {}
+    }
+
+    // Guided learning journey — SPOK morphs the avatar into the brain (or back).
+    // De-dupe per message+action so the streaming effect only fires each action once.
+    const journeyMatch = fullText.match(/\[JOURNEY\]([\s\S]*?)\[\/JOURNEY\]/)
+    if (journeyMatch) {
+      try {
+        const spec = JSON.parse(journeyMatch[1].trim()) as { action?: string; page?: string }
+        const action = spec.action === 'advance' || spec.action === 'end' || spec.action === 'open' ? spec.action : 'start'
+        const page = spec.page === 'practice' || spec.page === 'paper' ? spec.page : 'notes'
+        const key = `${lastMsg.id}:${action}:${action === 'open' ? page : ''}`
+        if (key !== lastJourneyKeyRef.current) {
+          lastJourneyKeyRef.current = key
+          if (action === 'start') startJourney()
+          else if (action === 'advance') advanceJourney()
+          else if (action === 'open') openJourneyPage(page).then(({ route }) => { if (route) router.push(route) })
+          else endJourney()
+        }
       } catch {}
     }
   }, [messages])
@@ -847,7 +879,17 @@ export default function SpokPage() {
             else if (listening) stopListening()
             else startListening()
           }}>
-          <JarvisScene amplitude={amplitude} state={jarvisState} />
+          <SpokVisual
+            mode={visualMode}
+            state={jarvisState}
+            amplitude={amplitude}
+            brain={{
+              progress: journeyProgress,
+              topics: brainTopics,
+              topicCategories: brainCategories,
+              focusSlug,
+            }}
+          />
         </div>
 
         {/* ── Slide panel — shared layout for ANIMATE (graph) and ADIAGRAM (geometry) ── */}

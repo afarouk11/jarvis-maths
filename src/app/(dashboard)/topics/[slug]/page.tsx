@@ -7,6 +7,7 @@ import { JarvisChat } from '@/components/jarvis/JarvisChat'
 import { GenerateLessonButton } from '@/components/lessons/GenerateLessonButton'
 import Link from 'next/link'
 import { CheckCircle, XCircle, Clock, Zap, BookOpen } from 'lucide-react'
+import { JourneyBanner } from '@/components/journey/JourneyBanner'
 
 interface Props { params: Promise<{ slug: string }> }
 
@@ -52,6 +53,8 @@ export default async function TopicPage({ params }: Props) {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
+
+      <JourneyBanner phaseLabel="Notes" topicName={topic.name} />
 
       {/* Header */}
       <div className="flex items-start gap-4 mb-6">
