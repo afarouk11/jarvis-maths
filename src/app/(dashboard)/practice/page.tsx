@@ -67,6 +67,7 @@ function PracticePageInner() {
   const [questionSource, setQuestionSource] = useState<'ai' | 'past-paper'>('ai')
   const [drawMode, setDrawMode] = useState(false)
   const [drawingImage, setDrawingImage] = useState('')
+  const [journeyDone, setJourneyDone] = useState(false)
 
   const answerTextareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -266,6 +267,11 @@ function PracticePageInner() {
       setTimeout(() => setXpGain(null), 2000)
     }
 
+    const inJourney = !!new URLSearchParams(window.location.search).get('journey')
+    if (inJourney) {
+      setJourneyDone(true)
+      return
+    }
     if (studyNowRef.current) {
       const nextIdx = dueIdx + 1
       if (nextIdx >= dueQueue.length) {
@@ -287,6 +293,7 @@ function PracticePageInner() {
       <JourneyBanner
         phaseLabel="Practice"
         topicName={allTopics.find((t: { slug: string; name: string }) => t.slug === selectedSlug)?.name}
+        autoRedirect={journeyDone}
       />
 
       {/* Pro upgrade modal — shown when AI marking requires Pro */}

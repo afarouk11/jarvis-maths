@@ -54,7 +54,7 @@ export default async function TopicPage({ params }: Props) {
   return (
     <div className="p-6 max-w-4xl mx-auto">
 
-      <JourneyBanner phaseLabel="Notes" topicName={topic.name} />
+      <JourneyBanner phaseLabel="Notes" topicName={topic.name} autoRedirectAfterMs={90_000} />
 
       {/* Header */}
       <div className="flex items-start gap-4 mb-6">
