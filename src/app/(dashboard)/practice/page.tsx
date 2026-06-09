@@ -68,6 +68,8 @@ function PracticePageInner() {
   const [drawMode, setDrawMode] = useState(false)
   const [drawingImage, setDrawingImage] = useState('')
   const [journeyDone, setJourneyDone] = useState(false)
+  const [journeyQuestionsAnswered, setJourneyQuestionsAnswered] = useState(0)
+  const JOURNEY_QUESTION_TARGET = 5
 
   const answerTextareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -267,9 +269,15 @@ function PracticePageInner() {
       setTimeout(() => setXpGain(null), 2000)
     }
 
-    const inJourney = !!new URLSearchParams(window.location.search).get('journey')
+    const inJourney = !!params.get('journey')
     if (inJourney) {
-      setJourneyDone(true)
+      const nextCount = journeyQuestionsAnswered + 1
+      setJourneyQuestionsAnswered(nextCount)
+      if (nextCount >= JOURNEY_QUESTION_TARGET) {
+        setJourneyDone(true)
+        return
+      }
+      generateQuestion()
       return
     }
     if (studyNowRef.current) {
@@ -294,6 +302,7 @@ function PracticePageInner() {
         phaseLabel="Practice"
         topicName={allTopics.find((t: { slug: string; name: string }) => t.slug === selectedSlug)?.name}
         autoRedirect={journeyDone}
+        questionProgress={params.get('journey') ? { answered: journeyQuestionsAnswered, total: JOURNEY_QUESTION_TARGET } : undefined}
       />
 
       {/* Pro upgrade modal — shown when AI marking requires Pro */}

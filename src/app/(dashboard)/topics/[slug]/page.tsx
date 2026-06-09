@@ -51,10 +51,20 @@ export default async function TopicPage({ params }: Props) {
   const nextReview = progress?.next_review_at ? new Date(progress.next_review_at) : null
   const isDue = nextReview ? nextReview <= new Date() : false
 
+  const lessonList = (lessons ?? []) as Array<{ estimated_minutes?: number | null }>
+  const totalStudyMinutes = Math.max(
+    15,
+    Math.min(45, lessonList.reduce((sum, l) => sum + (l.estimated_minutes ?? 15), 0)),
+  )
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
 
-      <JourneyBanner phaseLabel="Notes" topicName={topic.name} autoRedirectAfterMs={90_000} />
+      <JourneyBanner
+        phaseLabel="Notes"
+        topicName={topic.name}
+        autoRedirectAfterMs={totalStudyMinutes * 60 * 1000}
+      />
 
       {/* Header */}
       <div className="flex items-start gap-4 mb-6">
