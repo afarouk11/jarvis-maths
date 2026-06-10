@@ -123,33 +123,19 @@ export async function POST(req: Request) {
       .maybeSingle()
     if (journey) {
       let topicLine = 'not yet diagnosed'
-      let mistakesLine = ''
       if (journey.focus_topic_id) {
-        const { data: topic } = await supabase
-          .from('topics').select('name, slug').eq('id', journey.focus_topic_id).single()
+        const [{ data: topic }, { data: prog }] = await Promise.all([
+          supabase.from('topics').select('name, slug').eq('id', journey.focus_topic_id).single(),
+          supabase
+            .from('student_progress')
+            .select('p_known')
+            .eq('student_id', user.id)
+            .eq('topic_id', journey.focus_topic_id)
+            .maybeSingle(),
+        ])
         if (topic) {
-          const [{ data: prog }, { data: slips }] = await Promise.all([
-            supabase
-              .from('student_progress')
-              .select('p_known')
-              .eq('student_id', user.id)
-              .eq('topic_id', journey.focus_topic_id)
-              .maybeSingle(),
-            supabase
-              .from('student_misconceptions')
-              .select('tag, count')
-              .eq('user_id', user.id)
-              .eq('topic_slug', topic.slug)
-              .order('count', { ascending: false })
-              .limit(5),
-          ])
           const mastery = typeof prog?.p_known === 'number' ? `${Math.round(prog.p_known * 100)}%` : 'unknown'
           topicLine = `${topic.name} (slug: ${topic.slug}, mastery ${mastery}, target ${Math.round(journey.target_mastery * 100)}%)`
-          if (slips && slips.length > 0) {
-            mistakesLine = `\n- Their recurring mistakes on this topic, from marked work (most frequent first): ${slips
-              .map((s: { tag: string; count: number }) => `"${s.tag}" (${s.count}x)`)
-              .join('; ')}`
-          }
         }
       }
       const phasePage: Record<string, string> = {
@@ -160,11 +146,9 @@ export async function POST(req: Request) {
       }
       journeyBlock = `\n\n---\nACTIVE GUIDED JOURNEY — live state, you are mid-journey with this student:
 - Current phase: ${journey.current_phase}${phasePage[journey.current_phase] ? ` (${phasePage[journey.current_phase]})` : ''}
-- Focus topic: ${topicLine}${mistakesLine}
+- Focus topic: ${topicLine}
 
-You are the gatekeeper of this journey. The on-page "Back to SPOK" buttons do NOT advance the cycle — the student always returns to you between phases, and only your [JOURNEY] blocks move it forward. When they return or ask for the next step: check readiness first (one short comprehension question on the focus topic), and only open the next page once their answer shows understanding. If it doesn't, re-teach the sticking point here or send them back to the notes.
-
-When reviewing their work or analysing results, do what a teacher does: name their SPECIFIC recurring mistakes from the list above and show how to fix each one — never just quote mastery percentages. Aim your readiness-check question at their most frequent mistake.\n---`
+You are the gatekeeper of this journey. The on-page "Back to SPOK" buttons do NOT advance the cycle — the student always returns to you between phases, and only your [JOURNEY] blocks move it forward. When they return or ask for the next step: check readiness first (one short comprehension question on the focus topic), and only open the next page once their answer shows understanding. If it doesn't, re-teach the sticking point here or send them back to the notes.\n---`
     }
   } catch {
     // journey context is optional — never block the chat on it
