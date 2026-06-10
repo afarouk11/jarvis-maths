@@ -16,6 +16,7 @@ import { sanitizeSvg } from '@/lib/math/sanitize-svg'
 import { Skeleton } from '@/components/ui/skeleton'
 import { friendlyError } from '@/lib/friendly-error'
 import { JourneyBanner } from '@/components/journey/JourneyBanner'
+import { journeyStorageKeys } from '@/lib/journey/storage'
 
 interface MarkingStep {
   line: string
@@ -67,9 +68,11 @@ function PracticePageInner() {
   const [questionSource, setQuestionSource] = useState<'ai' | 'past-paper'>('ai')
   const [drawMode, setDrawMode] = useState(false)
   const [drawingImage, setDrawingImage] = useState('')
-  const [journeyDone, setJourneyDone] = useState(false)
+  const journeyId = params.get('journey')
   const [journeyQuestionsAnswered, setJourneyQuestionsAnswered] = useState(0)
-  const JOURNEY_QUESTION_TARGET = 5
+  const [journeyTarget, setJourneyTarget] = useState(5)
+  const journeyDone =
+    !!journeyId && journeyQuestionsAnswered > 0 && journeyQuestionsAnswered >= journeyTarget
 
   const answerTextareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -84,6 +87,34 @@ function PracticePageInner() {
     if (topicParam) generateQuestion()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Journey session setup: restore answered count after a refresh, and size
+  // the session from BKT mastery of the focus topic (shaky → more questions,
+  // near mastery → fewer). Both persist per journey id so a refresh mid-session
+  // doesn't reset progress to 0/N.
+  useEffect(() => {
+    if (!journeyId) return
+    const keys = journeyStorageKeys(journeyId)
+
+    const storedTarget = Number(localStorage.getItem(keys.practiceTarget))
+    if (storedTarget > 0) {
+      setJourneyTarget(storedTarget)
+    } else {
+      fetch('/api/journey')
+        .then(r => r.json())
+        .then((d: { focusSlug?: string | null; progress?: Array<{ topic_id: string; p_known: number }> }) => {
+          const pKnown = d.progress?.find(p => p.topic_id === d.focusSlug)?.p_known
+          if (typeof pKnown !== 'number') return
+          const target = pKnown >= 0.8 ? 3 : pKnown < 0.5 ? 7 : 5
+          localStorage.setItem(keys.practiceTarget, String(target))
+          setJourneyTarget(target)
+        })
+        .catch(() => {})
+    }
+
+    const storedAnswered = Number(localStorage.getItem(keys.practiceAnswered))
+    if (storedAnswered > 0) setJourneyQuestionsAnswered(storedAnswered)
+  }, [journeyId])
 
   async function startStudyNow() {
     const res = await fetch('/api/progress')
@@ -269,15 +300,12 @@ function PracticePageInner() {
       setTimeout(() => setXpGain(null), 2000)
     }
 
-    const inJourney = !!params.get('journey')
-    if (inJourney) {
+    if (journeyId) {
       const nextCount = journeyQuestionsAnswered + 1
       setJourneyQuestionsAnswered(nextCount)
-      if (nextCount >= JOURNEY_QUESTION_TARGET) {
-        setJourneyDone(true)
-        return
-      }
-      generateQuestion()
+      localStorage.setItem(journeyStorageKeys(journeyId).practiceAnswered, String(nextCount))
+      // journeyDone derives from the count; the banner takes over from here.
+      if (nextCount < journeyTarget) generateQuestion()
       return
     }
     if (studyNowRef.current) {
@@ -302,7 +330,7 @@ function PracticePageInner() {
         phaseLabel="Practice"
         topicName={allTopics.find((t: { slug: string; name: string }) => t.slug === selectedSlug)?.name}
         autoRedirect={journeyDone}
-        questionProgress={params.get('journey') ? { answered: journeyQuestionsAnswered, total: JOURNEY_QUESTION_TARGET } : undefined}
+        questionProgress={journeyId ? { answered: journeyQuestionsAnswered, total: journeyTarget } : undefined}
       />
 
       {/* Pro upgrade modal — shown when AI marking requires Pro */}

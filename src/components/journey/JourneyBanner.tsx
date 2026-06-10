@@ -4,24 +4,25 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Brain, ArrowRight, Loader2, X, Timer } from 'lucide-react'
 import type { StepOutcome } from '@/lib/journey/types'
+import { journeyStorageKeys, clearJourneyStorage } from '@/lib/journey/storage'
 
 interface Props {
   phaseLabel: string
   topicName?: string
   outcome?: StepOutcome
-  /** Parent flips this true to trigger the 5s final countdown (e.g. practice after N questions). */
+  /** Parent flips this true to trigger the final countdown (e.g. practice after N questions). */
   autoRedirect?: boolean
-  /** Visible study timer: counts down from this many ms, then triggers 5s redirect countdown. */
+  /**
+   * Visible study timer: counts down this many ms, then triggers the redirect
+   * countdown. Wall-clock based (the deadline persists in localStorage), so it
+   * survives refreshes and keeps honest time in throttled background tabs.
+   */
   autoRedirectAfterMs?: number
   /** Practice session progress dots shown in the banner. */
   questionProgress?: { answered: number; total: number }
 }
 
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
+const FINAL_COUNTDOWN_SECONDS = 10
 
 export function JourneyBanner({
   phaseLabel,
@@ -33,79 +34,117 @@ export function JourneyBanner({
 }: Props) {
   const [journeyId, setJourneyId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [advanceError, setAdvanceError] = useState<string | null>(null)
   const [studySecondsLeft, setStudySecondsLeft] = useState<number | null>(null)
   const [finalCountdown, setFinalCountdown] = useState<number | null>(null)
   const [cancelled, setCancelled] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const studyTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const advancingRef = useRef(false)
 
   useEffect(() => {
     setJourneyId(new URLSearchParams(window.location.search).get('journey'))
   }, [])
 
   const advance = useCallback(async () => {
+    if (advancingRef.current) return
+    advancingRef.current = true
     setBusy(true)
-    try {
-      await fetch('/api/journey', {
+    setAdvanceError(null)
+    const post = () =>
+      fetch('/api/journey', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'advance', outcome }),
       })
-    } catch { /* non-fatal */ }
-    window.location.href = '/jarvis'
-  }, [outcome])
-
-  const startFinalCountdown = useCallback(() => {
-    setStudySecondsLeft(null)
-    setFinalCountdown(5)
-    timerRef.current = setInterval(() => {
-      setFinalCountdown(prev => {
-        if (prev === null) return null
-        if (prev <= 1) {
-          if (timerRef.current) clearInterval(timerRef.current)
-          void advance()
-          return null
-        }
-        return prev - 1
-      })
-    }, 1000)
-  }, [advance])
+    try {
+      let res = await post()
+      if (!res.ok) res = await post()
+      if (!res.ok) throw new Error(`advance failed (${res.status})`)
+      if (journeyId) clearJourneyStorage(journeyId)
+      window.location.href = '/jarvis'
+    } catch {
+      advancingRef.current = false
+      setFinalCountdown(null)
+      setBusy(false)
+      setAdvanceError("Couldn't reach SPOK — your work is saved.")
+    }
+  }, [outcome, journeyId])
 
   const cancelAll = useCallback(() => {
     setCancelled(true)
     setFinalCountdown(null)
     setStudySecondsLeft(null)
-    if (timerRef.current) clearInterval(timerRef.current)
-  }, [])
+    if (studyTimerRef.current) clearInterval(studyTimerRef.current)
+    if (journeyId) localStorage.removeItem(journeyStorageKeys(journeyId).studyDeadline)
+  }, [journeyId])
 
   // Parent-triggered (practice: after N questions answered)
   useEffect(() => {
-    if (!autoRedirect || !journeyId || cancelled) return
-    startFinalCountdown()
-    return () => { if (timerRef.current) clearInterval(timerRef.current) }
-  }, [autoRedirect, journeyId, cancelled, startFinalCountdown])
+    if (!autoRedirect || !journeyId || cancelled || finalCountdown !== null) return
+    setFinalCountdown(FINAL_COUNTDOWN_SECONDS)
+  }, [autoRedirect, journeyId, cancelled, finalCountdown])
 
-  // Mount-based study timer (notes: counts down from estimated reading time)
+  // Study timer (notes): ticks down to a persisted wall-clock deadline, so it
+  // survives refreshes and keeps honest time in throttled background tabs. On
+  // expiry the tick callback starts the final countdown — never from inside a
+  // state updater, where StrictMode's double invocation could start two.
   useEffect(() => {
     if (!autoRedirectAfterMs || !journeyId || cancelled) return
-    const totalSeconds = Math.round(autoRedirectAfterMs / 1000)
-    setStudySecondsLeft(totalSeconds)
-    timerRef.current = setInterval(() => {
-      setStudySecondsLeft(prev => {
-        if (prev === null || prev <= 1) {
-          if (timerRef.current) clearInterval(timerRef.current)
-          startFinalCountdown()
-          return null
-        }
-        return prev - 1
-      })
+    const key = journeyStorageKeys(journeyId).studyDeadline
+    const stored = Number(localStorage.getItem(key))
+    const deadline = stored > Date.now() - autoRedirectAfterMs && stored > 0
+      ? stored
+      : Date.now() + autoRedirectAfterMs
+    localStorage.setItem(key, String(deadline))
+
+    const tick = () => {
+      const left = Math.max(0, Math.round((deadline - Date.now()) / 1000))
+      if (left <= 0) {
+        if (studyTimerRef.current) clearInterval(studyTimerRef.current)
+        studyTimerRef.current = null
+        setStudySecondsLeft(null)
+        setFinalCountdown(prev => prev ?? FINAL_COUNTDOWN_SECONDS)
+      } else {
+        setStudySecondsLeft(left)
+      }
+    }
+    const kickoff = setTimeout(tick, 0)
+    studyTimerRef.current = setInterval(tick, 1000)
+    return () => {
+      clearTimeout(kickoff)
+      if (studyTimerRef.current) clearInterval(studyTimerRef.current)
+    }
+  }, [autoRedirectAfterMs, journeyId, cancelled])
+
+  // Final countdown: one timeout per tick; the callback fires advance()
+  // exactly once when it reaches the last second.
+  useEffect(() => {
+    if (finalCountdown === null || cancelled) return
+    const t = setTimeout(() => {
+      if (finalCountdown <= 1) void advance()
+      else setFinalCountdown(finalCountdown - 1)
     }, 1000)
-    return () => { if (timerRef.current) clearInterval(timerRef.current) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoRedirectAfterMs, journeyId])
+    return () => clearTimeout(t)
+  }, [finalCountdown, cancelled, advance])
 
   if (!journeyId) return null
 
   const isCountingDown = finalCountdown !== null
+  const totalStudySeconds = autoRedirectAfterMs ? Math.round(autoRedirectAfterMs / 1000) : 0
+  const studyLeft = studySecondsLeft ?? totalStudySeconds
+  const studyFraction = totalStudySeconds > 0
+    ? Math.min(1, Math.max(0, 1 - studyLeft / totalStudySeconds))
+    : 0
+  const studyMinutesLeft = Math.ceil(studyLeft / 60)
+  const dotsFilled = questionProgress
+    ? Math.min(questionProgress.answered, questionProgress.total)
+    : 0
+
+  const buttonStyle = {
+    background: 'rgba(99,102,241,0.22)',
+    border: '1px solid rgba(99,102,241,0.4)',
+    color: '#a5b4fc',
+  }
 
   return (
     <motion.div
@@ -131,35 +170,84 @@ export function JourneyBanner({
         </p>
       </div>
 
+      {/* Screen-reader announcement when the auto-return countdown starts */}
+      {isCountingDown ? (
+        <span className="sr-only" role="status" aria-live="polite">
+          Returning to SPOK in {FINAL_COUNTDOWN_SECONDS} seconds. Press Stay to keep working.
+        </span>
+      ) : null}
+
       {/* Right: context-dependent controls */}
       <div className="flex items-center gap-2 shrink-0">
-        {isCountingDown ? (
+        {advanceError ? (
           <>
-            <span className="text-xs hidden sm:inline" style={{ color: '#c7d2fe' }}>
+            <span className="text-xs" role="alert" style={{ color: '#fca5a5' }}>
+              {advanceError}
+            </span>
+            <button
+              onClick={advance}
+              disabled={busy}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:scale-[1.03] disabled:opacity-50"
+              style={buttonStyle}
+            >
+              {busy ? <Loader2 size={12} className="animate-spin" /> : null}
+              Retry
+            </button>
+          </>
+        ) : isCountingDown ? (
+          <>
+            <span className="text-xs" style={{ color: '#c7d2fe' }} aria-hidden="true">
               Back in <span className="font-bold text-white tabular-nums">{finalCountdown}s</span>
             </span>
             <button
               onClick={cancelAll}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all hover:scale-[1.03]"
-              style={{ background: 'rgba(99,102,241,0.22)', border: '1px solid rgba(99,102,241,0.4)', color: '#a5b4fc' }}
+              style={buttonStyle}
             >
               <X size={11} /> Stay
             </button>
           </>
-        ) : studySecondsLeft !== null ? (
+        ) : cancelled || (!questionProgress && !autoRedirectAfterMs) ? (
+          <button
+            onClick={advance}
+            disabled={busy}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all hover:scale-[1.03] active:scale-[0.97] disabled:opacity-50"
+            style={buttonStyle}
+          >
+            {busy ? <Loader2 size={13} className="animate-spin" /> : null}
+            Done — back to SPOK
+            <ArrowRight size={13} />
+          </button>
+        ) : autoRedirectAfterMs ? (
           <>
             <div
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold"
               style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)', color: '#818cf8' }}
             >
               <Timer size={12} />
-              {formatTime(studySecondsLeft)}
+              <span
+                className="relative h-1 w-16 rounded-full overflow-hidden"
+                style={{ background: 'rgba(99,102,241,0.20)' }}
+                role="progressbar"
+                aria-valuenow={Math.round(studyFraction * 100)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="Study time"
+              >
+                <span
+                  className="absolute inset-y-0 left-0 rounded-full transition-all duration-1000"
+                  style={{ width: `${studyFraction * 100}%`, background: '#818cf8' }}
+                />
+              </span>
+              <span className="tabular-nums whitespace-nowrap">
+                {studyMinutesLeft >= 1 ? `~${studyMinutesLeft} min` : '<1 min'}
+              </span>
             </div>
             <button
               onClick={advance}
               disabled={busy}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:scale-[1.03] disabled:opacity-50"
-              style={{ background: 'rgba(99,102,241,0.22)', border: '1px solid rgba(99,102,241,0.4)', color: '#a5b4fc' }}
+              style={buttonStyle}
             >
               {busy ? <Loader2 size={12} className="animate-spin" /> : null}
               Ready →
@@ -167,31 +255,20 @@ export function JourneyBanner({
           </>
         ) : questionProgress ? (
           <>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1" aria-hidden="true">
               {Array.from({ length: questionProgress.total }).map((_, i) => (
                 <span
                   key={i}
                   className="inline-block w-2 h-2 rounded-full transition-all duration-300"
-                  style={{ background: i < questionProgress.answered ? '#818cf8' : 'rgba(99,102,241,0.20)' }}
+                  style={{ background: i < dotsFilled ? '#818cf8' : 'rgba(99,102,241,0.20)' }}
                 />
               ))}
             </div>
             <span className="text-xs tabular-nums font-semibold" style={{ color: '#818cf8' }}>
-              {questionProgress.answered}/{questionProgress.total}
+              {dotsFilled}/{questionProgress.total}
             </span>
           </>
-        ) : (
-          <button
-            onClick={advance}
-            disabled={busy}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all hover:scale-[1.03] active:scale-[0.97] disabled:opacity-50"
-            style={{ background: 'rgba(99,102,241,0.22)', border: '1px solid rgba(99,102,241,0.4)', color: '#a5b4fc' }}
-          >
-            {busy ? <Loader2 size={13} className="animate-spin" /> : null}
-            Done — back to SPOK
-            <ArrowRight size={13} />
-          </button>
-        )}
+        ) : null}
       </div>
     </motion.div>
   )
