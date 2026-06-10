@@ -2,8 +2,20 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Brain, ArrowRight, X, Timer } from 'lucide-react'
+import { Brain, ArrowRight, Check, X, Timer } from 'lucide-react'
 import { journeyStorageKeys, clearJourneyStorage } from '@/lib/journey/storage'
+
+// Today's plan, in cycle order — shown as a stepper so the student always
+// knows where they are, like a lesson plan on the board.
+const PLAN_STEPS = ['Learn', 'Practice', 'Paper', 'Review'] as const
+
+function planStepIndex(phaseLabel: string): number {
+  const label = phaseLabel.toLowerCase()
+  if (label.includes('note')) return 0
+  if (label.includes('practice')) return 1
+  if (label.includes('paper')) return 2
+  return -1
+}
 
 interface Props {
   phaseLabel: string
@@ -119,6 +131,7 @@ export function JourneyBanner({
   const dotsFilled = questionProgress
     ? Math.min(questionProgress.answered, questionProgress.total)
     : 0
+  const currentStep = planStepIndex(phaseLabel)
 
   const buttonStyle = {
     background: 'rgba(99,102,241,0.22)',
@@ -149,6 +162,41 @@ export function JourneyBanner({
           {topicName ? <span className="opacity-70"> · {topicName}</span> : null}
         </p>
       </div>
+
+      {/* Centre: today's plan stepper — where we are in the cycle */}
+      {currentStep >= 0 ? (
+        <div
+          className="hidden md:flex items-center gap-1.5 shrink-0"
+          aria-label={`Today's plan — step ${currentStep + 1} of ${PLAN_STEPS.length}: ${PLAN_STEPS[currentStep]}`}
+        >
+          {PLAN_STEPS.map((step, i) => (
+            <span key={step} className="flex items-center gap-1.5">
+              {i > 0 ? (
+                <span aria-hidden="true" className="text-[9px]" style={{ color: 'rgba(99,102,241,0.4)' }}>
+                  ›
+                </span>
+              ) : null}
+              <span
+                className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider"
+                style={{
+                  color: i < currentStep ? '#34d399' : i === currentStep ? '#e0e7ff' : 'rgba(199,210,254,0.35)',
+                }}
+              >
+                {i < currentStep ? (
+                  <Check size={9} aria-hidden="true" />
+                ) : i === currentStep ? (
+                  <span
+                    aria-hidden="true"
+                    className="inline-block w-1.5 h-1.5 rounded-full animate-pulse"
+                    style={{ background: '#818cf8' }}
+                  />
+                ) : null}
+                {step}
+              </span>
+            </span>
+          ))}
+        </div>
+      ) : null}
 
       {/* Screen-reader announcement when the auto-return countdown starts */}
       {isCountingDown ? (

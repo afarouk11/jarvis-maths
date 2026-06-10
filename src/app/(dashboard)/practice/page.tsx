@@ -71,6 +71,9 @@ function PracticePageInner() {
   const journeyId = params.get('journey')
   const [journeyQuestionsAnswered, setJourneyQuestionsAnswered] = useState(0)
   const [journeyTarget, setJourneyTarget] = useState(5)
+  // Mirrors journeyQuestionsAnswered for reads inside async callbacks, where
+  // the state closure can be one update behind.
+  const journeyAnsweredRef = useRef(0)
   const journeyDone =
     !!journeyId && journeyQuestionsAnswered > 0 && journeyQuestionsAnswered >= journeyTarget
 
@@ -113,7 +116,10 @@ function PracticePageInner() {
     }
 
     const storedAnswered = Number(localStorage.getItem(keys.practiceAnswered))
-    if (storedAnswered > 0) setJourneyQuestionsAnswered(storedAnswered)
+    if (storedAnswered > 0) {
+      journeyAnsweredRef.current = storedAnswered
+      setJourneyQuestionsAnswered(storedAnswered)
+    }
   }, [journeyId])
 
   async function startStudyNow() {
@@ -168,6 +174,15 @@ function PracticePageInner() {
     setStartTime(Date.now())
 
     const topic = allTopics.find(t => t.slug === slug)!
+    // Journey sets ramp easy → hard across the session, like a teacher's
+    // worksheet: position 0 is one notch below the adaptive level, 1 is one above.
+    const generateBody = JSON.stringify({
+      topicId: slug,
+      topicName: topic.name,
+      rampPosition: journeyId && journeyTarget > 1
+        ? Math.min(1, journeyAnsweredRef.current / (journeyTarget - 1))
+        : undefined,
+    })
     try {
       let res: Response
       if (questionSource === 'past-paper') {
@@ -178,7 +193,7 @@ function PracticePageInner() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             // No difficulty sent — the server picks it adaptively from current mastery
-          body: JSON.stringify({ topicId: slug, topicName: topic.name }),
+            body: generateBody,
           })
         }
       } else {
@@ -186,7 +201,7 @@ function PracticePageInner() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           // No difficulty sent — the server picks it adaptively from current mastery
-          body: JSON.stringify({ topicId: slug, topicName: topic.name }),
+          body: generateBody,
         })
       }
       if (!res.ok) {
@@ -302,6 +317,7 @@ function PracticePageInner() {
 
     if (journeyId) {
       const nextCount = journeyQuestionsAnswered + 1
+      journeyAnsweredRef.current = nextCount
       setJourneyQuestionsAnswered(nextCount)
       localStorage.setItem(journeyStorageKeys(journeyId).practiceAnswered, String(nextCount))
       // journeyDone derives from the count; the banner takes over from here.

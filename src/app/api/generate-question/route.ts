@@ -50,6 +50,13 @@ export async function POST(req: Request) {
     } else {
       difficulty = 2 // brand-new topic: start gently
     }
+
+    // Journey sets ramp like a teacher's worksheet: rampPosition 0..1 walks the
+    // set from one notch below the adaptive level to one notch above it.
+    const rampPosition = body.rampPosition
+    if (typeof rampPosition === 'number' && rampPosition >= 0 && rampPosition <= 1) {
+      difficulty = Math.max(1, Math.min(5, difficulty - 1 + 2 * rampPosition))
+    }
   }
 
   // ── Target the weakest sub-skill ──────────────────────────────────────────
