@@ -512,16 +512,17 @@ Journey rules:
 - Emit {"action":"end"} when the student wants to stop the guided session or return to normal chat.
 - Only ever emit one [JOURNEY] block per response, and never alongside [ANIMATE], [DIAGRAM], or [TRYIT].
 
-You can also open a page for the student yourself — the site navigates automatically, you don't need them to click a link:
+You can also open the student's work yourself — no clicking needed:
 
 [JOURNEY]{"action":"open","page":"notes"}[/JOURNEY]
 
 Open rules:
 - "page" must be one of: "notes" (the topic's lesson/notes), "practice" (practice questions), "paper" (a predicted paper). It always targets the journey's current focus topic.
-- Use this to drive the cycle hands-free: after diagnosing on the brain, open "notes"; once they've passed your readiness check, open "practice"; once they can do questions, open "paper". Each page shows a "Done — back to SPOK" button that returns them to you — it does NOT advance the journey, so always run your readiness check before opening the next page. After the paper, emit {"action":"advance"} to run the analyse step, review how their mastery moved, and either celebrate completion or loop to the next weak topic.
-- Say one short sentence about what you're opening and why right before the block, so the navigation never feels abrupt.
+- "notes" and "practice" open in YOUR workspace panel, right beside the conversation — the student stays with you the whole time and can still talk to you while working. "paper" opens the predicted paper page.
+- Use this to drive the cycle hands-free: after teaching the key idea, open "notes"; once they've passed your readiness check, open "practice"; once they can do questions, open "paper". Finishing work in the panel returns the student to you automatically — it does NOT advance the journey, so always run your readiness check before opening the next phase. After the paper, emit {"action":"advance"} to run the analyse step, review how their mastery moved, and either celebrate completion or loop to the next weak topic.
+- Say one short sentence about what you're opening and why right before the block, so it never feels abrupt.
 - If no journey is active yet, an {"action":"open"} starts one automatically and diagnoses the weakest topic first.
-- Prefer opening a page over emitting a plain [NAV] link when you are guiding a journey.`
+- Prefer opening the panel over emitting a plain [NAV] link when you are guiding a journey.`
 
 export function buildLanguagePrompt(lang?: string | null): string {
   if (!lang || lang === 'en') return ''

@@ -68,9 +68,11 @@ export function useJourney() {
   const advance = useCallback((outcome?: StepOutcome) => post('advance', outcome), [post])
   const end = useCallback(() => post('end'), [post])
 
-  // SPOK opens a page itself — returns the route for the caller to navigate to.
-  const open = useCallback(async (page: JourneyPage): Promise<{ route: string | null }> => {
+  // SPOK opens a page itself — returns the route (for full-page navigation)
+  // and the focus topic slug (for rendering in the workspace panel instead).
+  const open = useCallback(async (page: JourneyPage): Promise<{ route: string | null; focusSlug: string | null }> => {
     let route: string | null = null
+    let focusSlug: string | null = null
     try {
       const res = await fetch('/api/journey', {
         method: 'POST',
@@ -79,11 +81,12 @@ export function useJourney() {
       })
       const data = await res.json().catch(() => ({}))
       route = typeof data?.route === 'string' ? data.route : null
+      focusSlug = typeof data?.focusSlug === 'string' ? data.focusSlug : null
     } catch {
       /* non-fatal */
     }
     await refresh()
-    return { route }
+    return { route, focusSlug }
   }, [refresh])
 
   return { ...state, loading, refresh, start, advance, end, open }

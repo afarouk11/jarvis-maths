@@ -17,6 +17,7 @@ import { useJarvisVoice, useSpeechToText, createSentenceBuffer } from '@/hooks/u
 import { SpokVisual } from '@/components/jarvis/SpokVisual'
 import { useJourney } from '@/hooks/useJourney'
 import { getTopics, getTopicCategories } from '@/lib/curriculum'
+import { WorkspacePanel, type WorkspaceState } from '@/components/workspace/WorkspacePanel'
 import type { JarvisState } from '@/types'
 
 export default function SpokPage() {
@@ -59,6 +60,26 @@ export default function SpokPage() {
   // The brain replaces the avatar whenever a journey is active and morphs back
   // when it completes or is ended. Derived so it always tracks the server state.
   const visualMode: 'avatar' | 'brain' = journey?.status === 'active' ? 'brain' : 'avatar'
+
+  // ── SPOK workspace — notes/practice rendered in place over the canvas ────────
+  const [workspace, setWorkspace] = useState<WorkspaceState | null>(null)
+
+  // BKT-sized practice set for a topic: near mastery → short, shaky → longer.
+  const practiceSetSize = useCallback((slug: string): number => {
+    const pKnown = journeyProgress.find(p => p.topic_id === slug)?.p_known
+    if (typeof pKnown !== 'number') return 5
+    return pKnown >= 0.8 ? 3 : pKnown < 0.5 ? 7 : 5
+  }, [journeyProgress])
+
+  const openWorkspace = useCallback((page: 'notes' | 'practice', slug: string) => {
+    const topic = brainTopics.find(t => t.slug === slug)
+    setWorkspace({
+      page,
+      topicSlug: slug,
+      topicName: topic?.name ?? slug,
+      total: page === 'practice' ? practiceSetSize(slug) : undefined,
+    })
+  }, [brainTopics, practiceSetSize])
 
   // Photo input for handwritten working
   const [pendingImage, setPendingImage]     = useState<string | null>(null)
@@ -301,7 +322,14 @@ export default function SpokPage() {
           lastJourneyKeyRef.current = key
           if (action === 'start') startJourney()
           else if (action === 'advance') advanceJourney()
-          else if (action === 'open') openJourneyPage(page).then(({ route }) => { if (route) router.push(route) })
+          else if (action === 'open') {
+            openJourneyPage(page).then(({ route, focusSlug: openedSlug }) => {
+              // Notes and practice render in the workspace panel beside SPOK;
+              // only the predicted paper still navigates to its own page.
+              if (page !== 'paper' && openedSlug) openWorkspace(page, openedSlug)
+              else if (route) router.push(route)
+            })
+          }
           else endJourney()
         }
       } catch {}
@@ -457,6 +485,16 @@ export default function SpokPage() {
     setQuickReplies([])
     hasSeededHistory.current = true
     sendMessage({ text })
+  }
+
+  // Finishing workspace work closes the panel and checks in with SPOK, which
+  // runs its readiness gate before advancing the journey.
+  function handleWorkspaceDone(page: 'notes' | 'practice', summary?: { answered: number; correct: number }) {
+    setWorkspace(null)
+    const text = page === 'notes'
+      ? "I've finished reading the notes — what's my next step?"
+      : `I've finished my practice questions${summary ? ` — I got ${summary.correct} out of ${summary.answered}` : ''}. What's next?`
+    sendQuick(text)
   }
 
   function handleTryItSubmit() {
@@ -911,6 +949,17 @@ export default function SpokPage() {
             }}
           />
         </div>
+
+        {/* ── SPOK workspace — notes/practice rendered in place ──────────── */}
+        <AnimatePresence>
+          {workspace && (
+            <WorkspacePanel
+              workspace={workspace}
+              onClose={() => setWorkspace(null)}
+              onDone={handleWorkspaceDone}
+            />
+          )}
+        </AnimatePresence>
 
         {/* ── Slide panel — shared layout for ANIMATE (graph) and ADIAGRAM (geometry) ── */}
         <AnimatePresence>
