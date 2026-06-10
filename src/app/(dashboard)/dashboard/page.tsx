@@ -211,7 +211,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <Section title="Quick Start">
             <div className="space-y-2">
               {[
-                { href: '/jarvis',   icon: <Bot size={15} />,      label: 'Talk to SPOK',        sub: 'Voice or text',          color: '#f59e0b' },
+                { href: '/spok',   icon: <Bot size={15} />,      label: 'Talk to SPOK',        sub: 'Voice or text',          color: '#f59e0b' },
                 { href: '/practice', icon: <Zap size={15} />,      label: 'Practice Questions',   sub: `${dueTopics.length} due`, color: '#3b82f6' },
                 { href: '/topics',   icon: <BookOpen size={15} />,  label: 'Browse Topics',        sub: 'Start a lesson',         color: '#22c55e' },
                 { href: '/papers',   icon: <FileText size={15} />,  label: 'Past Papers',          sub: 'Mock exams',             color: '#a78bfa' },

@@ -301,7 +301,7 @@ export default async function ProgressPage() {
               style={{ background: '#3b82f6', color: '#fff' }}>
               Start Practising
             </Link>
-            <Link href="/jarvis"
+            <Link href="/spok"
               className="px-4 py-2 rounded-lg text-sm font-semibold"
               style={{ background: 'rgba(59,130,246,0.1)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.2)' }}>
               Ask SPOK

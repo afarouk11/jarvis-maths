@@ -556,7 +556,7 @@ export function BrainMap({ progress, avgPKnown, grade, topicsActive, totalTopics
                 ⚡ Practice Now
               </button>
               <button
-                onClick={() => router.push(`/jarvis?topic=${selected.slug}`)}
+                onClick={() => router.push(`/spok?topic=${selected.slug}`)}
                 style={{
                   padding: '9px 0', borderRadius: 12, fontSize: 12, fontWeight: 500, cursor: 'pointer',
                   background: 'rgba(99,102,241,0.12)',

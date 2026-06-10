@@ -59,7 +59,7 @@ export function JourneyBanner({
     returningRef.current = true
     if (journeyId) clearJourneyStorage(journeyId)
     const from = phaseLabel.toLowerCase().replace(/[^a-z]+/g, '-')
-    window.location.href = `/jarvis?returned=${from}`
+    window.location.href = `/spok?returned=${from}`
   }, [journeyId, phaseLabel])
 
   const cancelAll = useCallback(() => {

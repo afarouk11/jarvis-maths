@@ -28,7 +28,7 @@ export async function proxy(request: NextRequest) {
   } catch {}
 
   const { pathname } = request.nextUrl
-  const protectedPrefixes = ['/dashboard', '/topics', '/practice', '/profile', '/brain', '/jarvis', '/papers', '/admin']
+  const protectedPrefixes = ['/dashboard', '/topics', '/practice', '/profile', '/brain', '/spok', '/papers', '/admin']
   const isProtected = protectedPrefixes.some(p => pathname.startsWith(p))
   const isAuthPage = pathname.startsWith('/sign-in') || pathname.startsWith('/sign-up')
 
@@ -37,7 +37,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (isAuthPage && user) {
-    return NextResponse.redirect(new URL('/jarvis', request.url))
+    return NextResponse.redirect(new URL('/spok', request.url))
   }
 
   return supabaseResponse

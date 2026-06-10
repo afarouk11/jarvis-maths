@@ -13,7 +13,7 @@ import { createClient } from '@/lib/supabase/client'
 
 // SPOK is the interface — everything else lives one tap away in here.
 const NAV: Array<{ href: string; icon: LucideIcon; label: string }> = [
-  { href: '/jarvis',      icon: Bot,             label: 'SPOK' },
+  { href: '/spok',      icon: Bot,             label: 'SPOK' },
   { href: '/dashboard',   icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/topics',      icon: BookOpen,        label: 'Learn' },
   { href: '/practice',    icon: Zap,             label: 'Practice' },

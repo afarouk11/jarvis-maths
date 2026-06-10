@@ -45,7 +45,7 @@ export default function manifest(): MetadataRoute.Manifest {
         name: 'Ask SPOK',
         short_name: 'SPOK',
         description: 'Chat with your AI maths tutor',
-        url: '/jarvis',
+        url: '/spok',
         icons: [{ src: '/api/pwa-icon/192', sizes: '192x192' }],
       },
       {
