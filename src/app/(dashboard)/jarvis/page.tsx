@@ -71,7 +71,7 @@ export default function SpokPage() {
     return pKnown >= 0.8 ? 3 : pKnown < 0.5 ? 7 : 5
   }, [journeyProgress])
 
-  const openWorkspace = useCallback((page: 'notes' | 'practice', slug: string) => {
+  const openWorkspace = useCallback((page: WorkspaceState['page'], slug: string) => {
     const topic = brainTopics.find(t => t.slug === slug)
     setWorkspace({
       page,
@@ -324,9 +324,9 @@ export default function SpokPage() {
           else if (action === 'advance') advanceJourney()
           else if (action === 'open') {
             openJourneyPage(page).then(({ route, focusSlug: openedSlug }) => {
-              // Notes and practice render in the workspace panel beside SPOK;
-              // only the predicted paper still navigates to its own page.
-              if (page !== 'paper' && openedSlug) openWorkspace(page, openedSlug)
+              // Everything renders in SPOK's workspace; navigation is the
+              // fallback if the journey has no focus topic to attach to.
+              if (openedSlug) openWorkspace(page, openedSlug)
               else if (route) router.push(route)
             })
           }
@@ -489,11 +489,13 @@ export default function SpokPage() {
 
   // Finishing workspace work closes the panel and checks in with SPOK, which
   // runs its readiness gate before advancing the journey.
-  function handleWorkspaceDone(page: 'notes' | 'practice', summary?: { answered: number; correct: number }) {
+  function handleWorkspaceDone(page: WorkspaceState['page'], summary?: { answered: number; correct: number }) {
     setWorkspace(null)
     const text = page === 'notes'
       ? "I've finished reading the notes — what's my next step?"
-      : `I've finished my practice questions${summary ? ` — I got ${summary.correct} out of ${summary.answered}` : ''}. What's next?`
+      : page === 'practice'
+        ? `I've finished my practice questions${summary ? ` — I got ${summary.correct} out of ${summary.answered}` : ''}. What's next?`
+        : "I've finished the predicted paper — how did I do?"
     sendQuick(text)
   }
 

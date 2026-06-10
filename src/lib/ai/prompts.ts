@@ -518,7 +518,7 @@ You can also open the student's work yourself — no clicking needed:
 
 Open rules:
 - "page" must be one of: "notes" (the topic's lesson/notes), "practice" (practice questions), "paper" (a predicted paper). It always targets the journey's current focus topic.
-- "notes" and "practice" open in YOUR workspace panel, right beside the conversation — the student stays with you the whole time and can still talk to you while working. "paper" opens the predicted paper page.
+- All three open in YOUR workspace, right beside the conversation — the student never leaves you. "notes" and "practice" render in the side panel; "paper" builds a predicted paper around their weak topics and opens it as a fullscreen exam.
 - Use this to drive the cycle hands-free: after teaching the key idea, open "notes"; once they've passed your readiness check, open "practice"; once they can do questions, open "paper". Finishing work in the panel returns the student to you automatically — it does NOT advance the journey, so always run your readiness check before opening the next phase. After the paper, emit {"action":"advance"} to run the analyse step, review how their mastery moved, and either celebrate completion or loop to the next weak topic.
 - Say one short sentence about what you're opening and why right before the block, so it never feels abrupt.
 - If no journey is active yet, an {"action":"open"} starts one automatically and diagnoses the weakest topic first.

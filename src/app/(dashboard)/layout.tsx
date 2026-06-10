@@ -1,5 +1,4 @@
-import { MobileNav } from '@/components/layout/Sidebar'
-import { SidebarShell } from '@/components/layout/SidebarShell'
+import { FloatingMenu } from '@/components/layout/FloatingMenu'
 import { JarvisChat } from '@/components/jarvis/JarvisChat'
 import { NotebookBackground } from '@/components/layout/NotebookBackground'
 import { AccessibilityPanel } from '@/components/accessibility/AccessibilityPanel'
@@ -7,10 +6,8 @@ import { AccessibilityPanel } from '@/components/accessibility/AccessibilityPane
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <NotebookBackground>
-      <SidebarShell>
-        {children}
-      </SidebarShell>
-      <MobileNav />
+      <main className="min-h-screen">{children}</main>
+      <FloatingMenu />
       <JarvisChat />
       <AccessibilityPanel />
     </NotebookBackground>

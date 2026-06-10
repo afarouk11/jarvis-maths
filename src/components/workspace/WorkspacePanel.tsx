@@ -1,12 +1,15 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { BookOpen, PencilLine } from 'lucide-react'
+import { BookOpen, PencilLine, FileText } from 'lucide-react'
 import { NotesPanel } from './NotesPanel'
 import { PracticePanel } from './PracticePanel'
+import { PaperPanel } from './PaperPanel'
+
+export type WorkspacePage = 'notes' | 'practice' | 'paper'
 
 export interface WorkspaceState {
-  page: 'notes' | 'practice'
+  page: WorkspacePage
   topicSlug: string
   topicName: string
   /** Practice only: BKT-sized question count. */
@@ -17,7 +20,7 @@ interface Props {
   workspace: WorkspaceState
   onClose: () => void
   /** Called when the student finishes the work — closes the panel and checks in with SPOK. */
-  onDone: (page: 'notes' | 'practice', summary?: { answered: number; correct: number }) => void
+  onDone: (page: WorkspacePage, summary?: { answered: number; correct: number }) => void
 }
 
 /**
@@ -26,6 +29,8 @@ interface Props {
  */
 export function WorkspacePanel({ workspace, onClose, onDone }: Props) {
   const isNotes = workspace.page === 'notes'
+  const HeaderIcon = isNotes ? BookOpen : workspace.page === 'practice' ? PencilLine : FileText
+  const headerLabel = isNotes ? 'Notes' : workspace.page === 'practice' ? 'Practice' : 'Predicted paper'
 
   return (
     <motion.div
@@ -41,11 +46,9 @@ export function WorkspacePanel({ workspace, onClose, onDone }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between mb-4 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
-          {isNotes
-            ? <BookOpen size={13} style={{ color: '#818cf8' }} />
-            : <PencilLine size={13} style={{ color: '#818cf8' }} />}
+          <HeaderIcon size={13} style={{ color: '#818cf8' }} />
           <p className="text-xs font-semibold uppercase tracking-widest truncate" style={{ color: '#818cf8' }}>
-            SPOK · {isNotes ? 'Notes' : 'Practice'}
+            SPOK · {headerLabel}
             <span className="opacity-60 normal-case tracking-normal font-normal"> — {workspace.topicName}</span>
           </p>
         </div>
@@ -63,13 +66,15 @@ export function WorkspacePanel({ workspace, onClose, onDone }: Props) {
             topicName={workspace.topicName}
             onDone={() => onDone('notes')}
           />
-        ) : (
+        ) : workspace.page === 'practice' ? (
           <PracticePanel
             topicSlug={workspace.topicSlug}
             topicName={workspace.topicName}
             total={workspace.total ?? 5}
             onDone={summary => onDone('practice', summary)}
           />
+        ) : (
+          <PaperPanel onDone={() => onDone('paper')} />
         )}
       </div>
     </motion.div>
