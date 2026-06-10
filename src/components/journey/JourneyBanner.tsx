@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Brain, ArrowRight, X, Timer } from 'lucide-react'
+import { Brain, ArrowRight, Loader2, X, Timer } from 'lucide-react'
+import type { StepOutcome } from '@/lib/journey/types'
 import { journeyStorageKeys, clearJourneyStorage } from '@/lib/journey/storage'
 
 interface Props {
   phaseLabel: string
   topicName?: string
+  outcome?: StepOutcome
   /** Parent flips this true to trigger the final countdown (e.g. practice after N questions). */
   autoRedirect?: boolean
   /**
@@ -25,30 +27,48 @@ const FINAL_COUNTDOWN_SECONDS = 10
 export function JourneyBanner({
   phaseLabel,
   topicName,
+  outcome,
   autoRedirect,
   autoRedirectAfterMs,
   questionProgress,
 }: Props) {
   const [journeyId, setJourneyId] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [advanceError, setAdvanceError] = useState<string | null>(null)
   const [studySecondsLeft, setStudySecondsLeft] = useState<number | null>(null)
   const [finalCountdown, setFinalCountdown] = useState<number | null>(null)
   const [cancelled, setCancelled] = useState(false)
   const studyTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const returningRef = useRef(false)
+  const advancingRef = useRef(false)
 
   useEffect(() => {
     setJourneyId(new URLSearchParams(window.location.search).get('journey'))
   }, [])
 
-  // Returning never advances the journey phase — SPOK gates that itself in
-  // chat (readiness check first). We just hand the student back with context.
-  const returnToSpok = useCallback(() => {
-    if (returningRef.current) return
-    returningRef.current = true
-    if (journeyId) clearJourneyStorage(journeyId)
-    const from = phaseLabel.toLowerCase().replace(/[^a-z]+/g, '-')
-    window.location.href = `/jarvis?returned=${from}`
-  }, [journeyId, phaseLabel])
+  const advance = useCallback(async () => {
+    if (advancingRef.current) return
+    advancingRef.current = true
+    setBusy(true)
+    setAdvanceError(null)
+    const post = () =>
+      fetch('/api/journey', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'advance', outcome }),
+      })
+    try {
+      let res = await post()
+      if (!res.ok) res = await post()
+      if (!res.ok) throw new Error(`advance failed (${res.status})`)
+      if (journeyId) clearJourneyStorage(journeyId)
+      window.location.href = '/jarvis'
+    } catch {
+      advancingRef.current = false
+      setFinalCountdown(null)
+      setBusy(false)
+      setAdvanceError("Couldn't reach SPOK — your work is saved.")
+    }
+  }, [outcome, journeyId])
 
   const cancelAll = useCallback(() => {
     setCancelled(true)
@@ -96,16 +116,16 @@ export function JourneyBanner({
     }
   }, [autoRedirectAfterMs, journeyId, cancelled])
 
-  // Final countdown: one timeout per tick; the callback returns to SPOK
+  // Final countdown: one timeout per tick; the callback fires advance()
   // exactly once when it reaches the last second.
   useEffect(() => {
     if (finalCountdown === null || cancelled) return
     const t = setTimeout(() => {
-      if (finalCountdown <= 1) returnToSpok()
+      if (finalCountdown <= 1) void advance()
       else setFinalCountdown(finalCountdown - 1)
     }, 1000)
     return () => clearTimeout(t)
-  }, [finalCountdown, cancelled, returnToSpok])
+  }, [finalCountdown, cancelled, advance])
 
   if (!journeyId) return null
 
@@ -159,7 +179,22 @@ export function JourneyBanner({
 
       {/* Right: context-dependent controls */}
       <div className="flex items-center gap-2 shrink-0">
-        {isCountingDown ? (
+        {advanceError ? (
+          <>
+            <span className="text-xs" role="alert" style={{ color: '#fca5a5' }}>
+              {advanceError}
+            </span>
+            <button
+              onClick={advance}
+              disabled={busy}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:scale-[1.03] disabled:opacity-50"
+              style={buttonStyle}
+            >
+              {busy ? <Loader2 size={12} className="animate-spin" /> : null}
+              Retry
+            </button>
+          </>
+        ) : isCountingDown ? (
           <>
             <span className="text-xs" style={{ color: '#c7d2fe' }} aria-hidden="true">
               Back in <span className="font-bold text-white tabular-nums">{finalCountdown}s</span>
@@ -174,10 +209,12 @@ export function JourneyBanner({
           </>
         ) : cancelled || (!questionProgress && !autoRedirectAfterMs) ? (
           <button
-            onClick={returnToSpok}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all hover:scale-[1.03] active:scale-[0.97]"
+            onClick={advance}
+            disabled={busy}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all hover:scale-[1.03] active:scale-[0.97] disabled:opacity-50"
             style={buttonStyle}
           >
+            {busy ? <Loader2 size={13} className="animate-spin" /> : null}
             Done — back to SPOK
             <ArrowRight size={13} />
           </button>
@@ -207,10 +244,12 @@ export function JourneyBanner({
               </span>
             </div>
             <button
-              onClick={returnToSpok}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:scale-[1.03]"
+              onClick={advance}
+              disabled={busy}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:scale-[1.03] disabled:opacity-50"
               style={buttonStyle}
             >
+              {busy ? <Loader2 size={12} className="animate-spin" /> : null}
               Ready →
             </button>
           </>

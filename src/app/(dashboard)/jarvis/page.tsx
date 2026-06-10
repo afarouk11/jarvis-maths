@@ -75,8 +75,6 @@ export default function SpokPage() {
   const [historyMessages, setHistoryMessages] = useState<Array<{ role: string; content: string }>>([])
   const historyRef        = useRef<string>('')
   const hasSeededHistory  = useRef(false)
-  // One-shot guard for the post-phase journey check-in message
-  const journeyReturnSent = useRef(false)
 
   useEffect(() => {
     function tick() {
@@ -107,11 +105,6 @@ export default function SpokPage() {
         }
       })
       .catch(() => {})
-    // Returning mid-journey? Note which phase, and strip the param so a
-    // refresh doesn't re-trigger the check-in.
-    const returnedFrom = new URLSearchParams(window.location.search).get('returned')
-    if (returnedFrom) window.history.replaceState(null, '', '/jarvis')
-
     // Load last session's messages to seed SPOK's memory
     fetch('/api/chat-history')
       .then(r => r.json())
@@ -124,19 +117,6 @@ export default function SpokPage() {
           .join('\n\n')
       })
       .catch(() => {})
-      .finally(() => {
-        // Auto-check-in after a journey phase: SPOK greets the student and
-        // runs its readiness check before deciding whether to advance.
-        if (!returnedFrom || journeyReturnSent.current) return
-        journeyReturnSent.current = true
-        const phrase: Record<string, string> = {
-          'notes': "I've finished reading the notes — what's my next step?",
-          'practice': "I've finished my practice questions — what's next?",
-          'predicted-paper': "I've finished the paper — how did I do?",
-        }
-        sendQuick(phrase[returnedFrom] ?? "I'm back — what's my next step?")
-      })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const bottomRef  = useRef<HTMLDivElement>(null)
   const inputRef   = useRef<HTMLInputElement>(null)

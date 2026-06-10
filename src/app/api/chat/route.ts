@@ -111,49 +111,6 @@ export async function POST(req: Request) {
 
   const profile = await buildStudentProfile(user.id)
 
-  // Live guided-journey state — SPOK gates every phase change conversationally,
-  // so it needs to know exactly where the student is in the cycle right now.
-  let journeyBlock = ''
-  try {
-    const { data: journey } = await supabase
-      .from('learning_journeys')
-      .select('current_phase, focus_topic_id, target_mastery')
-      .eq('student_id', user.id)
-      .eq('status', 'active')
-      .maybeSingle()
-    if (journey) {
-      let topicLine = 'not yet diagnosed'
-      if (journey.focus_topic_id) {
-        const [{ data: topic }, { data: prog }] = await Promise.all([
-          supabase.from('topics').select('name, slug').eq('id', journey.focus_topic_id).single(),
-          supabase
-            .from('student_progress')
-            .select('p_known')
-            .eq('student_id', user.id)
-            .eq('topic_id', journey.focus_topic_id)
-            .maybeSingle(),
-        ])
-        if (topic) {
-          const mastery = typeof prog?.p_known === 'number' ? `${Math.round(prog.p_known * 100)}%` : 'unknown'
-          topicLine = `${topic.name} (slug: ${topic.slug}, mastery ${mastery}, target ${Math.round(journey.target_mastery * 100)}%)`
-        }
-      }
-      const phasePage: Record<string, string> = {
-        learn: 'they have been on the notes page',
-        practice: 'they have been on the practice page',
-        assess: 'they have been on the predicted paper page',
-        analyse: 'time to review their results with them',
-      }
-      journeyBlock = `\n\n---\nACTIVE GUIDED JOURNEY — live state, you are mid-journey with this student:
-- Current phase: ${journey.current_phase}${phasePage[journey.current_phase] ? ` (${phasePage[journey.current_phase]})` : ''}
-- Focus topic: ${topicLine}
-
-You are the gatekeeper of this journey. The on-page "Back to SPOK" buttons do NOT advance the cycle — the student always returns to you between phases, and only your [JOURNEY] blocks move it forward. When they return or ask for the next step: check readiness first (one short comprehension question on the focus topic), and only open the next page once their answer shows understanding. If it doesn't, re-teach the sticking point here or send them back to the notes.\n---`
-    }
-  } catch {
-    // journey context is optional — never block the chat on it
-  }
-
   // RAG: embed the latest user message and find relevant past paper chunks
   let ragContext = ''
   let graphImageUrls: string[] = []
@@ -231,7 +188,6 @@ You are the gatekeeper of this journey. The on-page "Back to SPOK" buttons do NO
     profile ? `\n\n---\n${profile}\n---\n\nUse this profile to personalise your responses.` : '',
     topicContext ? `\nCurrent topic: The student is studying "${topicContext}".` : '',
     modeAppend ? `\n\n---\nINSTRUCTION: ${modeAppend}\n---` : '',
-    journeyBlock,
     ragContext,
     historyBlock,
   ].join('')
