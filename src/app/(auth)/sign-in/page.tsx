@@ -64,7 +64,7 @@ function SignInForm() {
                 style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em' }}>
                 Welcome back
               </h1>
-              <p className="text-sm mt-1.5" style={{ color: '#5a7aaa' }}>Good to have you back.</p>
+              <p className="text-sm mt-1.5" style={{ color: '#5a7aaa' }}>Sign in to continue.</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">

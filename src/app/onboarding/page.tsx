@@ -236,7 +236,7 @@ export default function OnboardingPage() {
                     <p className="text-xs font-semibold uppercase tracking-widest text-amber-400 mb-3">Welcome</p>
                     <h1 className="text-3xl font-bold text-white">I'm SPOK.</h1>
                     <p className="text-slate-400 mt-3 leading-relaxed">
-                      Your personal Maths tutor for GCSE and A-level. I track exactly what you know, find the gaps, and build sessions that get you to your target grade.
+                      Your personal maths tutor for GCSE and A-level. I track exactly what you know, find the gaps, and build sessions that get you to your target grade.
                     </p>
                   </div>
                   <div>
@@ -357,7 +357,7 @@ export default function OnboardingPage() {
                       className="w-full px-4 py-3 rounded-xl text-sm outline-none"
                       style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#e2e8f0' }}
                     />
-                    <p className="text-xs mt-1" style={{ color: '#475569' }}>I'll count down and intensify sessions as it approaches.</p>
+                    <p className="text-xs mt-1" style={{ color: '#475569' }}>I'll count down and ramp up sessions as the date approaches.</p>
                   </div>
                 </>
               )}
@@ -368,7 +368,7 @@ export default function OnboardingPage() {
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-widest text-amber-400 mb-3">Quick baseline</p>
                     <h2 className="text-2xl font-bold text-white">How confident are you in each area?</h2>
-                    <p className="text-slate-500 text-sm mt-1">Rough is fine, and skip any you&apos;re unsure about. This draws your starting knowledge map.</p>
+                    <p className="text-slate-500 text-sm mt-1">Rough answers are fine — skip anything you&apos;re unsure about. This draws your starting knowledge map.</p>
                   </div>
                   <div className="space-y-4">
                     {categories.map(cat => (

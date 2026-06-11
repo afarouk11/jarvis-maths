@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import { predictedGrade } from '@/lib/bkt/bayesian-knowledge-tracing'
+import { gradeColor as sharedGradeColor } from '@/lib/grade'
 import { getTopics } from '@/lib/curriculum'
 import type { Level } from '@/lib/curriculum'
 import Link from 'next/link'
@@ -80,7 +81,7 @@ export default async function TeacherDashboard() {
       const avgPKnown = allTopics.length > 0
         ? prog.reduce((s: number, pr: { p_known: number }) => s + pr.p_known, 0) / allTopics.length
         : 0
-      const grade = predictedGrade(avgPKnown)
+      const grade = predictedGrade(avgPKnown, p.level)
       const today = new Date().toISOString().slice(0, 10)
       const studiedToday = p.last_active_at ? p.last_active_at.slice(0, 10) === today : false
 
@@ -246,7 +247,7 @@ interface StudentRow {
 }
 
 function StudentRow({ student: s }: { student: StudentRow }) {
-  const gradeColor = s.grade === 'A*' ? '#fbbf24' : s.grade === 'A' ? '#4ade80' : s.grade === 'B' ? '#60a5fa' : '#94a3b8'
+  const gradeColor = sharedGradeColor(s.grade)
   const atTarget = s.grade === s.targetGrade || (s.grade === 'A*' && s.targetGrade === 'A*')
 
   return (

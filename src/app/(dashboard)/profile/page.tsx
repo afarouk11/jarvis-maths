@@ -36,12 +36,12 @@ export default async function ProfilePage() {
       <div>
         <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-space-grotesk)', letterSpacing: '-0.02em' }}>{profile?.full_name ?? 'Your Profile'}</h1>
         <p className="text-sm mt-1" style={{ color: '#5a7aaa' }}>
-          {profile?.exam_board} A-level · Target: {profile?.target_grade}
+          {profile?.exam_board} {profile?.level === 'GCSE' ? 'GCSE' : 'A-level'} · Target: {profile?.target_grade}
           {profile?.exam_date && ` · Exam: ${new Date(profile.exam_date).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`}
         </p>
       </div>
 
-      <GradePrediction avgPKnown={avgPKnown} targetGrade={profile?.target_grade} attemptedAvgPKnown={attemptedAvgPKnown} attemptedCount={progressData.length} />
+      <GradePrediction avgPKnown={avgPKnown} targetGrade={profile?.target_grade} attemptedAvgPKnown={attemptedAvgPKnown} attemptedCount={progressData.length} level={profile?.level} />
       <GradeTrendChart snapshots={snapshots ?? []} />
       <StreakBadge streakDays={profile?.streak_days ?? 0} xp={profile?.xp ?? 0} />
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MixedMath } from '@/components/math/MathRenderer'
 import { MathKeypad } from '@/components/math/MathKeypad'
@@ -29,6 +29,19 @@ interface MockQuestion {
 interface MockSection { name: string; questions: MockQuestion[] }
 export interface MockPaper {
   title: string; totalMarks: number; timeMinutes: number; sections: MockSection[]; examBoard?: string
+  /** Exam-front-cover instructions (e.g. calculator policy). Present on newly generated papers; absent on older saved papers. */
+  instructions?: string[]
+  /** Required materials listed on the cover (e.g. "a calculator", "mathematical instruments"). */
+  materials?: string[]
+}
+
+// Instructions come from AI-generated JSON, so they are never rendered as raw
+// HTML. The prompt only uses <strong> for emphasis (e.g. calculators must
+// <strong>not</strong> be used) — honour that one tag and escape everything else.
+function renderInstructionLine(line: string): ReactNode[] {
+  return line.split(/<\/?strong>/g).map((part, i) =>
+    i % 2 === 1 ? <strong key={i}>{part}</strong> : <span key={i}>{part}</span>
+  )
 }
 
 interface QuestionState {
@@ -251,10 +264,29 @@ export function MockExamView({ paper, focusTopics, onClose }: {
             <div style={{ fontSize: 11, fontFamily: 'Arial, sans-serif', color: '#222', lineHeight: 1.7 }}>
               <strong>Instructions</strong>
               <ul style={{ margin: '4px 0 0 16px', paddingLeft: 0 }}>
-                <li>Answer <strong>all</strong> questions.</li>
-                <li>Show all working — marks may be awarded for correct working even if the final answer is wrong.</li>
-                <li>Calculators may be used.</li>
+                {paper.instructions && paper.instructions.length > 0
+                  ? paper.instructions.map((line, i) => (
+                      <li key={i}>{renderInstructionLine(line)}</li>
+                    ))
+                  : (
+                    <>
+                      <li>Answer <strong>all</strong> questions.</li>
+                      <li>Show all working — marks may be awarded for correct working even if the final answer is wrong.</li>
+                      <li>Calculators may be used.</li>
+                    </>
+                  )
+                }
               </ul>
+              {paper.materials && paper.materials.length > 0 && (
+                <>
+                  <strong style={{ display: 'block', marginTop: 8 }}>Materials</strong>
+                  <ul style={{ margin: '4px 0 0 16px', paddingLeft: 0 }}>
+                    {paper.materials.map((item, i) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </div>
           </div>
 

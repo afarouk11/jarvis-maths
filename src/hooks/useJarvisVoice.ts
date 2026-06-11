@@ -283,6 +283,12 @@ export function useSpeechToText(onResult: (text: string) => void) {
   // Fallback path for browsers without the Web Speech API (Safari, Firefox,
   // most mobile browsers): record with MediaRecorder, transcribe via /api/stt.
   const startRecording = useCallback(async () => {
+    // getUserMedia only exists on https/localhost — without this check the
+    // browser throws a misleading NotAllowedError ("permission denied").
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      alert('Voice input needs a secure (https) connection. Please type your message.')
+      return
+    }
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
       alert('Voice input is not supported on this browser. Please type your message.')
       return
@@ -292,11 +298,22 @@ export function useSpeechToText(onResult: (text: string) => void) {
       const recorder = new MediaRecorder(stream)
       chunksRef.current = []
 
+      // Safety net: a broken mic can leave the recorder running forever with
+      // no audio. 60s also keeps the upload well under the /api/stt size cap.
+      const maxDuration = setTimeout(() => {
+        if (recorder.state !== 'inactive') recorder.stop()
+      }, 60_000)
+
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       recorder.onstop = async () => {
+        clearTimeout(maxDuration)
         stream.getTracks().forEach(t => t.stop())
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' })
-        if (blob.size === 0) { setListening(false); return }
+        if (blob.size === 0) {
+          setListening(false)
+          alert('No audio was captured — your microphone may be muted or in use by another app. Please check it and try again.')
+          return
+        }
 
         setTranscribing(true)
         try {
@@ -351,8 +368,9 @@ export function useSpeechToText(onResult: (text: string) => void) {
     }
     rec.onend   = () => setListening(false)
     rec.onerror = (e: any) => {
-      // If the browser advertises Web Speech but the service fails, fall back.
-      if (e.error === 'service-not-allowed' || e.error === 'language-not-supported') {
+      // If the browser advertises Web Speech but the service fails (or has no
+      // network — Chrome's recogniser is cloud-based), fall back to recording.
+      if (e.error === 'service-not-allowed' || e.error === 'language-not-supported' || e.error === 'network') {
         recognitionRef.current = null
         startRecording()
         return
@@ -360,6 +378,8 @@ export function useSpeechToText(onResult: (text: string) => void) {
       setListening(false)
       if (e.error === 'not-allowed') {
         alert('Microphone access was denied. Please allow microphone permission in your browser settings and try again.')
+      } else if (e.error === 'audio-capture') {
+        alert('No microphone was detected. Please check it is connected, not muted, and not in use by another app.')
       } else if (e.error !== 'no-speech' && e.error !== 'aborted') {
         alert(`Microphone error: ${e.error}. Please check your microphone and try again.`)
       }

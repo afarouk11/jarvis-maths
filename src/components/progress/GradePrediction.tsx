@@ -3,32 +3,27 @@
 import { motion } from 'framer-motion'
 import { TrendingUp } from 'lucide-react'
 import { predictedGrade } from '@/lib/bkt/bayesian-knowledge-tracing'
+import { gradeColor } from '@/lib/grade'
 
-const GRADE_ORDER = ['A*', 'A', 'B', 'C', 'D', 'E']
-
-const GRADE_COLOR: Record<string, string> = {
-  'A*': '#22c55e',
-  'A':  '#3b82f6',
-  'B':  '#8b5cf6',
-  'C':  '#f59e0b',
-  'D':  '#ef4444',
-  'E':  '#6b7280',
-}
+const ALEVEL_ORDER = ['A*', 'A', 'B', 'C', 'D', 'E', 'U']
+const GCSE_ORDER   = ['9', '8', '7', '6', '5', '4', '3', 'U']
 
 interface Props {
   avgPKnown: number
   targetGrade?: string
   attemptedAvgPKnown?: number
   attemptedCount?: number
+  level?: string | null
 }
 
-export function GradePrediction({ avgPKnown, targetGrade, attemptedAvgPKnown, attemptedCount }: Props) {
-  const grade = predictedGrade(avgPKnown)
-  const color = GRADE_COLOR[grade] ?? '#3b82f6'
+export function GradePrediction({ avgPKnown, targetGrade, attemptedAvgPKnown, attemptedCount, level }: Props) {
+  const grade = predictedGrade(avgPKnown, level)
+  const gradeOrder = (level ?? '').trim().toLowerCase() === 'gcse' ? GCSE_ORDER : ALEVEL_ORDER
+  const color = gradeColor(grade)
   const pct = Math.round(avgPKnown * 100)
 
-  const targetIdx = GRADE_ORDER.indexOf(targetGrade ?? 'A*')
-  const currentIdx = GRADE_ORDER.indexOf(grade)
+  const targetIdx = gradeOrder.indexOf(targetGrade ?? gradeOrder[0])
+  const currentIdx = gradeOrder.indexOf(grade)
   const onTrack = currentIdx <= targetIdx
 
   return (
@@ -86,7 +81,7 @@ export function GradePrediction({ avgPKnown, targetGrade, attemptedAvgPKnown, at
 
       {/* Grade scale */}
       <div className="flex gap-1">
-        {GRADE_ORDER.map((g, i) => {
+        {gradeOrder.map(g => {
           const isActive = g === grade
           const isTarget = g === targetGrade
           return (
@@ -94,10 +89,10 @@ export function GradePrediction({ avgPKnown, targetGrade, attemptedAvgPKnown, at
               <div
                 className="h-1.5 rounded-full mb-1"
                 style={{
-                  background: isActive ? GRADE_COLOR[g] : 'rgba(255,255,255,0.06)',
-                  border: isTarget ? `1px solid ${GRADE_COLOR[g]}` : 'none',
+                  background: isActive ? gradeColor(g) : 'rgba(255,255,255,0.06)',
+                  border: isTarget ? `1px solid ${gradeColor(g)}` : 'none',
                 }} />
-              <span className="text-xs" style={{ color: isActive ? GRADE_COLOR[g] : '#374151', fontWeight: isActive ? 700 : 400 }}>
+              <span className="text-xs" style={{ color: isActive ? gradeColor(g) : '#374151', fontWeight: isActive ? 700 : 400 }}>
                 {g}
               </span>
             </div>

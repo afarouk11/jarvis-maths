@@ -62,21 +62,49 @@ describe('updateBKTPartial', () => {
 })
 
 describe('predictedGrade', () => {
-  it('maps mastery to the expected grade bands', () => {
+  it('maps A-level mastery to the expected grade bands', () => {
     expect(predictedGrade(0.95)).toBe('A*')
-    expect(predictedGrade(0.8)).toBe('A')
-    expect(predictedGrade(0.65)).toBe('B')
-    expect(predictedGrade(0.55)).toBe('C')
-    expect(predictedGrade(0.1)).toBe('E')
+    expect(predictedGrade(0.82)).toBe('A')
+    expect(predictedGrade(0.75)).toBe('B')
+    expect(predictedGrade(0.65)).toBe('C')
+    expect(predictedGrade(0.56)).toBe('D')
+    expect(predictedGrade(0.50)).toBe('E')
+    expect(predictedGrade(0.1)).toBe('U')
+  })
+
+  it('maps GCSE mastery to the 9-1 scale', () => {
+    expect(predictedGrade(0.95, 'GCSE')).toBe('9')
+    expect(predictedGrade(0.82, 'GCSE')).toBe('8')
+    expect(predictedGrade(0.75, 'GCSE')).toBe('7')
+    expect(predictedGrade(0.65, 'GCSE')).toBe('6')
+    expect(predictedGrade(0.56, 'GCSE')).toBe('5')
+    expect(predictedGrade(0.50, 'GCSE')).toBe('4')
+    expect(predictedGrade(0.42, 'GCSE')).toBe('3')
+    expect(predictedGrade(0.1, 'GCSE')).toBe('U')
+  })
+
+  it('accepts the level in any casing', () => {
+    expect(predictedGrade(0.95, 'gcse')).toBe('9')
+    expect(predictedGrade(0.95, 'A-Level')).toBe('A*')
   })
 
   it('is monotonic non-decreasing in mastery', () => {
-    const order = ['E', 'D', 'C', 'B', 'A', 'A*']
+    const order = ['U', 'E', 'D', 'C', 'B', 'A', 'A*']
     let prev = -1
     for (let p = 0; p <= 1.0001; p += 0.05) {
       const idx = order.indexOf(predictedGrade(p))
       expect(idx).toBeGreaterThanOrEqual(prev)
       prev = idx
+    }
+  })
+
+  it('agrees with the per-topic mastery bar for each target grade', async () => {
+    const { masteryBarForGrade } = await import('@/lib/grade')
+    for (const g of ['A*', 'A', 'B', 'C', 'D', 'E']) {
+      expect(predictedGrade(masteryBarForGrade(g))).toBe(g)
+    }
+    for (const g of ['9', '8', '7', '6', '5', '4']) {
+      expect(predictedGrade(masteryBarForGrade(g), 'GCSE')).toBe(g)
     }
   })
 })

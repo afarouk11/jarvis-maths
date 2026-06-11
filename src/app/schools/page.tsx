@@ -47,9 +47,9 @@ const FEATURES = [
 ]
 
 const WHAT_WE_ASK = [
-  'Students complete a baseline maths assessment before they start (50 min — we provide it)',
+  'Students complete a baseline maths assessment before they start (50 minutes — we provide it)',
   'Students complete the same assessment at the end of term',
-  'That\'s it — we use the data to measure whether StudiQ actually works',
+  'That\'s it — we use the data to measure whether StudiQ actually works.',
 ]
 
 const INCLUDES = [
@@ -57,7 +57,7 @@ const INCLUDES = [
   'Teacher dashboard with live progress tracking',
   'AQA, Edexcel and OCR past paper AI',
   'Term-end progress report per student',
-  'Setup support from Muhammad directly',
+  'Direct setup support from the StudiQ team',
 ]
 
 export default function SchoolsPage() {
@@ -125,7 +125,7 @@ export default function SchoolsPage() {
               <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
                 className="w-full sm:w-auto px-8 py-4 rounded-xl font-semibold"
                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', color: '#94a3b8', fontSize: 15 }}>
-                Book a call with Muhammad
+                Book a call with our team
               </motion.button>
             </a>
           </div>
@@ -255,7 +255,7 @@ export default function SchoolsPage() {
           </h2>
           <p className="mb-8 max-w-md mx-auto" style={{ color: '#6b8cba', fontSize: 15 }}>
             Sign up free and explore the full platform — or get in touch directly and
-            Muhammad will set everything up for you personally.
+            the StudiQ team will set everything up for you.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/guest" className="w-full sm:w-auto">
@@ -269,7 +269,7 @@ export default function SchoolsPage() {
               <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
                 className="w-full sm:w-auto px-8 py-4 rounded-xl font-semibold"
                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', color: '#94a3b8', fontSize: 15 }}>
-                Email Muhammad directly
+                Email us directly
               </motion.button>
             </a>
           </div>

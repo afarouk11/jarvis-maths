@@ -9,9 +9,13 @@ import { isPro, PLANS } from '@/lib/stripe'
 import { logEvent } from '@/lib/analytics'
 import { CHAT_SKILL_MODES } from '@/lib/spok-skills'
 import type { SkillModeId } from '@/lib/spok-skills'
-import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
+import { getTopics, type Level } from '@/lib/curriculum'
 
-const TOPIC_LINKS_BLOCK = `
+// Built per request so GCSE students get GCSE lesson links, not A-level ones.
+function buildTopicLinksBlock(level: string | null | undefined): string {
+  const isGcse = (level ?? '').trim().toLowerCase() === 'gcse'
+  const topics = getTopics((level as Level) ?? 'A-Level')
+  return `
 
 ---
 ## Lesson links — use these when a student asks for help, resources, or wants to learn a topic
@@ -19,8 +23,8 @@ const TOPIC_LINKS_BLOCK = `
 When recommending lessons or topics, use this exact format inline: [TOPIC:slug|Display Name]
 You can use multiple in a list. Always prefer a bullet list with one link per line and a short description of what that lesson covers.
 
-Available A-level topics:
-${AQA_TOPICS.map(t => `- [TOPIC:${t.slug}|${t.name}] (${t.year_group})`).join('\n')}
+Available ${isGcse ? 'GCSE' : 'A-level'} topics:
+${topics.map(t => `- [TOPIC:${t.slug}|${t.name}] (${t.year_group})`).join('\n')}
 
 Rules:
 - Only link topics that are genuinely relevant to what the student asked.
@@ -28,6 +32,7 @@ Rules:
 - When a student says "I need help with X" or "where can I learn Y", respond with a brief explanation and 2-4 relevant topic links.
 - Links render as clickable buttons in the student's interface — they click and go straight to that lesson.
 ---`
+}
 
 const NAV_LINKS_BLOCK = `
 
@@ -68,7 +73,7 @@ export async function POST(req: Request) {
   // Free tier: 10 Spok messages per day
   const { data: prof } = await supabase
     .from('profiles')
-    .select('stripe_subscription_status, chat_messages_today, chat_messages_reset_at, is_admin, language')
+    .select('stripe_subscription_status, chat_messages_today, chat_messages_reset_at, is_admin, language, level')
     .eq('id', user.id)
     .single()
 
@@ -181,7 +186,7 @@ export async function POST(req: Request) {
 
   const system = [
     SPOK_SYSTEM_PROMPT,
-    TOPIC_LINKS_BLOCK,
+    buildTopicLinksBlock(prof?.level),
     NAV_LINKS_BLOCK,
     accessibilityInstructions,
     languageInstruction,

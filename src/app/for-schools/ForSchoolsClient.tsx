@@ -102,7 +102,7 @@ export default function ForSchoolsPage() {
                 Free pilot programme
               </h3>
               <p className="leading-relaxed mb-6" style={{ color: '#6b8cba', fontSize: 15 }}>
-                We are currently offering free access to schools, sixth forms, and tutors who want to test StudiQ with their students. Pilot schools get full Pro access, direct feedback with the team, and input into the features we build next.
+                We are currently offering free access to schools, sixth forms, and tutors who want to test StudiQ with their students. Pilot schools receive full Pro access, direct feedback from the team, and input into the features we build next.
               </p>
               <div className="grid grid-cols-3 gap-4 mb-6">
                 {[

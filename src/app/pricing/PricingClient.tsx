@@ -88,7 +88,7 @@ export default function PricingPage() {
           Less than one tutoring session.
         </h1>
         <p className="text-base" style={{ color: '#5a7aaa' }}>
-          Two private lessons a week cost £{TUTOR_MONTHLY}/month. SPOK is £{PRO_PRICE}.
+          Two private lessons a week cost £{TUTOR_MONTHLY}/month. SPOK costs £{PRO_PRICE}/month.
         </p>
       </motion.div>
 
@@ -183,7 +183,7 @@ export default function PricingPage() {
                 <Zap size={15} />
                 {loading ? 'Redirecting...' : `Get Pro — £${PRO_PRICE}/month`}
               </motion.button>
-              <p className="text-center text-xs mt-3" style={{ color: '#4a6070', position: 'relative' }}>Cancel anytime · billed monthly</p>
+              <p className="text-center text-xs mt-3" style={{ color: '#4a6070', position: 'relative' }}>Cancel anytime · Billed monthly</p>
             </div>
           </div>
         </motion.div>

@@ -342,7 +342,7 @@ export async function POST(req: Request) {
       .eq('student_id', user.id)
     if (allProgress && allProgress.length > 0) {
       const totalTopics = getTopics(prof?.level ?? 'A-Level').length
-      const summary = computeGradeSummary(allProgress, totalTopics)
+      const summary = computeGradeSummary(allProgress, totalTopics, prof?.level)
       await supabase.from('grade_snapshots').insert({
         student_id: user.id,
         avg_p_known: summary.overallPKnown,

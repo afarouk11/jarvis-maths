@@ -199,7 +199,7 @@ function DemoInner() {
           style={{ background: 'rgba(34,197,94,0.1)', borderBottom: '1px solid rgba(34,197,94,0.2)', color: '#4ade80' }}>
           👋 Welcome — this is a live demo of StudiQ. No account needed. &nbsp;
           <a href="mailto:admin@studiq.org?subject=School trial enquiry" style={{ color: '#86efac', textDecoration: 'underline' }}>
-            Email Muhammad to set it up for your school →
+            Email us to set it up for your school →
           </a>
         </div>
       )}

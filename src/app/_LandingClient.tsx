@@ -489,7 +489,7 @@ export function LandingPage() {
                 <span className="font-semibold text-sm text-white" style={{ fontFamily: 'var(--font-space-grotesk)' }}>StudiQ</span>
               </div>
               <p className="text-xs leading-relaxed" style={{ color: '#374151' }}>
-                Personalised AI learning built for how students actually learn.
+                Personalised AI learning built around the way students actually think.
               </p>
             </div>
             {/* Platform */}

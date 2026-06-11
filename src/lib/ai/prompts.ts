@@ -667,8 +667,14 @@ Proactive encouragement:
   return parts.join('\n')
 }
 
-export function buildLessonPrompt(topicName: string, difficulty: number, level?: 'gcse' | 'alevel'): string {
-  const levelLabel = level === 'gcse' ? 'GCSE' : 'A-level'
+// Profiles store level as 'GCSE' | 'A-Level' while some callers pass lowercase
+// codes — normalise before matching so GCSE students never get A-level content.
+export function isGcseLevel(level?: string | null): boolean {
+  return (level ?? '').trim().toLowerCase() === 'gcse'
+}
+
+export function buildLessonPrompt(topicName: string, difficulty: number, level?: string | null): string {
+  const levelLabel = isGcseLevel(level) ? 'GCSE' : 'A-level'
   return `Generate a comprehensive ${levelLabel} maths lesson on "${topicName}" at difficulty level ${difficulty}/5.
 
 Structure the lesson as a JSON array of content blocks. Each block has:
@@ -686,29 +692,34 @@ Include:
 Return ONLY the JSON array, no other text.`
 }
 
-function formatBoardName(board: string): string {
-  switch (board) {
+// Profiles store exam_board capitalized ('AQA' | 'Edexcel' | 'OCR') while some
+// callers pass lowercase codes — normalise before matching so a student's board
+// is never silently swapped for AQA.
+export function formatBoardName(board: string): string {
+  switch (board.trim().toLowerCase()) {
     case 'edexcel': return 'Edexcel'
+    case 'ocr': return 'OCR'
     case 'ocr_a': return 'OCR A'
     case 'ocr_mei': return 'OCR MEI'
-    case 'wjec': return 'WJEC/Eduqas'
+    case 'wjec':
+    case 'eduqas': return 'WJEC/Eduqas'
     default: return 'AQA'
   }
 }
 
-export function buildQuestionPrompt(topicName: string, difficulty: number, level?: 'gcse' | 'alevel', kbContext: string = '', examBoard: string = 'aqa', subskill?: string | null): string {
-  const levelLabel = level === 'gcse' ? 'GCSE' : 'A-level'
+export function buildQuestionPrompt(topicName: string, difficulty: number, level?: string | null, kbContext: string = '', examBoard: string = 'aqa', subskill?: string | null): string {
+  const levelLabel = isGcseLevel(level) ? 'GCSE' : 'A-level'
   const boardDisplay = formatBoardName(examBoard)
-  const boardLabel = level === 'gcse' ? `${boardDisplay} GCSE (Higher tier)` : `${boardDisplay} A-level`
+  const boardLabel = isGcseLevel(level) ? `${boardDisplay} GCSE (Higher tier)` : `${boardDisplay} A-level`
   const focus = subskill ? `\nFocus this question specifically on the sub-skill: "${subskill}". The question must genuinely require that technique.` : ''
   return `Generate a ${levelLabel} maths exam question on "${topicName}" at difficulty ${difficulty}/5.${focus}
 ${kbContext}
 Return JSON with exactly this structure:
 {
-  "stem": "question text with LaTeX using $ for inline, $$ for display",
+  "stem": "question text with LaTeX using $ for inline, $$ for display. End the question (or EACH part, for multi-part questions labelled (a), (b)…) with its mark allocation in square brackets, e.g. [3 marks] — part marks must sum to the question's total marks.",
   "answer": "final answer with LaTeX",
   "worked_solution": [
-    { "label": "Step 1", "content": "explanation", "math": "optional LaTeX expression" },
+    { "label": "Step 1 [M1]", "content": "explanation", "math": "optional LaTeX expression" },
     ...
   ],
   "marks": number,
@@ -716,5 +727,6 @@ Return JSON with exactly this structure:
   "diagram": "OPTIONAL — include ONLY when the question genuinely needs a visual (triangles, circles, vectors, bearings, transformations, or a graph to read). A complete self-contained <svg ...>...</svg> string with viewBox=\\"0 0 320 240\\". It will sit on a LIGHT background, so use dark strokes (#111827) and dark, readable text labels. Label every point, length and angle. OMIT this field entirely for purely algebraic questions — never include an empty or decorative diagram."
 }
 
-Make it exam-style, typical of ${boardLabel}. A geometric or graphical question MUST include a clear, correctly-labelled diagram. Return ONLY the JSON.`
+Make it exam-style, typical of ${boardLabel}. A geometric or graphical question MUST include a clear, correctly-labelled diagram.
+Label every worked_solution step with the mark-scheme code it earns, exam-board style: [M1] method, [A1] accuracy, [B1] independent, [ft] follow-through (e.g. "Step 2 [M1]", "Step 4 [A1 ft]"). The marks across all steps must sum to the question's total marks, so students can see exactly where each mark is earned. Return ONLY the JSON.`
 }

@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { masteryColor } from '@/lib/bkt/bayesian-knowledge-tracing'
 import { applyDecay } from '@/lib/bkt/forgetting'
-import { computeGradeSummary, computeGradeTrend } from '@/lib/grade'
+import { computeGradeSummary, computeGradeTrend, gradeColor } from '@/lib/grade'
 import { computeExamReadiness } from '@/lib/exam-readiness'
 import { getTopics } from '@/lib/curriculum'
 import type { Level } from '@/lib/curriculum'
@@ -60,7 +60,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const progressMap = new Map((progress ?? []).map(p => [p.topic_id, p]))
   const pKnownMap   = new Map((progress ?? []).map(p => [p.topic_id, p.p_known]))
   const dueTopics   = (progress ?? []).filter(p => new Date(p.next_review_at) <= new Date()).slice(0, 4)
-  const gradeSummary       = computeGradeSummary(progress ?? [], allTopics.length)
+  const gradeSummary       = computeGradeSummary(progress ?? [], allTopics.length, level)
   const avgPKnown          = gradeSummary.overallPKnown
   const attemptedAvgPKnown = gradeSummary.studiedPKnown
   // Until the student has covered enough of the spec, a predicted grade is noise.
@@ -77,6 +77,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     targetGrade: profile?.target_grade ?? 'A*',
     slugById,
     topicNames,
+    level,
   })
 
   // Exam countdown
@@ -86,7 +87,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     daysToExam = Math.max(0, Math.ceil(diff / 86400000))
   }
 
-  const gradeColor = grade === 'A*' ? '#fbbf24' : grade === 'A' ? '#4ade80' : grade === 'B' ? '#60a5fa' : '#94a3b8'
+  const displayGradeColor = grade === '—' ? '#94a3b8' : gradeColor(grade)
   const greeting   = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening'
 
   // Topic mastery array for heat map
@@ -109,6 +110,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         targetGrade={profile?.target_grade ?? 'A*'}
         examBoard={profile?.exam_board ?? 'AQA'}
         topicsRows={topicsRows ?? []}
+        level={level}
       />
 
       {/* Creators reel */}
@@ -139,7 +141,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           sub={gradeSummary.confident ? `${Math.round(avgPKnown * 100)}% across all topics` : 'Keep studying to unlock'}
           sub2={gradeSummary.confident ? `${Math.round(attemptedAvgPKnown * 100)}% within studied topics` : undefined}
           trend={gradeSummary.confident ? gradeTrend ?? undefined : undefined}
-          color={gradeColor} />
+          color={displayGradeColor} />
         <StatCard icon={<Flame size={16} />}  label="Study Streak"   value={`${profile?.streak_days ?? 0}d`} sub="days in a row" color="#f97316" />
         <XPCard xp={profile?.xp ?? 0} />
         <StatCard icon={<BookOpen size={16} />} label="Topics Studied" value={`${progress?.length ?? 0}`} sub={`of ${allTopics.length} total`} color="#22c55e" />
