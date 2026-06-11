@@ -8,6 +8,7 @@ import { createNoise3D } from 'simplex-noise'
 import { motion } from 'framer-motion'
 import { TOPIC_EDGES } from '@/lib/curriculum/topic-graph'
 import { masteryLabel } from '@/lib/bkt/bayesian-knowledge-tracing'
+import { strandColor } from './strandColors'
 import type { Topic } from '@/types'
 
 // Red (0%) → blue (50%) → green (100%)
@@ -302,6 +303,49 @@ function Neuron({
   )
 }
 
+// ── Strand-coloured halo ring around a neuron ─────────────────────────────────
+// Rendered as a thin torus; material is created once per unique strand colour
+// via a module-level cache so no new objects are allocated inside the loop.
+const _haloMatCache = new Map<string, THREE.MeshBasicMaterial>()
+function getHaloMat(color: string): THREE.MeshBasicMaterial {
+  let mat = _haloMatCache.get(color)
+  if (!mat) {
+    mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.28, depthWrite: false })
+    _haloMatCache.set(color, mat)
+  }
+  return mat
+}
+// Single shared torus geometry for all halos (ring slightly larger than the largest neuron)
+const _haloGeo = new THREE.TorusGeometry(0.135, 0.010, 6, 32)
+
+function NeuronHalo({ position, strandCol }: { position: THREE.Vector3; strandCol: string }) {
+  const mat = getHaloMat(strandCol)
+  return (
+    <mesh position={position} material={mat} geometry={_haloGeo} />
+  )
+}
+
+// ── Faint zone-centroid glow sprite ───────────────────────────────────────────
+// One translucent billboard circle per section, sitting at the cluster centroid.
+// Uses a shared PlaneGeometry scaled per-instance; material cached per colour.
+const _zoneMats = new Map<string, THREE.MeshBasicMaterial>()
+function getZoneMat(color: string): THREE.MeshBasicMaterial {
+  let mat = _zoneMats.get(color)
+  if (!mat) {
+    mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.045, depthWrite: false, side: THREE.DoubleSide })
+    _zoneMats.set(color, mat)
+  }
+  return mat
+}
+const _zoneGeo = new THREE.CircleGeometry(1, 32)
+
+function ZoneGlow({ position, strandCol }: { position: THREE.Vector3; strandCol: string }) {
+  const mat = getZoneMat(strandCol)
+  return (
+    <mesh position={position} material={mat} geometry={_zoneGeo} scale={0.9} />
+  )
+}
+
 // ── Holographic rings ─────────────────────────────────────────────────────────
 function HoloRings() {
   const g1 = useRef<THREE.Group>(null)
@@ -387,6 +431,15 @@ function NeuralScene({
   topicCategories: Record<string, string[]>
 }) {
   const slugMap = useMemo(() => new Map(progress.map(p => [p.topic_id, p.p_known])), [progress])
+
+  // Map each topic slug → its section name (for strand colour lookup)
+  const slugToSection = useMemo((): Map<string, string> => {
+    const m = new Map<string, string>()
+    for (const [sec, slugs] of Object.entries(topicCategories)) {
+      for (const slug of slugs) m.set(slug, sec)
+    }
+    return m
+  }, [topicCategories])
 
   const filteredSlugs = useMemo(() => {
     if (sectionFilter === null) return null
@@ -499,7 +552,7 @@ function NeuralScene({
       ))}
       <InstancedPulses arcs={edgeData.map(e => e.arc)} colors={edgeData.map(e => e.color)} />
 
-      {/* Neurons */}
+      {/* Neurons + strand-coloured halos */}
       {topics.map(t => {
         const pos = nodePositions.get(t.slug)
         if (pos === undefined) return null
@@ -510,25 +563,45 @@ function NeuralScene({
         const active = focusSlug !== null
           ? focused
           : (filteredSlugs === null || filteredSlugs.has(t.slug))
+        const sec = slugToSection.get(t.slug)
+        const sCol = sec !== undefined ? strandColor(sec) : '#94a3b8'
         return (
-          <Neuron
-            key={t.slug}
-            position={pos}
-            color={color}
-            name={t.name}
-            slug={t.slug}
-            pKnown={pKnown}
-            active={active}
-            focused={focused}
-            onHover={onHover}
-            onClick={onClick}
-          />
+          <group key={t.slug}>
+            <Neuron
+              position={pos}
+              color={color}
+              name={t.name}
+              slug={t.slug}
+              pKnown={pKnown}
+              active={active}
+              focused={focused}
+              onHover={onHover}
+              onClick={onClick}
+            />
+            {/* Subtle strand ring — secondary signal behind mastery colour */}
+            {active && <NeuronHalo position={pos} strandCol={sCol} />}
+          </group>
+        )
+      })}
+
+      {/* Zone boundary glows — one faint billboard per cluster centroid */}
+      {Array.from(sectionCentres.entries()).map(([sec, centre]) => {
+        const isFiltered = sectionFilter !== null && sectionFilter !== sec
+        if (isFiltered) return null
+        const sCol = strandColor(sec)
+        return (
+          <ZoneGlow key={`glow-${sec}`} position={centre} strandCol={sCol} />
         )
       })}
 
       {/* Section labels — rendered at each cluster centre, dim when another section is filtered */}
       {Array.from(sectionCentres.entries()).map(([sec, centre]) => {
         const isFiltered = sectionFilter !== null && sectionFilter !== sec
+        const sCol = strandColor(sec)
+        // Derive rgba background and border from the strand hex colour
+        const r = parseInt(sCol.slice(1, 3), 16)
+        const g = parseInt(sCol.slice(3, 5), 16)
+        const b = parseInt(sCol.slice(5, 7), 16)
         return (
           <Html
             key={sec}
@@ -538,18 +611,18 @@ function NeuralScene({
             style={{ pointerEvents: 'none', transition: 'opacity 0.3s', opacity: isFiltered ? 0.15 : 1 }}
           >
             <div style={{
-              background: 'rgba(245,158,11,0.10)',
-              border: '1px solid rgba(245,158,11,0.28)',
+              background: `rgba(${r},${g},${b},0.12)`,
+              border: `1px solid rgba(${r},${g},${b},0.38)`,
               borderRadius: 6,
               padding: '3px 9px',
-              color: '#f59e0b',
+              color: sCol,
               fontSize: 10,
               fontFamily: 'monospace',
               letterSpacing: '0.12em',
               whiteSpace: 'nowrap',
               textTransform: 'uppercase',
               backdropFilter: 'blur(4px)',
-              opacity: 0.72,
+              opacity: 0.82,
             }}>
               {sectionLabel(sec)}
             </div>

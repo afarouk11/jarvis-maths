@@ -8,6 +8,7 @@ import dynamic from 'next/dynamic'
 import { masteryLabel } from '@/lib/bkt/bayesian-knowledge-tracing'
 import { gradeColor as sharedGradeColor } from '@/lib/grade'
 import { weakPrerequisites } from '@/lib/curriculum/topic-graph'
+import { strandColor, STRAND_COLORS } from './strandColors'
 import { createClient } from '@/lib/supabase/client'
 import type { StudentProgress, Topic } from '@/types'
 
@@ -400,13 +401,18 @@ export function BrainMap({ progress, avgPKnown, grade, topicsActive, totalTopics
           <StatChip label="Health" value={`${healthScore}%`} color={pHex(healthScore / 100)} />
         </div>
 
-        {/* Section filter pills */}
+        {/* Section filter pills — each tinted with its strand colour */}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {['ALL', ...Object.keys(topicCategories)].map(pill => {
             const isActive = pill === 'ALL' ? sectionFilter === null : sectionFilter === pill
             const SHORT: Record<string, string> = { Statistics: 'STATS', Mechanics: 'MECH' }
             const word = pill.split(' ')[0]
             const label = pill === 'ALL' ? 'ALL' : (SHORT[word] ?? word.toUpperCase().slice(0, 5))
+            // ALL pill keeps the amber accent; section pills use their strand colour
+            const pillColor = pill === 'ALL' ? '#f59e0b' : strandColor(pill)
+            const r = parseInt(pillColor.slice(1, 3), 16)
+            const g = parseInt(pillColor.slice(3, 5), 16)
+            const b = parseInt(pillColor.slice(5, 7), 16)
             return (
               <button
                 key={pill}
@@ -418,9 +424,13 @@ export function BrainMap({ progress, avgPKnown, grade, topicsActive, totalTopics
                   fontWeight: 700,
                   letterSpacing: '0.12em',
                   cursor: 'pointer',
-                  background: isActive ? 'rgba(245,158,11,0.12)' : 'rgba(4,6,16,0.7)',
-                  border: isActive ? '1px solid rgba(245,158,11,0.5)' : '1px solid rgba(255,255,255,0.08)',
-                  color: isActive ? '#f59e0b' : '#4a6080',
+                  background: isActive
+                    ? `rgba(${r},${g},${b},0.14)`
+                    : 'rgba(4,6,16,0.7)',
+                  border: isActive
+                    ? `1px solid rgba(${r},${g},${b},0.55)`
+                    : `1px solid rgba(${r},${g},${b},0.22)`,
+                  color: isActive ? pillColor : `rgba(${r},${g},${b},0.55)`,
                   transition: 'all 0.15s',
                 }}>
                 {label}
@@ -807,18 +817,54 @@ export function BrainMap({ progress, avgPKnown, grade, topicsActive, totalTopics
         )}
       </AnimatePresence>
 
-      {/* ── Bottom-left: legend ────────────────────────────────────── */}
+      {/* ── Bottom-left: strand legend + mastery legend ───────────── */}
       {!selected && (
         <div style={{
           position: 'absolute', bottom: isMobile ? 76 : 20, left: 24, zIndex: 10,
-          display: 'flex', gap: isMobile ? 10 : 14, alignItems: 'center',
-          background: 'rgba(4,6,16,0.75)', backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255,255,255,0.05)',
-          borderRadius: 20, padding: isMobile ? '6px 12px' : '7px 16px',
+          display: 'flex', flexDirection: 'column', gap: 6,
         }}>
-          <span style={{ fontSize: isMobile ? 9 : 11, color: '#ef4444', fontWeight: 500 }}>● Not started</span>
-          <span style={{ fontSize: isMobile ? 9 : 11, color: '#3b82f6', fontWeight: 500 }}>● Developing</span>
-          <span style={{ fontSize: isMobile ? 9 : 11, color: '#22c55e', fontWeight: 500 }}>● Mastered</span>
+          {/* Strand colour legend — always visible so first-time users understand the clusters */}
+          <div style={{
+            display: 'flex', gap: isMobile ? 6 : 8, flexWrap: 'wrap', alignItems: 'center',
+            background: 'rgba(4,6,16,0.75)', backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255,255,255,0.05)',
+            borderRadius: 16, padding: isMobile ? '5px 10px' : '6px 14px',
+          }}>
+            <span style={{ fontSize: isMobile ? 8 : 9, color: '#3a5070', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginRight: 2 }}>
+              Strand
+            </span>
+            {(Object.entries(STRAND_COLORS) as [string, string][])
+              // Deduplicate by colour so e.g. "Pure" and "Number" don't both show as blue
+              .filter(([, col], idx, arr) => arr.findIndex(([, c]) => c === col) === idx)
+              .map(([sec, col]) => (
+                <span
+                  key={sec}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    fontSize: isMobile ? 8 : 9, fontWeight: 600, color: col,
+                    letterSpacing: '0.06em',
+                  }}
+                >
+                  <span style={{
+                    display: 'inline-block', width: 7, height: 7,
+                    borderRadius: '50%', background: col, flexShrink: 0,
+                  }} />
+                  {sec}
+                </span>
+              ))}
+          </div>
+
+          {/* Mastery colour legend */}
+          <div style={{
+            display: 'flex', gap: isMobile ? 10 : 14, alignItems: 'center',
+            background: 'rgba(4,6,16,0.75)', backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255,255,255,0.05)',
+            borderRadius: 20, padding: isMobile ? '6px 12px' : '7px 16px',
+          }}>
+            <span style={{ fontSize: isMobile ? 9 : 11, color: '#ef4444', fontWeight: 500 }}>● Not started</span>
+            <span style={{ fontSize: isMobile ? 9 : 11, color: '#3b82f6', fontWeight: 500 }}>● Developing</span>
+            <span style={{ fontSize: isMobile ? 9 : 11, color: '#22c55e', fontWeight: 500 }}>● Mastered</span>
+          </div>
         </div>
       )}
 

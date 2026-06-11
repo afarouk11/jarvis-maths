@@ -716,10 +716,10 @@ export function buildQuestionPrompt(topicName: string, difficulty: number, level
 ${kbContext}
 Return JSON with exactly this structure:
 {
-  "stem": "question text with LaTeX using $ for inline, $$ for display",
+  "stem": "question text with LaTeX using $ for inline, $$ for display. End the question (or EACH part, for multi-part questions labelled (a), (b)…) with its mark allocation in square brackets, e.g. [3 marks] — part marks must sum to the question's total marks.",
   "answer": "final answer with LaTeX",
   "worked_solution": [
-    { "label": "Step 1", "content": "explanation", "math": "optional LaTeX expression" },
+    { "label": "Step 1 [M1]", "content": "explanation", "math": "optional LaTeX expression" },
     ...
   ],
   "marks": number,
@@ -727,5 +727,6 @@ Return JSON with exactly this structure:
   "diagram": "OPTIONAL — include ONLY when the question genuinely needs a visual (triangles, circles, vectors, bearings, transformations, or a graph to read). A complete self-contained <svg ...>...</svg> string with viewBox=\\"0 0 320 240\\". It will sit on a LIGHT background, so use dark strokes (#111827) and dark, readable text labels. Label every point, length and angle. OMIT this field entirely for purely algebraic questions — never include an empty or decorative diagram."
 }
 
-Make it exam-style, typical of ${boardLabel}. A geometric or graphical question MUST include a clear, correctly-labelled diagram. Return ONLY the JSON.`
+Make it exam-style, typical of ${boardLabel}. A geometric or graphical question MUST include a clear, correctly-labelled diagram.
+Label every worked_solution step with the mark-scheme code it earns, exam-board style: [M1] method, [A1] accuracy, [B1] independent, [ft] follow-through (e.g. "Step 2 [M1]", "Step 4 [A1 ft]"). The marks across all steps must sum to the question's total marks, so students can see exactly where each mark is earned. Return ONLY the JSON.`
 }
