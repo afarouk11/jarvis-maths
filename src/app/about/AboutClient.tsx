@@ -45,7 +45,7 @@ const VISION = [
   },
   {
     heading: 'The companion students actually want to use',
-    body: 'There is a real difference between a revision tool and a companion. A tool is something you open under pressure and close when the pressure passes. A companion is something you return to because it knows where you left off, understands how you think, and makes progress feel tangible. That is the standard StudiQ is being built toward.',
+    body: 'There is a real difference between a revision tool and a companion. A tool is something you open under pressure and close when the pressure passes. A companion is something you return to because it knows where you left off, understands how you think, and makes progress feel tangible. That is the standard StudiQ is working towards.',
     color: '#3b82f6',
   },
   {
@@ -107,7 +107,7 @@ export default function AboutPage() {
             The difference between a student who struggles and a student who thrives is often just this: one of them had a teacher who followed their pace rather than the timetable. Someone patient enough to explain it a different way, to slow down without making it feel like a problem, and to stay until it actually clicked.
           </p>
           <p className="leading-relaxed mb-5" style={{ fontSize: 17, color: '#6b8cba' }}>
-            That kind of support used to require a private tutor. Most students never get it. StudiQ is being built to change that — because everyone, regardless of their background, their learning differences, or where they are starting from, deserves a way to learn that works for them specifically.
+            That kind of support used to require a private tutor. Most students never get it. StudiQ exists to change that — because everyone, regardless of their background, their learning differences, or where they are starting from, deserves a way to learn that works for them specifically.
           </p>
           <p className="leading-relaxed" style={{ fontSize: 17, color: '#6b8cba' }}>
             Learning should be accessible. It should be encouraging. And it should never feel out of reach.
@@ -131,7 +131,7 @@ export default function AboutPage() {
           <h2 className="text-white font-semibold mb-2" style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 22 }}>
             Who we build for
           </h2>
-          <p className="text-sm mb-6" style={{ color: '#4a6070' }}>Four kinds of student. Each one matters equally.</p>
+          <p className="text-sm mb-6" style={{ color: '#4a6070' }}>Four kinds of students. Each one matters equally.</p>
           <div className="space-y-4">
             {WHO_FOR.map((item, i) => (
               <motion.div key={item.title} initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25 + i * 0.07 }}>

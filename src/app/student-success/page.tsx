@@ -99,7 +99,7 @@ export default function StudentSuccessPage() {
                 Share your story
               </h3>
               <p className="leading-relaxed mb-6" style={{ color: '#6b8cba', fontSize: 15 }}>
-                Used StudiQ before your exams? Noticed a difference in how you revise, or how confident you feel about a topic? We would love to feature your experience — with your permission.
+                Used StudiQ before your exams? Noticed a difference in how you revise, or how confident you feel about a topic? We would love to share your experience — with your permission.
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <a href="mailto:admin@studiq.org?subject=My StudiQ story"
@@ -108,7 +108,7 @@ export default function StudentSuccessPage() {
                   <Mail size={15} />
                   Email us your story
                 </a>
-                <a href="https://instagram.com/cerebraloptions" target="_blank" rel="noopener noreferrer"
+                <a href="https://instagram.com/studiq" target="_blank" rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all hover:opacity-90"
                   style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', color: '#60a5fa' }}>
                   <MessageSquare size={15} />

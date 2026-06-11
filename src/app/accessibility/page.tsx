@@ -157,7 +157,7 @@ export default function AccessibilityPage() {
                 Our commitment to SEND learners
               </h3>
               <p className="leading-relaxed mb-4" style={{ color: '#6b8cba', fontSize: 15 }}>
-                Too many students with dyslexia, ADHD, autism, and other learning differences are failed by education systems that weren't designed for them. StudiQ is being built from the ground up to close that gap — with adaptive explanations, flexible pacing, and a tutor that never loses patience.
+                Too many students with dyslexia, ADHD, autism, and other learning differences are failed by education systems that were not designed for them. StudiQ is built from the ground up to close that gap — with adaptive explanations, flexible pacing, and a tutor that never loses patience.
               </p>
               <p className="text-sm" style={{ color: '#4a6070' }}>
                 StudiQ contributed proposals to the UK SEND Reform consultation. We believe accessibility belongs at the centre of education technology, not as an optional add-on.
