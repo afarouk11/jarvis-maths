@@ -14,6 +14,7 @@ import { DrawingCanvas } from '@/components/ui/DrawingCanvas'
 import { VideoExplanation } from '@/components/math/VideoExplanation'
 import { sanitizeSvg } from '@/lib/math/sanitize-svg'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Dropdown } from '@/components/ui/Dropdown'
 import { friendlyError } from '@/lib/friendly-error'
 import { JourneyBanner } from '@/components/journey/JourneyBanner'
 import { journeyStorageKeys } from '@/lib/journey/storage'
@@ -502,15 +503,13 @@ function PracticePageInner() {
       {!studyNowMode && (
         <div className="mb-6 space-y-3">
           <div className="flex items-center gap-3">
-            <select
+            <Dropdown
               value={selectedSlug}
-              onChange={e => setSelectedSlug(e.target.value)}
-              className="px-3 py-2 rounded-lg text-sm outline-none flex-1 min-w-0"
-              // Solid (non-translucent) colours so the control and its option list
-              // never render white-on-white on light-theme browsers/OSes.
-              style={{ background: '#13233f', border: '1px solid rgba(59,130,246,0.35)', color: '#e8f0fe', colorScheme: 'dark' }}>
-              {allTopics.map(t => <option key={t.slug} value={t.slug} style={{ background: '#13233f', color: '#e8f0fe' }}>{t.name}</option>)}
-            </select>
+              onChange={setSelectedSlug}
+              options={allTopics.map(t => ({ value: t.slug, label: t.name }))}
+              ariaLabel="Choose a topic to practise"
+              className="flex-1 min-w-0"
+            />
             <motion.button
               whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
               onClick={generateQuestion} disabled={loading}

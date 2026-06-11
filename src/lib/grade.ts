@@ -38,6 +38,7 @@ const MIN_COVERAGE_FOR_GRADE = 0.15
 export function computeGradeSummary(
   progress: ReadonlyArray<{ p_known: number }>,
   totalTopics: number,
+  level?: string | null,
 ): GradeSummary {
   const studiedCount = progress.length
   const sum = progress.reduce((s, p) => s + p.p_known, 0)
@@ -52,7 +53,7 @@ export function computeGradeSummary(
     studiedCount,
     totalTopics,
     coverage,
-    grade: predictedGrade(overallPKnown),
+    grade: predictedGrade(overallPKnown, level),
     confident,
   }
 }
@@ -103,12 +104,12 @@ export function masteryBarForGrade(grade: string): number {
 /** Shared grade → colour mapping so every surface uses the same palette. */
 export function gradeColor(grade: string): string {
   switch (grade) {
-    case 'A*': return '#fbbf24'
-    case 'A':  return '#4ade80'
-    case 'B':  return '#60a5fa'
-    case 'C':  return '#f97316'
-    case 'D':  return '#f87171'
-    case 'E':  return '#ef4444'
+    case 'A*': case '9': return '#fbbf24'
+    case 'A':  case '8': return '#4ade80'
+    case 'B':  case '7': return '#60a5fa'
+    case 'C':  case '6': return '#f97316'
+    case 'D':  case '5': return '#f87171'
+    case 'E':  case '4': case '3': return '#ef4444'
     default:   return '#94a3b8'
   }
 }

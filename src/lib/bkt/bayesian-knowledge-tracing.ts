@@ -63,11 +63,21 @@ export function masteryColor(pKnown: number): string {
   return '#374151'
 }
 
-export function predictedGrade(avgPKnown: number): string {
-  if (avgPKnown >= 0.88) return 'A*'
-  if (avgPKnown >= 0.75) return 'A'
-  if (avgPKnown >= 0.62) return 'B'
-  if (avgPKnown >= 0.50) return 'C'
-  if (avgPKnown >= 0.38) return 'D'
-  return 'E'
+/**
+ * Maps overall mastery to a predicted grade on the student's actual scale:
+ * GCSE (Higher tier) → 9-4 with the 3 safety net, A-level → A*-E, and U on
+ * both. Boundaries deliberately mirror masteryBarForGrade() in lib/grade.ts so
+ * a student who clears the per-topic bar for their target grade is predicted
+ * that grade — the two scales previously disagreed.
+ */
+export function predictedGrade(avgPKnown: number, level?: string | null): string {
+  const isGcse = (level ?? '').trim().toLowerCase() === 'gcse'
+  if (avgPKnown >= 0.88) return isGcse ? '9' : 'A*'
+  if (avgPKnown >= 0.80) return isGcse ? '8' : 'A'
+  if (avgPKnown >= 0.72) return isGcse ? '7' : 'B'
+  if (avgPKnown >= 0.62) return isGcse ? '6' : 'C'
+  if (avgPKnown >= 0.55) return isGcse ? '5' : 'D'
+  if (avgPKnown >= 0.48) return isGcse ? '4' : 'E'
+  if (isGcse && avgPKnown >= 0.40) return '3'
+  return 'U'
 }

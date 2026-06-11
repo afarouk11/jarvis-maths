@@ -32,7 +32,7 @@ export default async function BrainPage() {
   // Grade is now derived from mastery across ALL topics (unstudied = 0), matching
   // the dashboard. Previously this page divided by studied topics only, so it
   // reported a higher grade than the dashboard for the same student.
-  const gradeSummary = computeGradeSummary(progressList, topics.length)
+  const gradeSummary = computeGradeSummary(progressList, topics.length, level)
 
   return (
     <BrainMap

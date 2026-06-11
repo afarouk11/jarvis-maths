@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { RotateCw } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { masteryLabel } from '@/lib/bkt/bayesian-knowledge-tracing'
+import { gradeColor as sharedGradeColor } from '@/lib/grade'
 import { weakPrerequisites } from '@/lib/curriculum/topic-graph'
 import { createClient } from '@/lib/supabase/client'
 import type { StudentProgress, Topic } from '@/types'
@@ -171,7 +172,7 @@ export function BrainMap({ progress, avgPKnown, grade, topicsActive, totalTopics
     }
   }, [])
 
-  const gradeColor = grade === 'A*' ? '#fbbf24' : grade === 'A' ? '#4ade80' : grade === 'B' ? '#60a5fa' : grade === 'C' ? '#f97316' : '#ef4444'
+  const gradeColor = grade === '—' ? '#94a3b8' : sharedGradeColor(grade)
 
   const handleClick = useCallback((slug: string) => {
     const topic = topics.find(t => t.slug === slug)

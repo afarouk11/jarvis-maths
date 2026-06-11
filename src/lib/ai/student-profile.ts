@@ -31,7 +31,7 @@ export async function buildStudentProfile(userId: string): Promise<string> {
   const avgPKnown = progressList.length > 0
     ? progressList.reduce((s, p) => s + p.p_known, 0) / progressList.length
     : 0
-  const grade = predictedGrade(avgPKnown)
+  const grade = predictedGrade(avgPKnown, profile.level)
 
   // Weakest topics (p_known < 0.4, most attempts)
   const weak = progressList

@@ -15,12 +15,15 @@ export interface ExamReadiness {
   improvementNeeded: string | null // human-readable nudge
 }
 
+// Mastery (%) needed for each grade — keep in sync with predictedGrade() and
+// masteryBarForGrade() so every surface agrees on what a grade requires.
 const GRADE_THRESHOLDS: Record<string, number> = {
-  'A*': 88,
-  'A':  75,
-  'B':  62,
-  'C':  50,
-  'D':  38,
+  'A*': 88, '9': 88,
+  'A':  80, '8': 80,
+  'B':  72, '7': 72,
+  'C':  62, '6': 62,
+  'D':  55, '5': 55,
+  'E':  48, '4': 48,
 }
 
 export function computeExamReadiness({
@@ -30,6 +33,7 @@ export function computeExamReadiness({
   targetGrade,
   slugById,
   topicNames,
+  level,
 }: {
   progress: StudentProgress[]
   totalTopics: number
@@ -37,11 +41,12 @@ export function computeExamReadiness({
   targetGrade: string
   slugById: Map<string, string>
   topicNames: Map<string, string>
+  level?: string | null
 }): ExamReadiness {
   if (totalTopics === 0) {
     return {
       score: 0, label: 'Not started', color: '#374151',
-      gradeTrajectory: 'E', topPrioritySlug: null, topPriorityName: null,
+      gradeTrajectory: 'U', topPrioritySlug: null, topPriorityName: null,
       topPriorityMastery: null, daysToExam: null, urgency: 'low',
       improvementNeeded: 'Complete your onboarding to get started.',
     }
@@ -81,7 +86,7 @@ export function computeExamReadiness({
   const score    = Math.round(Math.min(100, rawScore * 100))
 
   // Grade trajectory from overall mastery
-  const gradeTrajectory = predictedGrade(avgAllTopics)
+  const gradeTrajectory = predictedGrade(avgAllTopics, level)
 
   // Label + color
   const { label, color } = readinessLabel(score)

@@ -5,16 +5,7 @@ import { anthropic } from '@ai-sdk/anthropic'
 import { generateText } from 'ai'
 import { isPro } from '@/lib/stripe'
 import { checkRateLimit, tooManyRequests } from '@/lib/api/rate-limit'
-
-function formatBoardName(board: string): string {
-  switch (board) {
-    case 'edexcel': return 'Edexcel'
-    case 'ocr_a': return 'OCR A'
-    case 'ocr_mei': return 'OCR MEI'
-    case 'wjec': return 'WJEC/Eduqas'
-    default: return 'AQA'
-  }
-}
+import { formatBoardName, isGcseLevel } from '@/lib/ai/prompts'
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,7 +26,7 @@ export async function POST(req: NextRequest) {
     const rl = await checkRateLimit(supabase, user.id, 'generate-lesson', 20, 3600)
     if (!rl.allowed) return tooManyRequests(rl)
 
-    const levelLabel = prof?.level === 'gcse' ? 'GCSE' : 'A-level'
+    const levelLabel = isGcseLevel(prof?.level) ? 'GCSE' : 'A-level'
     const boardLabel = formatBoardName(prof?.exam_board ?? 'aqa')
 
     const { slug } = await req.json()

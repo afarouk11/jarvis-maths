@@ -7,6 +7,7 @@ import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
 import { GCSE_TOPICS } from '@/lib/curriculum/gcse-topics'
 import { MockExamView, type MockPaper } from '@/components/papers/MockExamView'
 import { JourneyBanner } from '@/components/journey/JourneyBanner'
+import { Dropdown } from '@/components/ui/Dropdown'
 
 type ALevelType = 'pure' | 'stats' | 'mechanics'
 type GcseType   = 'non-calc' | 'calc'
@@ -186,22 +187,6 @@ export default function PapersPage() {
   }).sort((a, b) => b.year - a.year || a.paper - b.paper)
 
   const years = Array.from({ length: 10 }, (_, i) => 2024 - i)
-
-  const selectStyle: React.CSSProperties = {
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 8,
-    color: '#e2e8f0',
-    fontSize: 13,
-    padding: '6px 28px 6px 10px',
-    outline: 'none',
-    cursor: 'pointer',
-    appearance: 'none',
-    WebkitAppearance: 'none',
-    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a7aaa'/%3E%3C/svg%3E")`,
-    backgroundRepeat: 'no-repeat',
-    backgroundPosition: 'right 8px center',
-  }
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -484,30 +469,39 @@ export default function PapersPage() {
               style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.01)' }}>
               <span className="text-xs font-medium" style={{ color: '#5a7aaa' }}>Filter:</span>
 
-              <div style={{ position: 'relative' }}>
-                <select value={boardFilter} onChange={e => setBoardFilter(e.target.value as Board | 'All')} style={selectStyle}>
-                  <option value="All">All Boards</option>
-                  <option value="Edexcel">Edexcel</option>
-                  <option value="AQA">AQA</option>
-                  <option value="OCR">OCR</option>
-                </select>
-              </div>
+              <Dropdown
+                value={String(boardFilter)}
+                onChange={v => setBoardFilter(v as Board | 'All')}
+                options={[
+                  { value: 'All', label: 'All Boards' },
+                  { value: 'Edexcel', label: 'Edexcel' },
+                  { value: 'AQA', label: 'AQA' },
+                  { value: 'OCR', label: 'OCR' },
+                ]}
+                ariaLabel="Filter by exam board"
+                className="w-36"
+              />
 
-              <div style={{ position: 'relative' }}>
-                <select value={yearFilter} onChange={e => setYearFilter(e.target.value === 'All' ? 'All' : Number(e.target.value) as number)} style={selectStyle}>
-                  <option value="All">All Years</option>
-                  {years.map(y => <option key={y} value={y}>{y}</option>)}
-                </select>
-              </div>
+              <Dropdown
+                value={String(yearFilter)}
+                onChange={v => setYearFilter(v === 'All' ? 'All' : Number(v))}
+                options={[{ value: 'All', label: 'All Years' }, ...years.map(y => ({ value: String(y), label: String(y) }))]}
+                ariaLabel="Filter by year"
+                className="w-32"
+              />
 
-              <div style={{ position: 'relative' }}>
-                <select value={paperFilter} onChange={e => setPaperFilter(e.target.value === 'All' ? 'All' : Number(e.target.value) as 1 | 2 | 3)} style={selectStyle}>
-                  <option value="All">All Papers</option>
-                  <option value={1}>Paper 1</option>
-                  <option value={2}>Paper 2</option>
-                  <option value={3}>Paper 3</option>
-                </select>
-              </div>
+              <Dropdown
+                value={String(paperFilter)}
+                onChange={v => setPaperFilter(v === 'All' ? 'All' : Number(v) as 1 | 2 | 3)}
+                options={[
+                  { value: 'All', label: 'All Papers' },
+                  { value: '1', label: 'Paper 1' },
+                  { value: '2', label: 'Paper 2' },
+                  { value: '3', label: 'Paper 3' },
+                ]}
+                ariaLabel="Filter by paper number"
+                className="w-32"
+              />
 
               <span className="text-xs ml-auto" style={{ color: '#5a7aaa' }}>
                 {filteredPapers.length} result{filteredPapers.length !== 1 ? 's' : ''}

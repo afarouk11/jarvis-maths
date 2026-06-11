@@ -667,8 +667,14 @@ Proactive encouragement:
   return parts.join('\n')
 }
 
-export function buildLessonPrompt(topicName: string, difficulty: number, level?: 'gcse' | 'alevel'): string {
-  const levelLabel = level === 'gcse' ? 'GCSE' : 'A-level'
+// Profiles store level as 'GCSE' | 'A-Level' while some callers pass lowercase
+// codes — normalise before matching so GCSE students never get A-level content.
+export function isGcseLevel(level?: string | null): boolean {
+  return (level ?? '').trim().toLowerCase() === 'gcse'
+}
+
+export function buildLessonPrompt(topicName: string, difficulty: number, level?: string | null): string {
+  const levelLabel = isGcseLevel(level) ? 'GCSE' : 'A-level'
   return `Generate a comprehensive ${levelLabel} maths lesson on "${topicName}" at difficulty level ${difficulty}/5.
 
 Structure the lesson as a JSON array of content blocks. Each block has:
@@ -686,20 +692,25 @@ Include:
 Return ONLY the JSON array, no other text.`
 }
 
-function formatBoardName(board: string): string {
-  switch (board) {
+// Profiles store exam_board capitalized ('AQA' | 'Edexcel' | 'OCR') while some
+// callers pass lowercase codes — normalise before matching so a student's board
+// is never silently swapped for AQA.
+export function formatBoardName(board: string): string {
+  switch (board.trim().toLowerCase()) {
     case 'edexcel': return 'Edexcel'
+    case 'ocr': return 'OCR'
     case 'ocr_a': return 'OCR A'
     case 'ocr_mei': return 'OCR MEI'
-    case 'wjec': return 'WJEC/Eduqas'
+    case 'wjec':
+    case 'eduqas': return 'WJEC/Eduqas'
     default: return 'AQA'
   }
 }
 
-export function buildQuestionPrompt(topicName: string, difficulty: number, level?: 'gcse' | 'alevel', kbContext: string = '', examBoard: string = 'aqa', subskill?: string | null): string {
-  const levelLabel = level === 'gcse' ? 'GCSE' : 'A-level'
+export function buildQuestionPrompt(topicName: string, difficulty: number, level?: string | null, kbContext: string = '', examBoard: string = 'aqa', subskill?: string | null): string {
+  const levelLabel = isGcseLevel(level) ? 'GCSE' : 'A-level'
   const boardDisplay = formatBoardName(examBoard)
-  const boardLabel = level === 'gcse' ? `${boardDisplay} GCSE (Higher tier)` : `${boardDisplay} A-level`
+  const boardLabel = isGcseLevel(level) ? `${boardDisplay} GCSE (Higher tier)` : `${boardDisplay} A-level`
   const focus = subskill ? `\nFocus this question specifically on the sub-skill: "${subskill}". The question must genuinely require that technique.` : ''
   return `Generate a ${levelLabel} maths exam question on "${topicName}" at difficulty ${difficulty}/5.${focus}
 ${kbContext}

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { computeExamReadiness } from '@/lib/exam-readiness'
 import { rootWeakPrerequisite } from '@/lib/curriculum/topic-graph'
-import { AQA_TOPICS } from '@/lib/curriculum/aqa-topics'
+import { getTopics, type Level } from '@/lib/curriculum'
 import type { StudentProgress } from '@/types'
 
 interface Props {
@@ -10,15 +10,17 @@ interface Props {
   targetGrade: string
   examBoard: string
   topicsRows: Array<{ id: string; slug: string }>
+  level?: string | null
 }
 
-export function SpokRecommendation({ progress, examDate, targetGrade, examBoard, topicsRows }: Props) {
+export function SpokRecommendation({ progress, examDate, targetGrade, examBoard, topicsRows, level }: Props) {
+  const topics = getTopics((level as Level) ?? 'A-Level')
   const slugById   = new Map(topicsRows.map(t => [t.id,   t.slug]))
-  const topicNames = new Map(AQA_TOPICS.map(t => [t.slug, t.name]))
-  const totalTopics = AQA_TOPICS.length
+  const topicNames = new Map(topics.map(t => [t.slug, t.name]))
+  const totalTopics = topics.length
 
   const readiness = computeExamReadiness({
-    progress, totalTopics, examDate, targetGrade, slugById, topicNames,
+    progress, totalTopics, examDate, targetGrade, slugById, topicNames, level,
   })
 
   const urgencyBg: Record<typeof readiness.urgency, string> = {
