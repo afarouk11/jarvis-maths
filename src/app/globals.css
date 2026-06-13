@@ -156,6 +156,93 @@ textarea:focus-visible,
   background-size: 20px 20px, 80px 80px, 80px 80px;
 }
 
+/* Text selection — brand blue, not browser default */
+::selection {
+  background: rgba(59, 130, 246, 0.35);
+  color: #ffffff;
+}
+
+/* Glass buttons — frosted, lit from above, blue aura */
+.btn-glass {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(99, 102, 241, 0.18));
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(147, 197, 253, 0.32);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -8px 16px rgba(59, 130, 246, 0.12),
+    0 0 32px rgba(59, 130, 246, 0.3),
+    0 4px 16px rgba(0, 0, 0, 0.3);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+}
+.btn-glass:hover {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.42), rgba(99, 102, 241, 0.28));
+  border-color: rgba(147, 197, 253, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    inset 0 -8px 18px rgba(59, 130, 246, 0.18),
+    0 0 48px rgba(59, 130, 246, 0.45),
+    0 6px 20px rgba(0, 0, 0, 0.35);
+}
+.btn-glass-ghost {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+}
+.btn-glass-ghost:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.45);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 24px rgba(59, 130, 246, 0.15);
+}
+
+/* HUD corner brackets — SPOK targeting reticle, revealed on hover */
+.gcard {
+  position: relative;
+  transition: box-shadow 0.3s ease;
+}
+.gcard::before,
+.gcard::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgba(96, 165, 250, 0);
+  transition: border-color 0.3s ease;
+  pointer-events: none;
+}
+.gcard::before {
+  top: -5px;
+  left: -5px;
+  border-right: none;
+  border-bottom: none;
+  border-top-left-radius: 7px;
+}
+.gcard::after {
+  bottom: -5px;
+  right: -5px;
+  border-left: none;
+  border-top: none;
+  border-bottom-right-radius: 7px;
+}
+.gcard:hover {
+  box-shadow: 0 0 36px rgba(59, 130, 246, 0.12), 0 14px 40px rgba(0, 0, 0, 0.35);
+}
+.gcard:hover::before,
+.gcard:hover::after {
+  border-color: rgba(96, 165, 250, 0.55);
+}
+
+/* Comparison table row hover */
+.cmp-row {
+  transition: background 0.15s ease;
+}
+.cmp-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
 /* Arc reactor glow */
 .arc-glow {
   box-shadow: 0 0 20px rgba(59, 130, 246, 0.3), 0 0 60px rgba(59, 130, 246, 0.1);

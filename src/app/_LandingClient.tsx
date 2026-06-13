@@ -7,6 +7,8 @@ import { useState, useEffect, useRef } from 'react'
 import { JarvisState } from '@/types'
 import { Check, X, Star, ChevronDown, Menu } from 'lucide-react'
 import { StudiQLogo } from '@/components/ui/StudiQLogo'
+import { SpokNarrator } from '@/components/landing/SpokNarrator'
+import { AudienceSection } from '@/components/landing/AudienceSection'
 
 const ABOUT_LINKS = [
   { href: '/about',              label: 'Our Mission' },
@@ -49,10 +51,20 @@ const COMPARISON = [
 
 function GradientCard({ children, className = '', style = {} }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return (
-    <div style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.4) 0%, rgba(99,102,241,0.2) 50%, rgba(59,130,246,0.06) 100%)', padding: 1, borderRadius: 18, ...style }} className={className}>
+    <div style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.4) 0%, rgba(99,102,241,0.2) 50%, rgba(59,130,246,0.06) 100%)', padding: 1, borderRadius: 18, ...style }} className={`gcard ${className}`}>
       <div style={{ background: 'rgba(10,14,26,0.92)', borderRadius: 17, height: '100%' }}>
         {children}
       </div>
+    </div>
+  )
+}
+
+function SectionKicker({ symbol, children, color = '#60a5fa' }: { symbol: string; children: React.ReactNode; color?: string }) {
+  return (
+    <div className="inline-flex items-baseline gap-2 mb-4 px-3 py-1 rounded-md"
+      style={{ background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.16)' }}>
+      <span style={{ fontFamily: 'var(--font-space-grotesk)', fontStyle: 'italic', fontWeight: 600, color, fontSize: 13 }}>{symbol}</span>
+      <span className="text-[11px] font-semibold uppercase" style={{ color: '#7c98c4', letterSpacing: '0.16em' }}>{children}</span>
     </div>
   )
 }
@@ -173,8 +185,7 @@ export function LandingPage() {
           <Link href="/sign-in"  className="px-4 py-2 rounded-lg text-sm transition-colors hover:text-white" style={{ color: '#6b8cba' }}>Sign in</Link>
           <Link href="/sign-up">
             <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-              className="px-5 py-2 rounded-lg text-sm font-medium text-white"
-              style={{ background: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', boxShadow: '0 0 20px rgba(59,130,246,0.3)' }}>
+              className="btn-glass px-5 py-2 rounded-lg text-sm font-medium text-white">
               Get started free
             </motion.button>
           </Link>
@@ -183,8 +194,7 @@ export function LandingPage() {
         <div className="flex md:hidden items-center gap-3">
           <Link href="/sign-up">
             <motion.button whileTap={{ scale: 0.96 }}
-              className="px-4 py-2 rounded-lg text-sm font-medium text-white"
-              style={{ background: 'linear-gradient(135deg,#1d4ed8,#3b82f6)' }}>
+              className="btn-glass px-4 py-2 rounded-lg text-sm font-medium text-white">
               Get started
             </motion.button>
           </Link>
@@ -266,7 +276,7 @@ export function LandingPage() {
           </div>
 
           <h1 className="text-white mb-6"
-            style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 76, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.05 }}>
+            style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 'clamp(40px, 8vw, 76px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.05 }}>
             Your A* has a gap.<br />
             <span style={{ background: 'linear-gradient(135deg, #60a5fa 0%, #818cf8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', filter: 'drop-shadow(0 0 30px rgba(99,102,241,0.4))' }}>
               SPOK just found it.
@@ -284,20 +294,15 @@ export function LandingPage() {
           <div className="flex gap-4 justify-center flex-wrap mb-14">
             <Link href="/sign-up">
               <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
-                className="px-9 py-4 rounded-xl font-semibold text-white"
-                style={{
-                  fontFamily: 'var(--font-space-grotesk)',
-                  background: 'linear-gradient(135deg, #1d4ed8, #3b82f6, #6366f1)',
-                  boxShadow: '0 0 50px rgba(59,130,246,0.45), 0 4px 20px rgba(0,0,0,0.35)',
-                  fontSize: 15,
-                }}>
-                Start learning free →
+                className="btn-glass group px-9 py-4 rounded-xl font-semibold text-white"
+                style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 15 }}>
+                Start learning free <span className="inline-block transition-transform duration-200 group-hover:translate-x-1">→</span>
               </motion.button>
             </Link>
             <Link href="/pricing">
               <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
-                className="px-9 py-4 rounded-xl font-semibold"
-                style={{ background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.22)', color: '#60a5fa', fontSize: 15 }}>
+                className="btn-glass-ghost px-9 py-4 rounded-xl font-semibold"
+                style={{ color: '#60a5fa', fontSize: 15 }}>
                 See pricing
               </motion.button>
             </Link>
@@ -323,10 +328,14 @@ export function LandingPage() {
         </motion.div>
       </section>
 
+      {/* SPOK narrates the page as you scroll */}
+      <SpokNarrator />
+
       {/* ── How it works ── */}
-      <section className="max-w-4xl mx-auto px-6 pb-28">
-        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} className="text-center mb-14">
-          <h2 style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 38, fontWeight: 700, letterSpacing: '-0.02em', color: '#fff' }} className="mb-3">
+      <section id="how-it-works" className="max-w-4xl mx-auto px-6 pb-28">
+        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-14">
+          <SectionKicker symbol="ƒ(x)">Step-by-step working</SectionKicker>
+          <h2 style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 'clamp(28px, 5vw, 38px)', fontWeight: 700, letterSpacing: '-0.02em', color: '#fff' }} className="mb-3">
             How SPOK works
           </h2>
           <p style={{ color: '#5a7aaa', fontSize: 15 }}>Three steps from sign-up to an A*</p>
@@ -349,11 +358,14 @@ export function LandingPage() {
       </section>
 
       {/* ── Features grid ── */}
-      <section className="max-w-5xl mx-auto px-6 pb-28">
-        <motion.h2 initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} className="text-white text-center mb-12"
-          style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 38, fontWeight: 700, letterSpacing: '-0.02em' }}>
-          Everything you need to get an A*
-        </motion.h2>
+      <section id="features" className="max-w-5xl mx-auto px-6 pb-28">
+        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-12">
+          <SectionKicker symbol="∑">The full toolkit</SectionKicker>
+          <h2 className="text-white"
+            style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 'clamp(28px, 5vw, 38px)', fontWeight: 700, letterSpacing: '-0.02em' }}>
+            Everything you need to get an A*
+          </h2>
+        </motion.div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {FEATURES.map((f, i) => (
             <motion.div key={f.title} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
@@ -375,9 +387,10 @@ export function LandingPage() {
       </section>
 
       {/* ── Testimonials ── */}
-      <section className="max-w-5xl mx-auto px-6 pb-28">
-        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} className="text-center mb-14">
-          <h2 style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 38, fontWeight: 700, letterSpacing: '-0.02em', color: '#fff' }} className="mb-3">
+      <section id="testimonials" className="max-w-5xl mx-auto px-6 pb-28">
+        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-14">
+          <SectionKicker symbol="∴" color="#f59e0b">Proof</SectionKicker>
+          <h2 style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 'clamp(28px, 5vw, 38px)', fontWeight: 700, letterSpacing: '-0.02em', color: '#fff' }} className="mb-3">
             What students say
           </h2>
           <p style={{ color: '#5a7aaa', fontSize: 15 }}>Real results from real A-level students</p>
@@ -388,7 +401,7 @@ export function LandingPage() {
               <GradientCard style={{ height: '100%' }}>
                 <div className="p-7 flex flex-col">
                   {/* Quote mark */}
-                  <div style={{ fontFamily: 'Georgia, serif', fontSize: 56, lineHeight: 1, color: '#1e3a5f', marginBottom: 8, marginTop: -8 }}>"</div>
+                  <div style={{ fontFamily: 'Georgia, serif', fontSize: 56, lineHeight: 1, color: '#1e3a5f', marginBottom: 8, marginTop: -8 }}>&ldquo;</div>
                   <div className="flex gap-0.5 mb-4">
                     {Array.from({ length: t.stars }).map((_, j) => (
                       <Star key={j} size={12} fill="#f59e0b" style={{ color: '#f59e0b' }} />
@@ -397,9 +410,20 @@ export function LandingPage() {
                   <p className="text-sm leading-relaxed flex-1 mb-6" style={{ color: '#94b4f0' }}>
                     {t.quote}
                   </p>
-                  <div>
-                    <p className="text-sm font-semibold text-white">{t.name}</p>
-                    <p className="text-xs mt-0.5" style={{ color: '#4a6070' }}>{t.detail}</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold"
+                      style={{
+                        fontFamily: 'var(--font-space-grotesk)',
+                        background: 'linear-gradient(135deg, rgba(59,130,246,0.3), rgba(99,102,241,0.18))',
+                        border: '1px solid rgba(147,197,253,0.25)',
+                        color: '#93c5fd',
+                      }}>
+                      {t.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-white">{t.name}</p>
+                      <p className="text-xs mt-0.5" style={{ color: '#4a6070' }}>{t.detail}</p>
+                    </div>
                   </div>
                 </div>
               </GradientCard>
@@ -408,42 +432,57 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* ── Students · Parents · Schools ── */}
+      <AudienceSection />
+
       {/* ── Comparison ── */}
-      <section className="max-w-3xl mx-auto px-6 pb-28">
-        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} className="text-center mb-12">
-          <h2 style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 38, fontWeight: 700, letterSpacing: '-0.02em', color: '#fff' }} className="mb-3">
+      <section id="comparison" className="max-w-3xl mx-auto px-6 pb-28">
+        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-12">
+          <SectionKicker symbol="≫">The comparison</SectionKicker>
+          <h2 style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 'clamp(28px, 5vw, 38px)', fontWeight: 700, letterSpacing: '-0.02em', color: '#fff' }} className="mb-3">
             Why not just get a tutor?
           </h2>
           <p style={{ color: '#5a7aaa', fontSize: 15 }}>Private tutors charge £60/hour. SPOK is available at midnight and never runs out of patience.</p>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }}>
           <GradientCard>
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto" style={{ borderRadius: 17 }}>
+            <table className="w-full text-sm" style={{ minWidth: 480 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(59,130,246,0.12)' }}>
                   <th className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider" style={{ color: '#4a6070' }}>Feature</th>
                   <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider" style={{ color: '#4a6070' }}>Private Tutor</th>
                   <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider" style={{ color: '#4a6070' }}>Textbook</th>
-                  <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider" style={{ color: '#3b82f6' }}>StudiQ</th>
+                  <th className="px-4 py-4 text-xs font-semibold uppercase tracking-wider"
+                    style={{ color: '#60a5fa', background: 'rgba(59,130,246,0.07)', borderLeft: '1px solid rgba(59,130,246,0.15)', borderRight: '1px solid rgba(59,130,246,0.15)' }}>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#3b82f6', boxShadow: '0 0 6px #3b82f6' }} />
+                      StudiQ
+                    </span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {COMPARISON.map((row, i) => (
-                  <tr key={row.label} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                {COMPARISON.map((row) => (
+                  <tr key={row.label} className="cmp-row" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                     <td className="px-6 py-3 text-xs" style={{ color: '#94a3b8' }}>{row.label}</td>
                     <td className="px-4 py-3 text-center">{renderCell(row.tutor)}</td>
                     <td className="px-4 py-3 text-center">{renderCell(row.textbook)}</td>
-                    <td className="px-4 py-3 text-center" style={{ background: 'rgba(59,130,246,0.05)' }}>{renderCell(row.studiq)}</td>
+                    <td className="px-4 py-3 text-center"
+                      style={{ background: 'rgba(59,130,246,0.06)', borderLeft: '1px solid rgba(59,130,246,0.15)', borderRight: '1px solid rgba(59,130,246,0.15)' }}>
+                      {renderCell(row.studiq)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
           </GradientCard>
         </motion.div>
       </section>
 
       {/* ── CTA ── */}
-      <section className="text-center pb-28 px-6">
+      <section id="final-cta" className="text-center pb-28 px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} className="max-w-xl mx-auto">
           <GradientCard style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.4) 0%, rgba(59,130,246,0.2) 50%, rgba(59,130,246,0.05) 100%)' }}>
             <div className="p-12 text-center" style={{ position: 'relative' }}>
@@ -461,14 +500,9 @@ export function LandingPage() {
                 <p className="text-xs mb-10" style={{ color: '#374151' }}>Trusted by A-level students across the UK — AQA, Edexcel, and OCR.</p>
                 <Link href="/sign-up">
                   <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
-                    className="px-12 py-4 rounded-xl font-semibold text-white"
-                    style={{
-                      fontFamily: 'var(--font-space-grotesk)',
-                      background: 'linear-gradient(135deg, #1d4ed8, #3b82f6, #6366f1)',
-                      boxShadow: '0 0 40px rgba(59,130,246,0.4), 0 0 80px rgba(99,102,241,0.15)',
-                      fontSize: 15,
-                    }}>
-                    Get started free →
+                    className="btn-glass group px-12 py-4 rounded-xl font-semibold text-white"
+                    style={{ fontFamily: 'var(--font-space-grotesk)', fontSize: 15 }}>
+                    Get started free <span className="inline-block transition-transform duration-200 group-hover:translate-x-1">→</span>
                   </motion.button>
                 </Link>
                 <p className="text-xs mt-5" style={{ color: '#374151' }}>No credit card · Cancel anytime</p>
@@ -481,9 +515,9 @@ export function LandingPage() {
       {/* ── Footer ── */}
       <footer className="border-t px-8 py-12" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
         <div className="max-w-5xl mx-auto">
-          <div className="grid grid-cols-4 gap-8 mb-10">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
             {/* Brand */}
-            <div className="col-span-1">
+            <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-3">
                 <StudiQLogo size={24} />
                 <span className="font-semibold text-sm text-white" style={{ fontFamily: 'var(--font-space-grotesk)' }}>StudiQ</span>
