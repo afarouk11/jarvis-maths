@@ -4,7 +4,13 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { schoolOutreachEmail } from '@/lib/email/school-outreach-template'
 
-const resend = new Resend(process.env.EMAIL_OUTREACH_API_KEY)
+// Lazy — constructing Resend without a key throws, which would crash the
+// whole build's page-data collection when EMAIL_OUTREACH_API_KEY isn't set.
+let _resend: Resend | null = null
+function getResend(): Resend {
+  _resend ??= new Resend(process.env.EMAIL_OUTREACH_API_KEY)
+  return _resend
+}
 
 // Safety cap per API call to avoid accidental blasts and stay inside Resend rate limits
 const BATCH_SIZE = 50
@@ -90,7 +96,7 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      const { error } = await resend.emails.send({
+      const { error } = await getResend().emails.send({
         from: 'Muhammad at StudiQ <admin@studiq.org>',
         to: school.contact_email,
         subject,
